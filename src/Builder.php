@@ -4,15 +4,23 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi;
 
+use EugeneErg\OpenApi\Components\Callbacks;
+use EugeneErg\OpenApi\Components\Headers;
+use EugeneErg\OpenApi\Components\Links;
 use EugeneErg\OpenApi\Components\Links\Link;
+use EugeneErg\OpenApi\Components\Parameters;
 use EugeneErg\OpenApi\Components\Parameters\Abstract\AbstractSchemaParameter;
 use EugeneErg\OpenApi\Components\Parameters\ContentParameter;
 use EugeneErg\OpenApi\Components\Parameters\CustomParameter;
 use EugeneErg\OpenApi\Components\Parameters\Header\SchemaParameter as HeaderSchemaParameter;
+use EugeneErg\OpenApi\Components\RequestBodies;
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
+use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Components\Responses\Response;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
+use EugeneErg\OpenApi\Components\SecuritySchemes;
 use LogicException;
 use stdClass;
 
@@ -34,7 +42,7 @@ final readonly class Builder
         $result = [];
 
         foreach ($this->openapi as $subPath => $value) {
-            $result[$path . '/' . $subPath] = $value->toObject($this);
+            $result[$path . '/' . $subPath] = $value->toObject(new Process($this, $value));
         }
 
         return $result;
@@ -91,6 +99,87 @@ final readonly class Builder
         return $this->toRef(static fn (Openapi $openapi) => $openapi->findParameter($value), $openapi, 'parameters');
     }
 
+    public function findSchemas(Openapi $openapi, AbstractSchemas $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->schemas === $value,
+            $openapi,
+            'schemas',
+        );
+    }
+
+    public function findCallbacks(Openapi $openapi, Callbacks $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->callbacks === $value,
+            $openapi,
+            'callbacks',
+        );
+    }
+
+    public function findParameters(Openapi $openapi, Parameters $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->parameters === $value,
+            $openapi,
+            'parameters',
+        );
+    }
+
+    public function findLinks(Openapi $openapi, Links $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->links === $value,
+            $openapi,
+            'links',
+        );
+    }
+
+    public function findSecuritySchemes(Openapi $openapi, SecuritySchemes $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->securitySchemes === $value,
+            $openapi,
+            'securitySchemes',
+        );
+    }
+
+    public function findHeaders(Openapi $openapi, Headers $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->headers === $value,
+            $openapi,
+            'headers',
+        );
+    }
+
+    public function findRequestBodies(Openapi $openapi, RequestBodies $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->requestBodies === $value,
+            $openapi,
+            'requestBodies',
+        );
+    }
+
+    public function findExamples(Openapi $openapi, AbstractValues $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->examples === $value,
+            $openapi,
+            'examples',
+        );
+    }
+
+    public function findResponses(Openapi $openapi, Responses $value): ?stdClass
+    {
+        return $this->toRefOpenapiString(
+            static fn (Openapi $openapi) => $openapi->components->responses === $value,
+            $openapi,
+            'responses',
+        );
+    }
+
     private function toRef(callable $callback, Openapi $openapi, string $component): ?stdClass
     {
         $result = $this->toRefString($callback, $openapi, 'components/' . $component);
@@ -117,5 +206,20 @@ final readonly class Builder
         }
 
         return null;
+    }
+
+    private function toRefOpenapiString(callable $callback, Openapi $openapi, string $component): ?stdClass
+    {
+        foreach ($this->openapi as $path => $item) {
+            if ($item === $openapi) {
+                return null;
+            }
+
+            if ($callback($openapi) !== null) {
+                return (object) ['$ref' => $path . '#/components/' . $component];
+            }
+        }
+
+        throw new LogicException('Components not found.');
     }
 }

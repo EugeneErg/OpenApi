@@ -41,13 +41,11 @@ final readonly class Openapi
         $this->tags = $tags ?? new Tags();
     }
 
-    public function toObject(Builder $builder): stdClass
+    public function toObject(Process $process): stdClass
     {
-        $process = new Process($builder, $this);
-
         $result = [
             'openapi' => $this->openapi,
-            'info' => $this->info->toArray(),
+            'info' => $this->info->toObject(),
         ];
 
         if ($this->externalDocs !== null) {

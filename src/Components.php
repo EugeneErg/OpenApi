@@ -56,39 +56,39 @@ final readonly class Components
         $result = [];
 
         if ($this->schemas->items !== []) {
-            $result['schemas'] = $this->schemas->sourceToObject($process);
+            $result['schemas'] = $process->findSchemas($this->schemas) ?? $this->schemas->sourceToObject($process);
         }
 
         if ($this->responses->items !== []) {
-            $result['responses'] = $this->responses->sourceToObject($process);
+            $result['responses'] = $process->findResponses($this->responses) ?? $this->responses->sourceToObject($process);
         }
 
         if ($this->parameters->items !== []) {
-            $result['parameters'] = $this->parameters->sourceToObject($process);
+            $result['parameters'] = $process->findParameters($this->parameters) ?? $this->parameters->sourceToObject($process);
         }
 
         if ($this->examples->items !== []) {
-            $result['examples'] = $this->examples->sourceToObject($process);
+            $result['examples'] = $process->findExamples($this->examples) ?? $this->examples->sourceToObject($process);
         }
 
         if ($this->requestBodies->items !== []) {
-            $result['requestBodies'] = $this->requestBodies->sourceToObject($process);
+            $result['requestBodies'] = $process->findRequestBodies($this->requestBodies) ?? $this->requestBodies->sourceToObject($process);
         }
 
         if ($this->headers->items !== []) {
-            $result['headers'] = $this->headers->sourceToObject($process);
+            $result['headers'] = $process->findHeaders($this->headers) ?? $this->headers->sourceToObject($process);
         }
 
         if ($this->securitySchemes->items !== []) {
-            $result['securitySchemes'] = $this->securitySchemes->sourceToObject();
+            $result['securitySchemes'] = $process->findSecuritySchemes($this->securitySchemes) ?? $this->securitySchemes->sourceToObject();
         }
 
         if ($this->links->items !== []) {
-            $result['links'] = $this->links->sourceToObject($process);
+            $result['links'] = $process->findLinks($this->links) ?? $this->links->sourceToObject($process);
         }
 
         if ($this->callbacks->items !== []) {
-            $result['callbacks'] = $this->callbacks->sourceToObject($process);
+            $result['callbacks'] = $process->findCallbacks($this->callbacks) ?? $this->callbacks->sourceToObject($process);
         }
 
         return (object) $result;

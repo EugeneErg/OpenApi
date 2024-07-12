@@ -6,6 +6,7 @@ namespace EugeneErg\OpenApi;
 
 use EugeneErg\OpenApi\Info\Contacts;
 use EugeneErg\OpenApi\Info\License;
+use stdClass;
 
 final readonly class Info
 {
@@ -22,17 +23,7 @@ final readonly class Info
         $this->contacts = $contacts ?? new Contacts();
     }
 
-    /**
-     * @return array{
-     *     title: string,
-     *     version: string,
-     *     description?: string,
-     *     contacts?: array{name?: string, url?: string, email?: string},
-     *     license?: array{name: string, url?: string},
-     *     termsOfService?: string,
-     * }
-     */
-    public function toArray(): array
+    public function toObject(): stdClass
     {
         $result = [
             'title' => $this->title,
@@ -55,6 +46,6 @@ final readonly class Info
             $result['termsOfService'] = $this->termsOfService;
         }
 
-        return $result;
+        return (object) $result;
     }
 }
