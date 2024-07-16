@@ -4,6 +4,8 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
+use stdClass;
+
 final readonly class Xml
 {
     public function __construct(
@@ -15,16 +17,7 @@ final readonly class Xml
     ) {
     }
 
-    /**
-     * @return array{
-     *     name?: string,
-     *     namespace?: string,
-     *     prefix?: string,
-     *     attribute?: bool,
-     *     wrapped?: bool,
-     * }
-     */
-    public function toArray(): array
+    public function toObject(): stdClass
     {
         $result = [];
 
@@ -48,6 +41,6 @@ final readonly class Xml
             $result['wrapped'] = $this->wrapped;
         }
 
-        return $result;
+        return (object) $result;
     }
 }

@@ -52,7 +52,7 @@ abstract readonly class AbstractSchema
         }
 
         if ($this->xml !== null) {
-            $result['xml'] = $this->xml->toArray();
+            $result['xml'] = $this->xml->toObject();
         }
 
         if ($this->default !== null) {
