@@ -28,7 +28,7 @@ final readonly class Content
 
     public function toObject(Process $process): stdClass
     {
-        $result = ['schema' => $this->schema->toObject($process)];
+        $result = ['schema' => $process->findSchema($this->schema) ?? $this->schema->toObject($process)];
 
         if ($this->examples instanceof AbstractValue) {
             $result['example'] = $this->examples->toNative($process);

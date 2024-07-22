@@ -33,7 +33,12 @@ final readonly class Parameters
         $this->paths = $paths ?? new Paths();
         $this->queries = $queries ?? new Queries();
         /** @var array<string, AbstractParameters> $items */
-        $items = array_filter(func_get_args(), static fn (mixed $item) => $item instanceof AbstractParameters);
+        $items = array_filter([
+            'headers' => $headers,
+            'cookies' => $cookies,
+            'paths' => $paths,
+            'queries' => $queries,
+        ], static fn (mixed $item) => $item instanceof AbstractParameters);
         $this->items = $items;
     }
 

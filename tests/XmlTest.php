@@ -11,12 +11,18 @@ use PHPUnit\Framework\TestCase;
 final class XmlTest extends TestCase
 {
     private const CASES = [
-        __DIR__ . '/Cases/XmlTest/Objects/all-fields.php' => __DIR__ . '/Cases/XmlTest/Jsons/all-fields.json'
+        __DIR__ . '/Cases/XmlTest/Objects/all-fields.php' => __DIR__ . '/Cases/XmlTest/Jsons/all-fields.json',
+        __DIR__ . '/Cases/XmlTest/Objects/min-fields.php' => __DIR__ . '/Cases/XmlTest/Jsons/min-fields.json',
     ];
 
-    public function testToObject(): void
+    /**
+     * @dataProvider getToObjectData
+     */
+    public function testToObject(Xml $xml, string $expected): void
     {
-        new Xml('', '', '', false, false);
+        $results = $xml->toObject();
+
+        self::assertEquals(json_decode($expected), $results);
     }
 
     public static function getToObjectData(): Generator

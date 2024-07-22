@@ -197,7 +197,7 @@ final readonly class Builder
 
         foreach ($this->openapi as $path => $item) {
             if ($item !== $openapi) {
-                $result = $callback($openapi);
+                $result = $callback($item);
 
                 if ($result !== null) {
                     return $path . '#/' . $component . '/' . $result;
@@ -215,7 +215,7 @@ final readonly class Builder
                 return null;
             }
 
-            if ($callback($openapi) !== null) {
+            if ($callback($item) !== null) {
                 return (object) ['$ref' => $path . '#/components/' . $component];
             }
         }

@@ -77,7 +77,7 @@ final readonly class Schema extends AbstractConditionSchema
         }
 
         if ($this->format !== null) {
-            $result['format'] = $this->format;
+            $result['format'] = $this->format->value;
         }
 
         return (object) $result;

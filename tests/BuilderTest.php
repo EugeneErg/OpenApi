@@ -11,7 +11,9 @@ use PHPUnit\Framework\TestCase;
 
 final class BuilderTest extends TestCase
 {
-    private const CASES = [];
+    private const array CASES = [
+        __DIR__ . '/Cases/BuilderTest/Objects/components-in-outside.php' => __DIR__ . '/Cases/BuilderTest/Jsons/components-in-outside.json',
+    ];
 
     /**
      * @dataProvider getPrepareToSaveSuccessData
@@ -20,9 +22,12 @@ final class BuilderTest extends TestCase
      */
     public function testPrepareToSaveSuccess(array $openapi, string $expected): void
     {
-        $results = (new Builder(...$openapi))->prepareToSave();
 
-        self::assertEquals(json_decode($expected), $results);
+
+        $results = (object) (new Builder(...$openapi))->prepareToSave();
+        $expected = json_decode($expected);
+
+        self::assertEquals($expected, $results);
     }
 
     public static function getPrepareToSaveSuccessData(): Generator
