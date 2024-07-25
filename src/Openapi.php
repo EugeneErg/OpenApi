@@ -27,6 +27,7 @@ final readonly class Openapi
     public Securities $security;
     public Tags $tags;
     public Paths $paths;
+    public Servers $servers;
 
     public function __construct(
         public Info $info,
@@ -35,12 +36,14 @@ final readonly class Openapi
         ?Securities $security = null,
         ?Tags $tags = null,
         public ?ExternalDocs $externalDocs = null,
+        ?Servers $servers = null,
     ) {
         $this->openapi = '3.0.3';
         $this->paths = $paths ?? new Paths();
         $this->components = $components ?? new Components();
         $this->security = $security ?? new Securities();
         $this->tags = $tags ?? new Tags();
+        $this->servers = $servers ?? new Servers();
     }
 
     public function toObject(Process $process): stdClass
@@ -65,6 +68,10 @@ final readonly class Openapi
 
         if (!$this->components->isEmpty()) {
             $result['components'] = $this->components->toObject($process);
+        }
+
+        if ($this->servers->items !== []) {
+            $result['servers'] = $this->servers->toArray($process);
         }
 
         return (object) $result;

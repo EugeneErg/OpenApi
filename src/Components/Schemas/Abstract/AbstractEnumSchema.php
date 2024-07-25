@@ -6,6 +6,8 @@ namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
 use EugeneErg\OpenApi\Components\Schemas\Object\OpenapiObject;
 use EugeneErg\OpenApi\ExternalDocs;
+use EugeneErg\OpenApi\Process;
+use stdClass;
 
 abstract readonly class AbstractEnumSchema extends AbstractSchema
 {
@@ -52,5 +54,14 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
         $baseType = gettype($firstValue);
 
         return $baseType === 'NULL' ? 'null' : $baseType;
+    }
+
+    public function toObject(Process $process): stdClass
+    {
+        $result = parent::toObject($process);
+
+        $result->enum = $this->enums->toNative($process);
+
+        return $result;
     }
 }

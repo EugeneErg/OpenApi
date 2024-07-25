@@ -27,8 +27,11 @@ final readonly class RequestBody
     {
         $result = [
             'content' => $this->content->toObject($process),
-            'required' => $this->required,
         ];
+
+        if ($this->required) {
+            $result['required'] = true;
+        }
 
         if ($this->description !== null) {
             $result['description'] = $this->description;

@@ -1,0 +1,386 @@
+{
+  "/file.yaml": {
+    "openapi": "3.0.3",
+    "info": {
+      "title": "Complex API",
+      "version": "1.0.0"
+    },
+    "servers": [
+      {
+        "url": "https://api.example.com/v1",
+        "description": "Main (production) server"
+      }
+    ],
+    "components": {
+      "schemas": {
+        "User": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "username": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "user",
+                "admin"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "username",
+            "email"
+          ]
+        },
+        "Post": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "authorId": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "content",
+            "authorId"
+          ]
+        },
+        "Error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ]
+        }
+      },
+      "parameters": {
+        "userId": {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "ID of the user",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "postId": {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "ID of the post",
+          "schema": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "authHeader": {
+          "name": "Authorization",
+          "in": "header",
+          "required": true,
+          "description": "Bearer token for authentication",
+          "schema": {
+            "type": "string"
+          },
+          "explode": true
+        }
+      },
+      "responses": {
+        "NotFound": {
+          "description": "Entity not found."
+        },
+        "IllegalInput": {
+          "description": "Illegal input for operation."
+        },
+        "GeneralError": {
+          "description": "General error.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Error"
+              }
+            }
+          }
+        }
+      },
+      "securitySchemes": {
+        "bearerAuth": {
+          "type": "http",
+          "scheme": "bearer",
+          "bearerFormat": "JWT"
+        }
+      }
+    },
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "paths": {
+      "/users": {
+        "get": {
+          "summary": "List all users",
+          "operationId": "listUsers",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/authHeader"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "A paged array of users",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            },
+            "default": {
+              "$ref": "#/components/responses/GeneralError"
+            }
+          }
+        },
+        "post": {
+          "summary": "Create a user",
+          "operationId": "createUser",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/authHeader"
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "User created",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            },
+            "default": {
+              "$ref": "#/components/responses/GeneralError"
+            }
+          }
+        }
+      },
+      "/users/{id}": {
+        "get": {
+          "summary": "Get a specific user",
+          "operationId": "getUser",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/authHeader"
+            },
+            {
+              "$ref": "#/components/parameters/userId"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "User details",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "default": {
+              "$ref": "#/components/responses/GeneralError"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete a user",
+          "operationId": "deleteUser",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/authHeader"
+            },
+            {
+              "$ref": "#/components/parameters/userId"
+            }
+          ],
+          "responses": {
+            "204": {
+              "description": "User deleted"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "default": {
+              "$ref": "#/components/responses/GeneralError"
+            }
+          }
+        }
+      },
+      "/posts": {
+        "get": {
+          "summary": "List all posts",
+          "operationId": "listPosts",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/authHeader"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "A paged array of posts",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Post"
+                    }
+                  }
+                }
+              }
+            },
+            "default": {
+              "$ref": "#/components/responses/GeneralError"
+            }
+          }
+        },
+        "post": {
+          "summary": "Create a post",
+          "operationId": "createPost",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/authHeader"
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Post created",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Post"
+                  }
+                }
+              }
+            },
+            "default": {
+              "$ref": "#/components/responses/GeneralError"
+            }
+          }
+        }
+      },
+      "/posts/{id}": {
+        "get": {
+          "summary": "Get a specific post",
+          "operationId": "getPost",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/authHeader"
+            },
+            {
+              "$ref": "#/components/parameters/postId"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Post details",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Post"
+                  }
+                }
+              }
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "default": {
+              "$ref": "#/components/responses/GeneralError"
+            }
+          }
+        },
+        "delete": {
+          "summary": "Delete a post",
+          "operationId": "deletePost",
+          "parameters": [
+            {
+              "$ref": "#/components/parameters/authHeader"
+            },
+            {
+              "$ref": "#/components/parameters/postId"
+            }
+          ],
+          "responses": {
+            "204": {
+              "description": "Post deleted"
+            },
+            "404": {
+              "$ref": "#/components/responses/NotFound"
+            },
+            "default": {
+              "$ref": "#/components/responses/GeneralError"
+            }
+          }
+        }
+      }
+    }
+  }
+}
