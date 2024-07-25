@@ -29,16 +29,20 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
 
     public function toObject(Process $process): stdClass
     {
-        $result = array_merge((array) parent::toObject($process), ['style' => $this->style->value]);
+        $result = parent::toObject($process);
 
         if ($this->allowEmptyValue) {
-            $result['allowEmptyValue'] = $this->allowEmptyValue;
+            $result->allowEmptyValue = $this->allowEmptyValue;
         }
 
         if ($this->allowReserved) {
-            $result['allowReserved'] = $this->allowReserved;
+            $result->allowReserved = $this->allowReserved;
         }
 
-        return (object) $result;
+        if ($this->style !== Style::Simple) {
+            $result->style = $this->style->value;
+        }
+
+        return $result;
     }
 }

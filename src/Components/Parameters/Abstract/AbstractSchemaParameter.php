@@ -10,7 +10,10 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Values;
 use EugeneErg\OpenApi\Process;
+use ReflectionClass;
+use RuntimeException;
 use stdClass;
+use Throwable;
 
 abstract readonly class AbstractSchemaParameter extends AbstractParameter
 {
@@ -31,10 +34,31 @@ abstract readonly class AbstractSchemaParameter extends AbstractParameter
 
     public function toObject(Process $process): stdClass
     {
-        return (object) array_merge((array) parent::toObject($process), [
-            'in' => $this->in->value,
-            'explode' => $this->explode,
-            'schema' => $this->schema->toObject($process),
-        ]);
+        $result = parent::toObject($process);
+        $result->in = $this->in->value;
+        $result->schema = $this->schema->toObject($process);
+
+        if ($this->explode !== $this->getDefaultValue('explode')) {
+            $result->explode = $this->explode;
+        }
+
+        return $result;
+    }
+
+    private function getDefaultValue(string $parameterName): mixed
+    {
+        try {
+            $parameters = (new ReflectionClass(static::class))->getConstructor()->getParameters();
+
+            foreach ($parameters as $parameter) {
+                if ($parameter->getName() === $parameterName) {
+                    return $parameter->getDefaultValue();
+                }
+            }
+        } catch (Throwable $exception) {
+            throw new RuntimeException('Unexpected error.', previous: $exception);
+        }
+
+        return null;
     }
 }

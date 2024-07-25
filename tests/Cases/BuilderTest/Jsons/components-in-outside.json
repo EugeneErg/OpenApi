@@ -141,9 +141,7 @@
               "schema": {
                 "type": "integer",
                 "format": "int64"
-              },
-              "explode": false,
-              "style": "simple"
+              }
             }
           ],
           "responses": {
@@ -221,9 +219,7 @@
               "schema": {
                 "type": "integer",
                 "format": "int64"
-              },
-              "explode": false,
-              "style": "simple"
+              }
             }
           ],
           "responses": {

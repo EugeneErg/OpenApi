@@ -111,8 +111,7 @@
           "description": "Bearer token for authentication",
           "schema": {
             "type": "string"
-          },
-          "explode": true
+          }
         }
       },
       "responses": {
