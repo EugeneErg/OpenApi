@@ -37,7 +37,6 @@ final readonly class Link
             $result['operationRef'] = $process->findOperation($this->operation);
         }
 
-
         return (object) $result;
     }
 }

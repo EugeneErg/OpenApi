@@ -45,4 +45,11 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
 
         return $result;
     }
+
+    protected function getDefaultValues(): array
+    {
+        return [
+            'explode' => false,
+        ];
+    }
 }

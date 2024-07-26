@@ -31,12 +31,12 @@ final readonly class Openapi
 
     public function __construct(
         public Info $info,
-        Paths $paths = null,
         ?Components $components = null,
+        Paths $paths = null,
+        ?Servers $servers = null,
         ?Securities $security = null,
         ?Tags $tags = null,
         public ?ExternalDocs $externalDocs = null,
-        ?Servers $servers = null,
     ) {
         $this->openapi = '3.0.3';
         $this->paths = $paths ?? new Paths();

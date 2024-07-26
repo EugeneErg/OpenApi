@@ -22,4 +22,11 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
     ) {
         parent::__construct(In::Header, $schema, $explode, $description, $required, $deprecated, $examples);
     }
+
+    protected function getDefaultValues(): array
+    {
+        return [
+            'explode' => true,
+        ];
+    }
 }

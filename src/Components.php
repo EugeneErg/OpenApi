@@ -30,12 +30,12 @@ final readonly class Components
     public Callbacks $callbacks;
 
     public function __construct(
-        ?AbstractSchemas $schemas = null,
-        ?Responses $responses = null,
-        ?Parameters $parameters = null,
         ?OpenapiObject $examples = null,
-        ?RequestBodies $requestBodies = null,
+        ?AbstractSchemas $schemas = null,
+        ?Parameters $parameters = null,
         ?Headers $headers = null,
+        ?RequestBodies $requestBodies = null,
+        ?Responses $responses = null,
         ?SecuritySchemes $securitySchemes = null,
         ?Links $links = null,
         ?Callbacks $callbacks = null,

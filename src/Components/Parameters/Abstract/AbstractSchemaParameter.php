@@ -38,27 +38,17 @@ abstract readonly class AbstractSchemaParameter extends AbstractParameter
         $result->in = $this->in->value;
         $result->schema = $this->schema->toObject($process);
 
-        if ($this->explode !== $this->getDefaultValue('explode')) {
+        $defaultValues = $this->getDefaultValues();
+
+        if (($defaultValues['explode'] ?? null) !== $this->explode) {
             $result->explode = $this->explode;
         }
 
         return $result;
     }
 
-    private function getDefaultValue(string $parameterName): mixed
+    protected function getDefaultValues(): array
     {
-        try {
-            $parameters = (new ReflectionClass(static::class))->getConstructor()->getParameters();
-
-            foreach ($parameters as $parameter) {
-                if ($parameter->getName() === $parameterName) {
-                    return $parameter->getDefaultValue();
-                }
-            }
-        } catch (Throwable $exception) {
-            throw new RuntimeException('Unexpected error.', previous: $exception);
-        }
-
-        return null;
+        return [];
     }
 }
