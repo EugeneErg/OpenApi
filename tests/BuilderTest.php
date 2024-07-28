@@ -15,6 +15,7 @@ final class BuilderTest extends TestCase
         __DIR__ . '/Cases/BuilderTest/Objects/components-in-outside.php' => __DIR__ . '/Cases/BuilderTest/Jsons/components-in-outside.json',
         __DIR__ . '/Cases/BuilderTest/Objects/case2.php' => __DIR__ . '/Cases/BuilderTest/Jsons/case2.json',
         __DIR__ . '/Cases/BuilderTest/Objects/case3.php' => __DIR__ . '/Cases/BuilderTest/Jsons/case3.json',
+        __DIR__ . '/Cases/BuilderTest/Objects/links.php' => __DIR__ . '/Cases/BuilderTest/Jsons/links.json',
     ];
 
     /**

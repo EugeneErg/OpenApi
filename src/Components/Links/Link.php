@@ -37,6 +37,14 @@ final readonly class Link
             $result['operationRef'] = $process->findOperation($this->operation);
         }
 
+        if ($this->description !== null) {
+            $result['description'] = $this->description;
+        }
+
+        if ($this->parameters->items !== []) {
+            $result['parameters'] = $this->parameters->toObject();
+        }
+
         return (object) $result;
     }
 }

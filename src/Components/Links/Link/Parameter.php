@@ -36,7 +36,7 @@ final readonly class Parameter
 
     public static function requestBody(?string $value = null): self
     {
-        return new self('$request.body' . ($value === null ? '' : '#' . $value));
+        return new self('$request.body' . ($value === null ? '' : '#/' . $value));
     }
 
     public static function responseHeader(string $value): self
@@ -46,7 +46,7 @@ final readonly class Parameter
 
     public static function responseBody(?string $value = null): self
     {
-        return new self('$response.body' . ($value === null ? '' : '#' . $value));
+        return new self('$response.body' . ($value === null ? '' : '#/' . $value));
     }
 
     public static function constant(string $value): self
