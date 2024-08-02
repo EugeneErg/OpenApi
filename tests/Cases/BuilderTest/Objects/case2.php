@@ -5,9 +5,9 @@ declare(strict_types = 1);
 use EugeneErg\OpenApi\Components;
 use EugeneErg\OpenApi\Components\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies;
+use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Components\Schemas;
 use EugeneErg\OpenApi\Components\SecuritySchemes;
-use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 use EugeneErg\OpenApi\Paths;
@@ -176,7 +176,7 @@ return [
                         content: new RequestBodies\Contents(...[
                             'application/json' => new RequestBodies\Content(
                                 schema: $user,
-                            )
+                            ),
                         ]),
                     ),
                 ),
@@ -237,7 +237,7 @@ return [
                     id: 'listPosts',
                     parameters: new Parameters\Parameters(
                         headers: new Parameters\Header\Headers($authHeader->parameter),
-                    )
+                    ),
                 ),
                 post: new Paths\Operation(
                     responses: new Responses(

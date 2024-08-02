@@ -16,6 +16,7 @@ final class BuilderTest extends TestCase
         __DIR__ . '/Cases/BuilderTest/Objects/case2.php' => __DIR__ . '/Cases/BuilderTest/Jsons/case2.json',
         __DIR__ . '/Cases/BuilderTest/Objects/case3.php' => __DIR__ . '/Cases/BuilderTest/Jsons/case3.json',
         __DIR__ . '/Cases/BuilderTest/Objects/links.php' => __DIR__ . '/Cases/BuilderTest/Jsons/links.json',
+        __DIR__ . '/Cases/BuilderTest/Objects/links2.php' => __DIR__ . '/Cases/BuilderTest/Jsons/links2.json',
     ];
 
     /**
@@ -25,8 +26,6 @@ final class BuilderTest extends TestCase
      */
     public function testPrepareToSaveSuccess(array $openapi, string $expected): void
     {
-
-
         $results = (object) (new Builder(...$openapi))->prepareToSave();
         $expected = json_decode($expected);
 

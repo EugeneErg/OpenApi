@@ -3,11 +3,11 @@
 declare(strict_types = 1);
 
 use EugeneErg\OpenApi\Components;
-use EugeneErg\OpenApi\Components\Links\Link\Parameter;
 use EugeneErg\OpenApi\Components\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies;
 use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Components\Schemas;
+use EugeneErg\OpenApi\Components\Schemas\Object\OpenapiObject;
 use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 use EugeneErg\OpenApi\Paths;
@@ -26,9 +26,25 @@ $user = new Schemas\Object\Schema(
             required: true,
         ),
         email: new Schemas\Object\Property(
-            schema: new Schemas\String\Schema(
+            schema: new  Schemas\String\Schema(
                 format: Schemas\String\Format::Email,
             ),
+            required: true,
+        ),
+    ),
+);
+
+
+$error = new Schemas\Object\Schema(
+    properties: new Schemas\Object\Properties(
+        code: new Schemas\Object\Property(
+            schema: new Schemas\Integer\Schema(
+                format: Schemas\Integer\Format::Int32,
+            ),
+            required: true,
+        ),
+        message: new Schemas\Object\Property(
+            schema: new Schemas\String\Schema(),
             required: true,
         ),
     ),
@@ -52,21 +68,6 @@ $order = new Schemas\Object\Schema(
             schema: new Schemas\Integer\Schema(
                 format: Schemas\Integer\Format::Int64,
             ),
-            required: true,
-        ),
-    ),
-);
-
-$error = new Schemas\Object\Schema(
-    properties: new Schemas\Object\Properties(
-        code: new Schemas\Object\Property(
-            schema: new Schemas\Integer\Schema(
-                format: Schemas\Integer\Format::Int32,
-            ),
-            required: true,
-        ),
-        message: new Schemas\Object\Property(
-            schema: new Schemas\String\Schema(),
             required: true,
         ),
     ),
@@ -107,6 +108,31 @@ $listUserOrders = new Paths\Operation(
     ),
 );
 
+$userOrders = new Components\Links\Link(
+    operation: $listUserOrders,
+    parameters: new Components\Links\Link\Parameters(
+        userId: Components\Links\Link\Parameter::responseBody('id'),
+    ),
+    requestBody: new Schemas\Object\Value(
+        new OpenapiObject(
+            description: 'Optional request body',
+            content: new OpenapiObject(...[
+                'application/json' => new OpenapiObject(
+                    schema: new OpenapiObject(
+                        type: 'object',
+                        properties: new OpenapiObject(
+                            filter: new OpenapiObject(
+                                type: 'string',
+                            ),
+                        ),
+                    ),
+                ),
+            ]),
+        ),
+    ),
+    description: 'The orders of the retrieved user',
+);
+
 $userResponse = new Responses\Response(
     description: 'A single user',
     content: new RequestBodies\Contents(...[
@@ -115,20 +141,14 @@ $userResponse = new Responses\Response(
         ),
     ]),
     links: new Components\Links(
-        UserOrders: new Components\Links\Link(
-            operation: $listUserOrders,
-            parameters: new Components\Links\Link\Parameters(
-                userId: Parameter::responseBody('id'),
-            ),
-            description: 'The orders of the retrieved user',
-        ),
+        UserOrders: $userOrders,
     ),
 );
 
 return [
-    'links.yaml' => new Openapi(
-        new Info(
-            title: 'Linked API',
+    'links2.yaml' => new Openapi(
+        info: new Info(
+            title: 'Simple Linked API',
             version: '1.0.0',
         ),
         components: new Components(
@@ -141,17 +161,11 @@ return [
                 UserResponse: $userResponse,
             ),
             links: new Components\Links(
-                UserOrders: new Components\Links\Link(
-                    operation: $listUserOrders,
-                    parameters: new Components\Links\Link\Parameters(
-                        userId: Parameter::responseBody('id'),
-                    ),
-                    description: 'The orders of the retrieved user',
-                ),
+                UserOrders: $userOrders,
             ),
         ),
         paths: new Paths(...[
-            '/users/{id}' => new Paths\Path(
+            "/users/{id}" => new Paths\Path(
                 get: new Paths\Operation(
                     responses: new Responses(
                         x200: $userResponse,
@@ -184,7 +198,7 @@ return [
         ]),
         servers: new Servers(
             new Servers\Server(
-                url: 'https://api.example.com/v1',
+                url: 'https://api.simplelinked.com/v1',
                 description: 'Main server',
             ),
         ),

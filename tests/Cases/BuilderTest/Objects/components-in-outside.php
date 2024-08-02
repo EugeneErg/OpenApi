@@ -5,8 +5,8 @@ declare(strict_types = 1);
 use EugeneErg\OpenApi\Components;
 use EugeneErg\OpenApi\Components\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies;
-use EugeneErg\OpenApi\Components\Schemas;
 use EugeneErg\OpenApi\Components\Responses;
+use EugeneErg\OpenApi\Components\Schemas;
 use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 use EugeneErg\OpenApi\Paths;
@@ -149,7 +149,7 @@ $paths = new Openapi(
                         content: new RequestBodies\Contents(...[
                             'application/json' => new RequestBodies\Content(
                                 schema: $userSchema,
-                            )
+                            ),
                         ]),
                     ),
                     x404: $notFound,

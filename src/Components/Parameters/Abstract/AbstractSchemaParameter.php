@@ -10,10 +10,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Values;
 use EugeneErg\OpenApi\Process;
-use ReflectionClass;
-use RuntimeException;
 use stdClass;
-use Throwable;
 
 abstract readonly class AbstractSchemaParameter extends AbstractParameter
 {

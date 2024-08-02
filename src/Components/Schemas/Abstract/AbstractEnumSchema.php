@@ -35,6 +35,15 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
         );
     }
 
+    public function toObject(Process $process): stdClass
+    {
+        $result = parent::toObject($process);
+
+        $result->enum = $this->enums->toNative($process);
+
+        return $result;
+    }
+
     private function getType(AbstractValues $enums, ?AbstractValue $default): ?string
     {
         if ($enums->items === [] && $default === null) {
@@ -54,14 +63,5 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
         $baseType = gettype($firstValue);
 
         return $baseType === 'NULL' ? 'null' : $baseType;
-    }
-
-    public function toObject(Process $process): stdClass
-    {
-        $result = parent::toObject($process);
-
-        $result->enum = $this->enums->toNative($process);
-
-        return $result;
     }
 }
