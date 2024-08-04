@@ -5,7 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Links;
 
 use EugeneErg\OpenApi\Components\Links\Link\Parameters;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
+use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
 use EugeneErg\OpenApi\Paths\Operation;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Servers\Server;
@@ -18,7 +18,7 @@ final readonly class Link
     public function __construct(
         public Operation $operation,
         ?Parameters $parameters = null,
-        public null|AbstractValue $requestBody = null,
+        public null|RequestBody $requestBody = null,
         public ?string $description = null,
         public ?Server $server = null,
     ) {
@@ -44,7 +44,7 @@ final readonly class Link
         }
 
         if ($this->requestBody !== null) {
-            $result['requestBody'] = $this->requestBody->toNative($process);
+            $result['requestBody'] = $this->requestBody->toObject($process);
         }
 
         return (object) $result;

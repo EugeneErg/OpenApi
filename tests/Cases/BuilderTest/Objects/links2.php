@@ -7,7 +7,6 @@ use EugeneErg\OpenApi\Components\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies;
 use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Components\Schemas;
-use EugeneErg\OpenApi\Components\Schemas\Object\OpenapiObject;
 use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 use EugeneErg\OpenApi\Paths;
@@ -113,22 +112,19 @@ $userOrders = new Components\Links\Link(
     parameters: new Components\Links\Link\Parameters(
         userId: Components\Links\Link\Parameter::responseBody('id'),
     ),
-    requestBody: new Schemas\Object\Value(
-        new OpenapiObject(
-            description: 'Optional request body',
-            content: new OpenapiObject(...[
-                'application/json' => new OpenapiObject(
-                    schema: new OpenapiObject(
-                        type: 'object',
-                        properties: new OpenapiObject(
-                            filter: new OpenapiObject(
-                                type: 'string',
-                            ),
+    requestBody: new RequestBodies\RequestBody(
+        content: new RequestBodies\Contents(...[
+            'application/json' => new RequestBodies\Content(
+                schema: new Schemas\Object\Schema(
+                    properties: new Schemas\Object\Properties(
+                        filter: new Schemas\Object\Property(
+                            schema: new Schemas\String\Schema(),
                         ),
                     ),
                 ),
-            ]),
-        ),
+            ),
+        ]),
+        description: 'Optional request body',
     ),
     description: 'The orders of the retrieved user',
 );
