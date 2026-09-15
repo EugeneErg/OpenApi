@@ -24,21 +24,20 @@
                     "parameters": [
                         {
                             "required": true,
-                            "in": "path",
                             "schema": {
                                 "type": "string"
                             },
-                            "name": "id"
+                            "name": "id",
+                            "in": "path"
                         },
                         {
-                            "required": false,
                             "description": "Use the legacy representation.",
                             "deprecated": true,
-                            "in": "query",
                             "schema": {
                                 "type": "boolean"
                             },
-                            "name": "legacy"
+                            "name": "legacy",
+                            "in": "query"
                         }
                     ]
                 }

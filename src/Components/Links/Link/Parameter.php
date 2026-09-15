@@ -19,6 +19,17 @@ final readonly class Parameter
         return $this->value;
     }
 
+    /**
+     * Произвольное runtime-выражение.
+     *
+     * Именованные конструкторы покрывают привычные формы, но спецификация
+     * разрешает любое выражение, и при чтении готового документа оно приходит строкой.
+     */
+    public static function expression(string $value): self
+    {
+        return new self($value);
+    }
+
     public static function requestPath(string $value): self
     {
         return new self('$request.path.' . $value);

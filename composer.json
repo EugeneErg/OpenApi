@@ -67,6 +67,6 @@
   "minimum-stability": "stable",
   "prefer-stable": true,
   "suggest": {
-    "ext-yaml": "Не требуется пакетом: YAML-энкодер написан на чистом PHP. Полезно, если вы хотите проверять результат парсером libyaml."
+    "ext-yaml": "Для чтения YAML-спецификаций через Serialization\\YamlDecoder. На запись YAML не требуется."
   }
 }

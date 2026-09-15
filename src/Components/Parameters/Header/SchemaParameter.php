@@ -14,7 +14,7 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
 {
     public function __construct(
         AbstractSchema $schema,
-        bool $explode = true,
+        bool $explode = false,
         ?AbstractValue $example = null,
         ?Examples $examples = null,
         ?string $description = null,
@@ -30,7 +30,7 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
     protected function getDefaultValues(): array
     {
         return [
-            'explode' => true,
+            'explode' => false,
         ];
     }
 }

@@ -1,0 +1,50 @@
+{
+    "recursion.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Recursive schemas",
+            "version": "1.0.0"
+        },
+        "paths": {},
+        "components": {
+            "schemas": {
+                "Node": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/Node"
+                            }
+                        }
+                    },
+                    "required": [
+                        "value"
+                    ]
+                },
+                "Folder": {
+                    "type": "object",
+                    "properties": {
+                        "files": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/File"
+                            }
+                        }
+                    }
+                },
+                "File": {
+                    "type": "object",
+                    "properties": {
+                        "parent": {
+                            "$ref": "#/components/schemas/Folder"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

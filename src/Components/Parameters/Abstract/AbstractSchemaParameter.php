@@ -40,7 +40,6 @@ abstract readonly class AbstractSchemaParameter extends AbstractParameter
     public function toObject(Process $process): stdClass
     {
         $result = parent::toObject($process);
-        $result->in = $this->in->value;
         $result->schema = $process->findSchema($this->schema) ?? $this->schema->toObject($process);
 
         $defaultValues = $this->getDefaultValues();

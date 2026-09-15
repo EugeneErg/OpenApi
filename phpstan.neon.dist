@@ -15,7 +15,11 @@ parameters:
     checkUninitializedProperties: true
     checkMissingCallableSignature: true
     checkTooWideReturnTypesInProtectedAndPublicMethods: true
-    reportAlwaysTrueInLastCondition: true
+    # Выключено осознанно: опция помечает последнюю ветку исчерпывающего match
+    # по enum как «всегда истинную». Но именно исчерпывающий match — то, что нужно:
+    # заменив последнюю ветку на default, мы потеряли бы проверку полноты,
+    # и новый вариант enum молча попал бы не туда.
+    reportAlwaysTrueInLastCondition: false
     reportPossiblyNonexistentGeneralArrayOffset: true
     reportPossiblyNonexistentConstantArrayOffset: true
     reportAnyTypeWideningInVarTag: true

@@ -19,6 +19,7 @@
   выбирает нужную форму сам, объекты схем при этом одни и те же.
 - **Именованные аргументы как ключи.** `new Schemas(User: $user)` вместо массивов со строками.
 - **JSON и YAML** на выходе, без внешних зависимостей.
+- **Чтение готовых спецификаций** обратно в объекты, со ссылками на те же экземпляры.
 - **Невалидную спеку собрать нельзя**: часть ошибок ловит PHPStan, остальные — конструкторы.
 
 ## Установка
@@ -298,6 +299,45 @@ $pet = new Schemas\Untyped\Schema(
 | `InvalidPathOpenapiException` | шаблон пути не согласован с path-параметрами |
 | `InvalidSchemaOpenapiException` | границы или ключевые слова схемы несогласованы |
 | `InvalidArgumentOpenapiException` | остальные нарушения инвариантов спецификации |
+
+## Чтение готовой спецификации
+
+Обратная задача: разобрать существующий документ в объекты, поправить и записать обратно.
+
+```php
+use EugeneErg\OpenApi\Reader;
+use EugeneErg\OpenApi\Serialization\YamlDecoder;
+
+$openapi = Reader::read(file_get_contents('openapi.json'));
+
+// несколько файлов — ключами, как и в Builder: ими разрешаются кросс-файловые ссылки
+$documents = Reader::readAll([
+    'components.yaml' => file_get_contents('components.yaml'),
+    'paths.yaml' => file_get_contents('paths.yaml'),
+], new YamlDecoder());
+```
+
+Главное свойство: **одна и та же ссылка даёт один и тот же объект**. Схема, на которую
+`$ref` указывает из трёх мест, будет одним экземпляром — и при обратной записи снова
+станет тремя ссылками, а не тремя копиями. Рекурсивные схемы восстанавливаются настоящим
+циклом через `DeferredSchema`.
+
+Разбор JSON встроен. Для YAML нужен `ext-yaml`, либо свой десяток строк поверх
+`DecoderInterface`:
+
+```php
+use EugeneErg\OpenApi\Serialization\DecoderInterface;
+use EugeneErg\OpenApi\Serialization\Structure;
+use Symfony\Component\Yaml\Yaml;
+
+final readonly class SymfonyYamlDecoder implements DecoderInterface
+{
+    public function decode(string $content): \stdClass
+    {
+        return Structure::toObject(Yaml::parse($content));
+    }
+}
+```
 
 ## Как это устроено
 

@@ -14,12 +14,23 @@ use PHPUnit\Framework\TestCase;
  */
 final class ReadmeTest extends TestCase
 {
+    private const string MINIMAL_DOCUMENT = '{"openapi":"3.0.3","info":{"title":"Example","version":"1.0.0"},"paths":{}}';
+
     /**
      * @dataProvider provideExampleRunsCases
      */
     public function testExampleRuns(string $code): void
     {
-        $file = tempnam(sys_get_temp_dir(), 'readme') . '.php';
+        $directory = sys_get_temp_dir() . '/openapi-readme-' . bin2hex(random_bytes(6));
+
+        mkdir($directory, 0o775, true);
+
+        // примеры чтения открывают файлы по именам из README — кладём их рядом
+        foreach (['openapi.json', 'components.yaml', 'paths.yaml'] as $name) {
+            file_put_contents($directory . '/' . $name, self::MINIMAL_DOCUMENT);
+        }
+
+        $file = $directory . '/example.php';
 
         file_put_contents($file, $code);
 
@@ -27,7 +38,12 @@ final class ReadmeTest extends TestCase
             $output = [];
             $status = 0;
 
-            exec(escapeshellcmd(PHP_BINARY) . ' -d error_reporting=E_ALL ' . escapeshellarg($file) . ' 2>&1', $output, $status);
+            exec(
+                'cd ' . escapeshellarg($directory) . ' && '
+                . escapeshellcmd(PHP_BINARY) . ' -d error_reporting=E_ALL ' . escapeshellarg($file) . ' 2>&1',
+                $output,
+                $status,
+            );
 
             self::assertSame(0, $status, "Пример из README не выполнился:\n" . implode("\n", $output));
             self::assertSame([], array_values(array_filter(
@@ -35,7 +51,11 @@ final class ReadmeTest extends TestCase
                 static fn (string $line): bool => str_contains($line, 'Warning') || str_contains($line, 'Deprecated'),
             )));
         } finally {
-            @unlink($file);
+            foreach ((array) glob($directory . '/*') as $item) {
+                @unlink((string) $item);
+            }
+
+            @rmdir($directory);
         }
     }
 
@@ -52,7 +72,15 @@ final class ReadmeTest extends TestCase
 
         foreach ($matches[1] as $index => $block) {
             if (str_starts_with(ltrim($block), '<?php')) {
-                $code = preg_replace('{<\?php}', "<?php require '{$autoload}';", $block, 1) ?? $block;
+                // require обязан идти после declare(strict_types): это первая инструкция скрипта
+                $code = str_contains($block, 'declare(strict_types')
+                    ? (string) preg_replace(
+                        '{(declare\(strict_types[^;]*;)}',
+                        "$1\nrequire '{$autoload}';",
+                        $block,
+                        1,
+                    )
+                    : (string) preg_replace('{<\?php}', "<?php require '{$autoload}';", $block, 1);
             } else {
                 $lines = array_filter(
                     explode("\n", $block),

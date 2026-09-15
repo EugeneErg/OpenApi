@@ -18,7 +18,13 @@ abstract readonly class AbstractParameter
 
     public function toObject(Process $process): stdClass
     {
-        $result = ['required' => $this->required ?? false];
+        $result = [];
+
+        // required по умолчанию false, и выводить его незачем;
+        // у path-параметра он всегда true, поэтому там выведется
+        if ($this->required === true) {
+            $result['required'] = true;
+        }
 
         if ($this->description !== null) {
             $result['description'] = $this->description;

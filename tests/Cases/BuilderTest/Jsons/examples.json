@@ -31,17 +31,14 @@
                     "operationId": "getRecord",
                     "parameters": [
                         {
-                            "required": false,
-                            "in": "query",
                             "schema": {
                                 "$ref": "#/components/schemas/Status"
                             },
                             "example": "archived",
-                            "name": "status"
+                            "name": "status",
+                            "in": "query"
                         },
                         {
-                            "required": false,
-                            "in": "query",
                             "schema": {
                                 "$ref": "#/components/schemas/Mode"
                             },
@@ -50,7 +47,8 @@
                                     "$ref": "#/components/examples/Active"
                                 }
                             },
-                            "name": "mode"
+                            "name": "mode",
+                            "in": "query"
                         }
                     ]
                 }

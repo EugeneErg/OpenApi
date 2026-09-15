@@ -80,7 +80,7 @@ final readonly class Operation
         }
 
         if ($this->tags->items !== []) {
-            $result['tags'] = $this->tags->toArray();
+            $result['tags'] = $this->tags->toNames();
         }
 
         if ($this->security->items !== []) {

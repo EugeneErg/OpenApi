@@ -8,6 +8,9 @@ use PhpCsFixer\Finder;
 $finder = Finder::create()
     ->in(__DIR__)
     ->exclude('vendor')
+    // Пролог для ReadmeTest намеренно импортирует всё, что может понадобиться
+    // примерам из README: для самого файла эти импорты «неиспользуемые».
+    ->exclude('tests/Fixtures')
     ->name('*.php');
 
 return (new Config())
