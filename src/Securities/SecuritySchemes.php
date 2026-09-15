@@ -11,14 +11,14 @@ use stdClass;
 
 /**
  * Каждая строка это ссылка на components.securitySchemes.{name}
- * значения, это ссылки на components.securitySchemes.{name}.flows.*.scopes.{scope}
+ * значения, это ссылки на components.securitySchemes.{name}.flows.*.scopes.{scope}.
  */
 final readonly class SecuritySchemes
 {
-    /** @var array<Scope|AbstractSecurityScheme> */
+    /** @var array<AbstractSecurityScheme|Scope> */
     public array $items;
 
-    public function __construct(Scope|AbstractSecurityScheme ...$scopes)
+    public function __construct(AbstractSecurityScheme|Scope ...$scopes)
     {
         $this->items = $scopes;
     }
@@ -28,7 +28,7 @@ final readonly class SecuritySchemes
         $result = [];
 
         foreach ($this->items as $scopeOrScheme) {
-            $result = array_merge_recursive($result, (array) $scopeOrScheme->toTargetArray($process));
+            $result = array_merge_recursive($result, get_object_vars($scopeOrScheme->toTargetArray($process)));
         }
 
         return (object) $result;

@@ -1,0 +1,73 @@
+{
+    "json-schema-core.json": {
+        "openapi": "3.1.1",
+        "info": {
+            "title": "JSON Schema core",
+            "version": "1.0.0"
+        },
+        "paths": {},
+        "components": {
+            "schemas": {
+                "User": {
+                    "type": "object",
+                    "$defs": {
+                        "Address": {
+                            "type": "object",
+                            "$defs": {
+                                "Street": {
+                                    "type": "string",
+                                    "minLength": 1
+                                }
+                            },
+                            "properties": {
+                                "street": {
+                                    "$ref": "#/components/schemas/User/$defs/Address/$defs/Street"
+                                }
+                            },
+                            "required": [
+                                "street"
+                            ]
+                        }
+                    },
+                    "properties": {
+                        "home": {
+                            "$ref": "#/components/schemas/User/$defs/Address"
+                        },
+                        "work": {
+                            "$ref": "#/components/schemas/User/$defs/Address"
+                        },
+                        "road": {
+                            "$ref": "#/components/schemas/User/$defs/Address/$defs/Street"
+                        }
+                    }
+                },
+                "Node": {
+                    "type": "object",
+                    "$id": "https://example.com/schemas/node",
+                    "$anchor": "root",
+                    "$dynamicAnchor": "node",
+                    "$vocabulary": {
+                        "https://json-schema.org/draft/2020-12/vocab/core": true,
+                        "https://json-schema.org/draft/2020-12/vocab/validation": false
+                    },
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "Tree": {
+                    "type": "object",
+                    "properties": {
+                        "children": {
+                            "type": "array",
+                            "items": {
+                                "$dynamicRef": "#node"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

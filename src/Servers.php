@@ -20,12 +20,12 @@ final readonly class Servers
     /**
      * @return array<int, stdClass>
      */
-    public function toArray(Process $process): array
+    public function toArray(): array
     {
         $result = [];
 
         foreach ($this->items as $server) {
-            $result[] = $server->toObject($process);
+            $result[] = $server->toObject();
         }
 
         return $result;

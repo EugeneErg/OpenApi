@@ -36,7 +36,7 @@ $categoryFilter = new Parameters\Query\SchemaParameter(
 $priceRange = new Parameters\Query\SchemaParameter(
     schema: new Schemas\String\Schema(
         example: new Schemas\String\Value('10.00-100.00'),
-        pattern: "^\\d+\\.\\d{2}-\\d+\\.\\d{2}$",
+        pattern: '^\d+\.\d{2}-\d+\.\d{2}$',
     ),
     description: 'Filter by price range',
     required: false,
@@ -84,7 +84,7 @@ $notFound = new Responses\Response(
 
 $category = new Schemas\Object\Schema(
     properties: new Schemas\Object\Properties(
-        id:  new Schemas\Object\Property(
+        id: new Schemas\Object\Property(
             schema: new Schemas\Integer\Schema(
                 format: Schemas\Integer\Format::Int64,
             ),
@@ -126,7 +126,7 @@ return [
                     ),
                 ),
             ),
-            '/products/{id}' => new Paths\path(
+            '/products/{id}' => new Paths\Path(
                 get: new Paths\Operation(
                     responses: new Responses(
                         x200: new Responses\Response(

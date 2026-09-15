@@ -4,33 +4,47 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi;
 
-use EugeneErg\OpenApi\Components\Callbacks;
-use EugeneErg\OpenApi\Components\Headers;
-use EugeneErg\OpenApi\Components\Links;
-use EugeneErg\OpenApi\Components\Links\Link;
-use EugeneErg\OpenApi\Components\Parameters;
-use EugeneErg\OpenApi\Components\Parameters\Abstract\AbstractSchemaParameter;
-use EugeneErg\OpenApi\Components\Parameters\ContentParameter;
-use EugeneErg\OpenApi\Components\Parameters\CustomParameter;
-use EugeneErg\OpenApi\Components\Parameters\Header\SchemaParameter as HeaderSchemaParameter;
-use EugeneErg\OpenApi\Components\RequestBodies;
-use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
-use EugeneErg\OpenApi\Components\Responses;
-use EugeneErg\OpenApi\Components\Responses\Response;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
-use EugeneErg\OpenApi\Components\SecuritySchemes;
-use LogicException;
+use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Serialization\EncoderInterface;
+use EugeneErg\OpenApi\Serialization\JsonEncoder;
+use RuntimeException;
 use stdClass;
 
+use function dirname;
+use function is_string;
+use function sprintf;
+
+/**
+ * Собирает один или несколько документов OpenAPI.
+ *
+ * Разрешением ссылок занимается Process: Builder только хранит документы и знает,
+ * под каким именем файла каждый из них будет сохранён.
+ */
 final readonly class Builder
 {
-    /** @var Openapi[] */
+    /** @var array<string, Openapi> */
     public array $openapi;
 
+    /**
+     * Ключи — имена файлов, именно они попадают в кросс-файловые $ref:
+     *
+     *     new Builder(...['openapi.json' => $openapi]);
+     *
+     * Позиционные аргументы дали бы числовые ключи и, как следствие,
+     * невалидные ссылки вида `0#/components/schemas/User`.
+     */
     public function __construct(Openapi ...$openapi)
     {
+        foreach ($openapi as $fileName => $item) {
+            if (!is_string($fileName) || $fileName === '') {
+                throw new InvalidArgumentOpenapiException(
+                    'Each Openapi document must be passed with its file name as the array key, '
+                    . "for example: new Builder(...['openapi.json' => \$openapi]).",
+                );
+            }
+        }
+
+        /** @var array<string, Openapi> $openapi */
         $this->openapi = $openapi;
     }
 
@@ -39,187 +53,55 @@ final readonly class Builder
      */
     public function prepareToSave(string $path = ''): array
     {
+        $path = rtrim($path, '/');
         $result = [];
 
-        foreach ($this->openapi as $subPath => $value) {
-            $result[$path . '/' . $subPath] = $value->toObject(new Process($this, $value));
+        foreach ($this->openapi as $fileName => $value) {
+            $result[$path === '' ? $fileName : $path . '/' . $fileName]
+                = $value->toObject(new Process($this, $value));
         }
 
         return $result;
     }
 
-    public function findResponse(Openapi $openapi, Response $value): ?stdClass
+    /**
+     * Сериализует документы, не записывая их.
+     *
+     * @return array<string, string> карта «путь к файлу => его содержимое»
+     */
+    public function encode(string $path = '', ?EncoderInterface $encoder = null): array
     {
-        return $this->toRef(static fn (Openapi $openapi) => $openapi->findResponse($value), $openapi, 'responses');
-    }
+        $encoder ??= new JsonEncoder();
+        $result = [];
 
-    public function findRequestBody(Openapi $openapi, RequestBody $value): ?stdClass
-    {
-        return $this->toRef(static fn (Openapi $openapi) => $openapi->findRequestBody($value), $openapi, 'requestBodies');
-    }
-
-    public function findLink(Openapi $openapi, Link $value): ?stdClass
-    {
-        return $this->toRef(static fn (Openapi $openapi) => $openapi->findLink($value), $openapi, 'links');
-    }
-
-    public function findHeader(Openapi $openapi, ContentParameter|HeaderSchemaParameter $value): ?stdClass
-    {
-        return $this->toRef(static fn (Openapi $openapi) => $openapi->findHeader($value), $openapi, 'headers');
-    }
-
-    public function findSchema(Openapi $openapi, AbstractSchema $value): ?stdClass
-    {
-        return $this->toRef(static fn (Openapi $openapi) => $openapi->findSchema($value), $openapi, 'schemas');
-    }
-
-    public function findCallback(Openapi $openapi, Paths $value): ?stdClass
-    {
-        return $this->toRef(static fn (Openapi $openapi) => $openapi->findCallback($value), $openapi, 'callbacks');
-    }
-
-    public function findExample(Openapi $openapi, null|AbstractValues|int|float|string|bool $value): ?stdClass
-    {
-        return $this->toRef(static fn (Openapi $openapi) => $openapi->findExample($value), $openapi, 'examples');
-    }
-
-    public function findOperation(Openapi $openapi, Paths\Operation $value): string
-    {
-        $result = $this->toRefString(static fn (Openapi $openapi) => $openapi->findOperation($value), $openapi, 'paths');
-
-        if ($result === null) {
-            throw new LogicException('Operation not found.');
+        foreach ($this->prepareToSave($path) as $fileName => $document) {
+            $result[$fileName] = $encoder->encode($document);
         }
 
         return $result;
     }
 
-    public function findParameter(Openapi $openapi, CustomParameter|AbstractSchemaParameter $value): ?stdClass
+    /**
+     * Сериализует документы и пишет их на диск.
+     *
+     * @return array<string, string> карта «путь к файлу => его содержимое»
+     */
+    public function save(string $path = '', ?EncoderInterface $encoder = null): array
     {
-        return $this->toRef(static fn (Openapi $openapi) => $openapi->findParameter($value), $openapi, 'parameters');
-    }
+        $result = $this->encode($path, $encoder);
 
-    public function findSchemas(Openapi $openapi, AbstractSchemas $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->schemas === $value,
-            $openapi,
-            'schemas',
-        );
-    }
+        foreach ($result as $fileName => $content) {
+            $directory = dirname($fileName);
 
-    public function findCallbacks(Openapi $openapi, Callbacks $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->callbacks === $value,
-            $openapi,
-            'callbacks',
-        );
-    }
+            if ($directory !== '' && !is_dir($directory) && !mkdir($directory, 0o775, true) && !is_dir($directory)) {
+                throw new RuntimeException(sprintf('Cannot create directory "%s".', $directory));
+            }
 
-    public function findParameters(Openapi $openapi, Parameters $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->parameters === $value,
-            $openapi,
-            'parameters',
-        );
-    }
-
-    public function findLinks(Openapi $openapi, Links $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->links === $value,
-            $openapi,
-            'links',
-        );
-    }
-
-    public function findSecuritySchemes(Openapi $openapi, SecuritySchemes $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->securitySchemes === $value,
-            $openapi,
-            'securitySchemes',
-        );
-    }
-
-    public function findHeaders(Openapi $openapi, Headers $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->headers === $value,
-            $openapi,
-            'headers',
-        );
-    }
-
-    public function findRequestBodies(Openapi $openapi, RequestBodies $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->requestBodies === $value,
-            $openapi,
-            'requestBodies',
-        );
-    }
-
-    public function findExamples(Openapi $openapi, AbstractValues $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->examples === $value,
-            $openapi,
-            'examples',
-        );
-    }
-
-    public function findResponses(Openapi $openapi, Responses $value): ?stdClass
-    {
-        return $this->toRefOpenapiString(
-            static fn (Openapi $openapi) => $openapi->components->responses === $value,
-            $openapi,
-            'responses',
-        );
-    }
-
-    private function toRef(callable $callback, Openapi $openapi, string $component): ?stdClass
-    {
-        $result = $this->toRefString($callback, $openapi, 'components/' . $component);
-
-        return $result === null ? null : (object) ['$ref' => $result];
-    }
-
-    private function toRefString(callable $callback, Openapi $openapi, string $component): ?string
-    {
-        $result = $callback($openapi);
-
-        if ($result !== null) {
-            return '#/' . $component . '/' . $result;
-        }
-
-        foreach ($this->openapi as $path => $item) {
-            if ($item !== $openapi) {
-                $result = $callback($item);
-
-                if ($result !== null) {
-                    return $path . '#/' . $component . '/' . $result;
-                }
+            if (file_put_contents($fileName, $content) === false) {
+                throw new RuntimeException(sprintf('Cannot write file "%s".', $fileName));
             }
         }
 
-        return null;
-    }
-
-    private function toRefOpenapiString(callable $callback, Openapi $openapi, string $component): ?stdClass
-    {
-        foreach ($this->openapi as $path => $item) {
-            if ($item === $openapi) {
-                return null;
-            }
-
-            if ($callback($item) !== null) {
-                return (object) ['$ref' => $path . '#/components/' . $component];
-            }
-        }
-
-        throw new LogicException('Components not found.');
+        return $result;
     }
 }

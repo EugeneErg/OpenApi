@@ -2,9 +2,9 @@
 
 declare(strict_types = 1);
 
-namespace EugeneErg\OpenApi\Components\Links\Link;
+namespace EugeneErg\OpenApi\Servers;
 
-use EugeneErg\OpenApi\Process;
+use stdClass;
 
 final readonly class Variables
 {
@@ -17,17 +17,14 @@ final readonly class Variables
         $this->items = $variables;
     }
 
-    /**
-     * @return array<string, array{default: mixed, description?: string}>
-     */
-    public function toArray(Process $process): array
+    public function toObject(): stdClass
     {
         $result = [];
 
         foreach ($this->items as $name => $item) {
-            $result[$name] = $item->toArray($process);
+            $result[$name] = $item->toObject();
         }
 
-        return $result;
+        return (object) $result;
     }
 }

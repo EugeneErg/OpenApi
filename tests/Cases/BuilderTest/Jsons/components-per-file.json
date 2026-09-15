@@ -1,0 +1,32 @@
+{
+    "first.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "First",
+            "version": "1.0.0"
+        },
+        "paths": {},
+        "components": {
+            "schemas": {
+                "Alpha": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "second.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Second",
+            "version": "1.0.0"
+        },
+        "paths": {},
+        "components": {
+            "schemas": {
+                "Beta": {
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

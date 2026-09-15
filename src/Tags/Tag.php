@@ -16,9 +16,6 @@ final readonly class Tag
     ) {
     }
 
-    /**
-     * @return stdClass{name: string, description?: string, externalDocs?: string[]}
-     */
     public function toObject(): stdClass
     {
         $result = ['name' => $this->name];

@@ -18,7 +18,7 @@ final readonly class Link
     public function __construct(
         public Operation $operation,
         ?Parameters $parameters = null,
-        public null|RequestBody $requestBody = null,
+        public ?RequestBody $requestBody = null,
         public ?string $description = null,
         public ?Server $server = null,
     ) {
@@ -45,6 +45,10 @@ final readonly class Link
 
         if ($this->requestBody !== null) {
             $result['requestBody'] = $this->requestBody->toObject($process);
+        }
+
+        if ($this->server !== null) {
+            $result['server'] = $this->server->toObject();
         }
 
         return (object) $result;

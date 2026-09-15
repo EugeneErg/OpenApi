@@ -1,0 +1,31 @@
+{
+    "v30.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Same schemas, 3.0 dialect",
+            "version": "1.0.0"
+        },
+        "paths": {},
+        "components": {
+            "schemas": {
+                "Nickname": {
+                    "type": "string",
+                    "description": "Может отсутствовать.",
+                    "nullable": true
+                },
+                "Rating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 5
+                },
+                "Age": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 150,
+                    "multipleOf": 1
+                }
+            }
+        }
+    }
+}

@@ -6,16 +6,17 @@ namespace EugeneErg\OpenApi\Components;
 
 use EugeneErg\OpenApi\Components\Links\Link;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Reference;
 use stdClass;
 
 final readonly class Links
 {
-    /** @var array<string, Link> */
+    /** @var array<string, Link|Reference> */
     public array $items;
 
-    public function __construct(Link ...$links)
+    public function __construct(Link|Reference ...$links)
     {
-        /** @var array<string, Link> $links */
+        /** @var array<string, Link|Reference> $links */
         $this->items = $links;
     }
 
@@ -24,7 +25,9 @@ final readonly class Links
         $result = [];
 
         foreach ($this->items as $name => $item) {
-            $result[$name] = $process->findLink($item) ?? $item->toObject($process);
+            $result[$name] = $item instanceof Reference
+                ? $item->toObject($process)
+                : ($process->findLink($item) ?? $item->toObject($process));
         }
 
         return (object) $result;

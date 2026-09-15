@@ -1,10 +1,31 @@
 {
   "name": "eugene-erg/open-api",
-  "type": "project",
-  "description": "OpenApi Builder",
+  "type": "library",
+  "description": "Object-oriented builder for OpenAPI 3.0 specifications, with automatic $ref deduplication.",
+  "keywords": [
+    "openapi",
+    "swagger",
+    "openapi3",
+    "api",
+    "specification",
+    "builder",
+    "documentation"
+  ],
+  "homepage": "https://github.com/EugeneErg/OpenApi",
   "license": "MIT",
+  "authors": [
+    {
+      "name": "Eugene Erg",
+      "homepage": "https://github.com/EugeneErg"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/EugeneErg/OpenApi/issues",
+    "source": "https://github.com/EugeneErg/OpenApi"
+  },
   "require": {
-    "php": "^8.3"
+    "php": "^8.3",
+    "ext-json": "*"
   },
   "autoload": {
     "psr-4": {
@@ -12,8 +33,8 @@
     }
   },
   "require-dev": {
-    "friendsofphp/php-cs-fixer": "^3.58",
-    "phpstan/phpstan": "^1.11",
+    "friendsofphp/php-cs-fixer": "^3.75",
+    "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^10.5"
   },
   "autoload-dev": {
@@ -21,14 +42,31 @@
       "Tests\\": "tests/"
     }
   },
+  "scripts": {
+    "test": "phpunit",
+    "stan": "phpstan analyse",
+    "cs": "php-cs-fixer fix --dry-run --diff",
+    "cs:fix": "php-cs-fixer fix",
+    "check": [
+      "@cs",
+      "@stan",
+      "@test"
+    ]
+  },
+  "scripts-descriptions": {
+    "test": "Run the PHPUnit test suite.",
+    "stan": "Run PHPStan static analysis at max level.",
+    "cs": "Report coding standard violations without changing files.",
+    "cs:fix": "Apply coding standard fixes.",
+    "check": "Run coding standards, static analysis and tests."
+  },
   "config": {
     "optimize-autoloader": true,
-    "sort-packages": true,
-    "allow-plugins": {
-      "pestphp/pest-plugin": true,
-      "php-http/discovery": true
-    }
+    "sort-packages": true
   },
   "minimum-stability": "stable",
-  "prefer-stable": true
+  "prefer-stable": true,
+  "suggest": {
+    "ext-yaml": "Не требуется пакетом: YAML-энкодер написан на чистом PHP. Полезно, если вы хотите проверять результат парсером libyaml."
+  }
 }

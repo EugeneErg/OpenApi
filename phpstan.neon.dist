@@ -1,0 +1,22 @@
+parameters:
+    level: 10
+    paths:
+        - src
+        - tests
+    excludePaths:
+        analyse:
+            # это тестовые данные, а не код: они намеренно собирают объекты
+            # через промежуточные переменные и union-типы
+            - tests/Cases/*
+            - tests/Fixtures/*
+
+    # Всё, что PHPStan умеет проверять сверх максимального уровня.
+    checkBenevolentUnionTypes: true
+    checkUninitializedProperties: true
+    checkMissingCallableSignature: true
+    checkTooWideReturnTypesInProtectedAndPublicMethods: true
+    reportAlwaysTrueInLastCondition: true
+    reportPossiblyNonexistentGeneralArrayOffset: true
+    reportPossiblyNonexistentConstantArrayOffset: true
+    reportAnyTypeWideningInVarTag: true
+    reportWrongPhpDocTypeInVarTag: true

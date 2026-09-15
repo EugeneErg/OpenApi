@@ -1,0 +1,140 @@
+{
+    "json-schema.json": {
+        "openapi": "3.1.1",
+        "info": {
+            "title": "JSON Schema 2020-12",
+            "version": "1.0.0"
+        },
+        "paths": {},
+        "components": {
+            "schemas": {
+                "Card": {
+                    "type": "object",
+                    "if": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "const": "credit"
+                            }
+                        }
+                    },
+                    "then": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "limit"
+                        ]
+                    },
+                    "else": {
+                        "type": "object",
+                        "properties": {
+                            "balance": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "balance"
+                        ]
+                    },
+                    "properties": {
+                        "kind": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "kind"
+                    ]
+                },
+                "Extensible": {
+                    "type": "object",
+                    "$comment": "Свободные поля разрешены только с префиксом x-.",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id"
+                    ],
+                    "patternProperties": {
+                        "^x-": {
+                            "type": "string"
+                        }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-zA-Z0-9-]*$"
+                    },
+                    "dependentRequired": {
+                        "billingAddress": [
+                            "creditCard"
+                        ]
+                    },
+                    "dependentSchemas": {
+                        "creditCard": {
+                            "type": "object",
+                            "properties": {
+                                "cvv": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "cvv"
+                            ]
+                        }
+                    },
+                    "unevaluatedProperties": false
+                },
+                "Tuple": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "prefixItems": [
+                        {
+                            "type": "number"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "contains": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "minContains": 1,
+                    "maxContains": 3,
+                    "unevaluatedItems": false
+                },
+                "Attachment": {
+                    "type": "string",
+                    "contentEncoding": "base64",
+                    "contentMediaType": "application/json",
+                    "contentSchema": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "Status": {
+                    "type": "string",
+                    "const": "active",
+                    "examples": [
+                        "active"
+                    ]
+                }
+            }
+        }
+    }
+}

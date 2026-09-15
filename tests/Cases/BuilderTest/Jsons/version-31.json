@@ -1,0 +1,44 @@
+{
+    "webhooks.json": {
+        "openapi": "3.1.0",
+        "info": {
+            "title": "Webhook API",
+            "version": "1.0.0"
+        },
+        "paths": {},
+        "webhooks": {
+            "userCreated": {
+                "post": {
+                    "responses": {
+                        "200": {
+                            "description": "Webhook accepted."
+                        }
+                    },
+                    "operationId": "onUserCreated"
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "Nickname": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Может отсутствовать."
+                },
+                "Rating": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 5
+                },
+                "Age": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 150,
+                    "multipleOf": 1
+                }
+            }
+        }
+    }
+}

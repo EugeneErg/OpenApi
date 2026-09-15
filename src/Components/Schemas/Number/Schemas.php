@@ -7,11 +7,11 @@ namespace EugeneErg\OpenApi\Components\Schemas\Number;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 
 /**
- * @property array<Schema|EnumSchema> $items
+ * @property array<EnumSchema|Schema> $items
  */
 final readonly class Schemas extends AbstractSchemas
 {
-    public function __construct(Schema|EnumSchema ...$schemas)
+    public function __construct(EnumSchema|Schema ...$schemas)
     {
         parent::__construct(...$schemas);
     }

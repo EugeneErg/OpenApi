@@ -4,25 +4,31 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\RequestBodies;
 
+use EugeneErg\OpenApi\Components\Examples;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
-use EugeneErg\OpenApi\Components\Schemas\Object\OpenapiObject;
-use EugeneErg\OpenApi\Components\Schemas\Untyped\Values;
+use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
 use EugeneErg\OpenApi\Process;
 use stdClass;
 
 final readonly class Content
 {
-    public AbstractValues|AbstractValue $examples;
+    public Examples $examples;
     public Encodings $encoding;
 
     public function __construct(
         public AbstractSchema $schema,
-        null|OpenapiObject|AbstractValue $examples = null,
-        Encodings $encoding = null,
+        public ?AbstractValue $example = null,
+        ?Examples $examples = null,
+        ?Encodings $encoding = null,
     ) {
-        $this->examples = $examples ?? new Values();
+        if ($example !== null && $examples !== null && $examples->items !== []) {
+            throw new InvalidArgumentOpenapiException(
+                'Media type cannot have both example and examples: they are mutually exclusive.',
+            );
+        }
+
+        $this->examples = $examples ?? new Examples();
         $this->encoding = $encoding ?? new Encodings();
     }
 
@@ -30,10 +36,12 @@ final readonly class Content
     {
         $result = ['schema' => $process->findSchema($this->schema) ?? $this->schema->toObject($process)];
 
-        if ($this->examples instanceof AbstractValue) {
-            $result['example'] = $this->examples->toNative($process);
-        } elseif ($this->examples->items !== []) {
-            $result['examples'] = $this->examples->toNative($process);
+        if ($this->example !== null) {
+            $result['example'] = $this->example->toNative($process);
+        }
+
+        if ($this->examples->items !== []) {
+            $result['examples'] = $this->examples->toObject($process);
         }
 
         if ($this->encoding->items !== []) {

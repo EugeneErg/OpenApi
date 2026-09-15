@@ -8,6 +8,7 @@ use EugeneErg\OpenApi\Components\Callbacks;
 use EugeneErg\OpenApi\Components\Parameters\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
 use EugeneErg\OpenApi\Components\Responses;
+use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Securities;
@@ -37,6 +38,10 @@ final readonly class Operation
         ?Callbacks $callbacks = null,
         public ?ExternalDocs $externalDocs = null,
     ) {
+        if ($responses->items === []) {
+            throw new InvalidArgumentOpenapiException('Operation must declare at least one response.');
+        }
+
         $this->parameters = $parameters ?? new Parameters();
         $this->tags = $tags ?? new Tags();
         $this->security = $security ?? new Securities();
@@ -83,7 +88,7 @@ final readonly class Operation
         }
 
         if ($this->servers->items !== []) {
-            $result['servers'] = $this->servers->toArray($process);
+            $result['servers'] = $this->servers->toArray();
         }
 
         if ($this->callbacks->items !== []) {

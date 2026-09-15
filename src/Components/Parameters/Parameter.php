@@ -15,7 +15,7 @@ final class Parameter
 {
     public function __construct(
         public string $name,
-        public CustomParameter|PathSchemaParameter|CookieSchemaParameter|QuerySchemaParameter|HeaderSchemaParameter $parameter,
+        public CookieSchemaParameter|CustomParameter|HeaderSchemaParameter|PathSchemaParameter|QuerySchemaParameter $parameter,
     ) {
     }
 
@@ -25,28 +25,26 @@ final class Parameter
     }
 
     /**
-     * @param Process $process
-     *
      * @return array<string, mixed>
      */
     private function getParameterArray(Process $process): array
     {
         if ($this->parameter instanceof PathSchemaParameter) {
-            return array_merge((array) $this->parameter->toObject($process), ['in' => In::Path->value]);
+            return array_merge(get_object_vars($this->parameter->toObject($process)), ['in' => In::Path->value]);
         }
 
         if ($this->parameter instanceof CookieSchemaParameter) {
-            return array_merge((array) $this->parameter->toObject($process), ['in' => In::Cookie->value]);
+            return array_merge(get_object_vars($this->parameter->toObject($process)), ['in' => In::Cookie->value]);
         }
 
         if ($this->parameter instanceof QuerySchemaParameter) {
-            return array_merge((array) $this->parameter->toObject($process), ['in' => In::Query->value]);
+            return array_merge(get_object_vars($this->parameter->toObject($process)), ['in' => In::Query->value]);
         }
 
         if ($this->parameter instanceof HeaderSchemaParameter) {
-            return array_merge((array) $this->parameter->toObject($process), ['in' => In::Header->value]);
+            return array_merge(get_object_vars($this->parameter->toObject($process)), ['in' => In::Header->value]);
         }
 
-        return (array) $this->parameter->toObject($process);
+        return get_object_vars($this->parameter->toObject($process));
     }
 }

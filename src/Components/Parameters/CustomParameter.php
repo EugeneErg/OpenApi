@@ -15,6 +15,6 @@ final class CustomParameter
 
     public function toObject(Process $process): stdClass
     {
-        return (object) array_merge((array) $this->contentParameter->toObject($process), ['in' => $this->in->value]);
+        return (object) array_merge(get_object_vars($this->contentParameter->toObject($process)), ['in' => $this->in->value]);
     }
 }

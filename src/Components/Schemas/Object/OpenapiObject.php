@@ -15,8 +15,7 @@ final readonly class OpenapiObject extends AbstractValues
         $result = [];
 
         foreach ($this->items as $name => $item) {
-            $result[$name] = $process->findExample($item)
-                ?? ($item instanceof self ? $item->toNative($process) : $item);
+            $result[$name] = $item instanceof self ? $item->toNative($process) : $item;
         }
 
         return (object) $result;

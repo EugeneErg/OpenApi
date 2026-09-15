@@ -7,16 +7,17 @@ namespace EugeneErg\OpenApi\Components;
 use EugeneErg\OpenApi\Components\Parameters\ContentParameter;
 use EugeneErg\OpenApi\Components\Parameters\Header\SchemaParameter;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Reference;
 use stdClass;
 
 final readonly class Headers
 {
-    /** @var array<string, ContentParameter|SchemaParameter> */
+    /** @var array<string, ContentParameter|Reference|SchemaParameter> */
     public array $items;
 
-    public function __construct(ContentParameter|SchemaParameter ...$headers)
+    public function __construct(ContentParameter|Reference|SchemaParameter ...$headers)
     {
-        /** @var array<string, ContentParameter|SchemaParameter> $headers */
+        /** @var array<string, ContentParameter|Reference|SchemaParameter> $headers */
         $this->items = $headers;
     }
 
@@ -25,7 +26,9 @@ final readonly class Headers
         $result = [];
 
         foreach ($this->items as $name => $header) {
-            $result[$name] = $process->findHeader($header) ?? $header->toObject($process);
+            $result[$name] = $header instanceof Reference
+                ? $header->toObject($process)
+                : ($process->findHeader($header) ?? $header->toObject($process));
         }
 
         return (object) $result;

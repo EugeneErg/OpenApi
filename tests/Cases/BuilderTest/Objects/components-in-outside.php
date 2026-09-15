@@ -15,7 +15,7 @@ $info = new Info(title: 'Example API', version: '1.0.0');
 
 $generalErrorContentSchema = new Schemas\Object\Schema(
     properties: new Schemas\Object\Properties(
-        code:  new Schemas\Object\Property(
+        code: new Schemas\Object\Property(
             new Schemas\Integer\Schema(
                 format: Schemas\Integer\Format::Int32,
             ),

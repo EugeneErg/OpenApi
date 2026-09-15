@@ -8,20 +8,23 @@ use stdClass;
 
 final readonly class BearerHttpSecurityScheme extends AbstractSecurityScheme
 {
-    public function __construct(public ?string $format = null)
+    public string $scheme;
+
+    public function __construct(public ?string $format = null, ?string $description = null)
     {
-        parent::__construct('http');
+        $this->scheme = 'bearer';
+
+        parent::__construct('http', $description);
     }
 
     public function toObject(): stdClass
     {
         $result = parent::toObject();
+        $result->scheme = $this->scheme;
 
         if ($this->format !== null) {
             $result->bearerFormat = $this->format;
         }
-
-        $result->scheme = 'bearer';
 
         return $result;
     }

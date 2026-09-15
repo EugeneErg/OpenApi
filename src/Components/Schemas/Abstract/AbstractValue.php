@@ -9,16 +9,15 @@ use stdClass;
 
 abstract readonly class AbstractValue
 {
-    public function __construct(public int|float|string|bool|null|AbstractValues $value)
+    public function __construct(public null|AbstractValues|bool|float|int|string $value)
     {
     }
 
     /**
-     * @return int|float|string|bool|stdClass|array{}|null
+     * @return null|array{}|bool|float|int|stdClass|string
      */
-    public function toNative(Process $process): int|float|string|bool|null|stdClass|array
+    public function toNative(Process $process): null|array|bool|float|int|stdClass|string
     {
-        return $process->findExample($this->value)
-            ?? ($this->value instanceof AbstractValues ? $this->value->toNative($process) : $this->value);
+        return $this->value instanceof AbstractValues ? $this->value->toNative($process) : $this->value;
     }
 }

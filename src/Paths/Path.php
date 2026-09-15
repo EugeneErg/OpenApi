@@ -27,6 +27,8 @@ final readonly class Path
         public ?Operation $trace = null,
         ?Servers $servers = null,
         ?Parameters $parameters = null,
+        public ?string $summary = null,
+        public ?string $description = null,
     ) {
         $this->operations = array_filter([
             'get' => $this->get,
@@ -42,30 +44,24 @@ final readonly class Path
         $this->parameters = $parameters ?? new Parameters();
     }
 
-    /**
-     * @return stdClass{
-     *     get?: object{},
-     *     put?: object{},
-     *     post?: object{},
-     *     delete?: object{},
-     *     options?: object{},
-     *     head?: object{},
-     *     patch?: object{},
-     *     trace?: object{},
-     *     servers?: array{},
-     *     parameters?: array{},
-     * }
-     */
     public function toObject(Process $process): stdClass
     {
         $result = [];
+
+        if ($this->summary !== null) {
+            $result['summary'] = $this->summary;
+        }
+
+        if ($this->description !== null) {
+            $result['description'] = $this->description;
+        }
 
         foreach ($this->operations as $name => $method) {
             $result[$name] = $method->toObject($process);
         }
 
         if ($this->servers->items !== []) {
-            $result['servers'] = $this->servers->toArray($process);
+            $result['servers'] = $this->servers->toArray();
         }
 
         if ($this->parameters->items !== []) {

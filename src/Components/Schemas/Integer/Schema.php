@@ -5,7 +5,15 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Integer;
 
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractConditionSchema;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Bounds;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\NumericRange;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
@@ -13,6 +21,9 @@ use stdClass;
 
 final readonly class Schema extends AbstractConditionSchema
 {
+    use Bounds;
+    use NumericRange;
+
     public function __construct(
         ?string $title = null,
         ?string $description = null,
@@ -25,15 +36,31 @@ final readonly class Schema extends AbstractConditionSchema
         ?Schemas $anyOf = null,
         ?Schemas $allOf = null,
         ?Schemas $oneOf = null,
-        null|self|EnumSchema $not = null,
-        null|Value $example = null,
+        null|EnumSchema|self $not = null,
+        ?Value $example = null,
         public ?int $minimum = null,
         public ?int $maximum = null,
         public bool $exclusiveMinimum = false,
         public bool $exclusiveMaximum = false,
         public ?int $multipleOf = null,
         public ?Format $format = null,
+        ?Discriminator $discriminator = null,
+        ?AbstractValue $const = null,
+        ?AbstractValues $examples = null,
+        ?string $comment = null,
+        ?AbstractSchemas $defs = null,
+        ?string $id = null,
+        ?string $anchor = null,
+        ?string $dynamicAnchor = null,
+        ?AbstractSchema $dynamicRef = null,
+        ?Vocabularies $vocabulary = null,
+        ?AbstractSchema $if = null,
+        ?AbstractSchema $then = null,
+        ?AbstractSchema $else = null,
     ) {
+        self::assertRange('Integer schema range', $this->minimum, $this->maximum);
+        self::assertPositive('Integer schema multipleOf', $this->multipleOf);
+
         parent::__construct(
             'integer',
             $title,
@@ -49,32 +76,27 @@ final readonly class Schema extends AbstractConditionSchema
             $oneOf,
             $not,
             $example,
+            $discriminator,
+            $const,
+            $examples,
+            $comment,
+            $defs,
+            $id,
+            $anchor,
+            $dynamicAnchor,
+            $dynamicRef,
+            $vocabulary,
+            $if,
+            $then,
+            $else,
         );
     }
 
     public function toObject(Process $process): stdClass
     {
-        $result = (array) parent::toObject($process);
+        $result = get_object_vars(parent::toObject($process));
 
-        if ($this->minimum !== null) {
-            $result['minimum'] = $this->minimum;
-        }
-
-        if ($this->maximum !== null) {
-            $result['maximum'] = $this->maximum;
-        }
-
-        if ($this->exclusiveMinimum !== false) {
-            $result['exclusiveMinimum'] = $this->exclusiveMinimum;
-        }
-
-        if ($this->exclusiveMaximum !== false) {
-            $result['exclusiveMaximum'] = $this->exclusiveMaximum;
-        }
-
-        if ($this->multipleOf !== null) {
-            $result['multipleOf'] = $this->multipleOf;
-        }
+        $result = $this->appendRange($result, $process);
 
         if ($this->format !== null) {
             $result['format'] = $this->format->value;

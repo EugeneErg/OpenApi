@@ -13,4 +13,9 @@ final readonly class ClientCredentialsFlow extends AbstractFlow
     ) {
         parent::__construct($scopes, $refreshUrl);
     }
+
+    protected function getUrls(): array
+    {
+        return ['tokenUrl' => $this->tokenUrl];
+    }
 }

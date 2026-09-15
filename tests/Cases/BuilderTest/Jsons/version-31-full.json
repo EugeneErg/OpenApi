@@ -1,0 +1,60 @@
+{
+    "full31.json": {
+        "openapi": "3.1.1",
+        "info": {
+            "title": "Full 3.1 API",
+            "version": "1.0.0",
+            "summary": "Короткая сводка, доступная только в 3.1.",
+            "license": {
+                "name": "MIT",
+                "identifier": "MIT"
+            }
+        },
+        "paths": {
+            "/ping": {
+                "$ref": "#/components/pathItems/ping"
+            }
+        },
+        "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+        "webhooks": {
+            "healthPinged": {
+                "$ref": "#/components/pathItems/ping"
+            }
+        },
+        "components": {
+            "schemas": {
+                "Nickname": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "idn-email"
+                },
+                "Delay": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                }
+            },
+            "securitySchemes": {
+                "mtls": {
+                    "type": "mutualTLS",
+                    "description": "Клиентский сертификат."
+                }
+            },
+            "pathItems": {
+                "ping": {
+                    "summary": "Health check",
+                    "description": "Отвечает, пока сервис жив.",
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "Pong."
+                            }
+                        },
+                        "operationId": "ping"
+                    }
+                }
+            }
+        }
+    }
+}

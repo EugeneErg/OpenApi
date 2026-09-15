@@ -9,6 +9,7 @@ use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\Authorizat
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\ClientCredentialsFlow;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\ImplicitFlow;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\PasswordFlow;
+use stdClass;
 
 final readonly class Flows
 {
@@ -27,6 +28,17 @@ final readonly class Flows
             'clientCredentials' => $clientCredentials,
             'authorizationCode' => $authorizationCode,
         ], static fn (?AbstractFlow $flow) => $flow !== null);
+    }
+
+    public function toObject(): stdClass
+    {
+        $result = [];
+
+        foreach ($this->items as $name => $flow) {
+            $result[$name] = $flow->toObject();
+        }
+
+        return (object) $result;
     }
 
     public static function createImplicit(
@@ -53,7 +65,7 @@ final readonly class Flows
 
     public static function createClientCredentials(
         ClientCredentialsFlow $clientCredentials,
-        ?AuthorizationCodeFlow $authorizationCode
+        ?AuthorizationCodeFlow $authorizationCode,
     ): self {
         return new self(clientCredentials: $clientCredentials, authorizationCode: $authorizationCode);
     }

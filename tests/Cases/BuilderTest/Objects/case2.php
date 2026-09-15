@@ -60,7 +60,7 @@ $user = new Schemas\Object\Schema(
             ),
             required: true,
         ),
-        role:  new Schemas\Object\Property(
+        role: new Schemas\Object\Property(
             schema: new Schemas\String\EnumSchema(new Schemas\String\Strings(
                 'user',
                 'admin',

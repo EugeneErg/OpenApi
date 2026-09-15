@@ -4,9 +4,12 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
+use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
 use stdClass;
+
+use function sprintf;
 
 abstract readonly class AbstractSchema
 {
@@ -20,15 +23,41 @@ abstract readonly class AbstractSchema
         public ?ExternalDocs $externalDocs = null,
         public ?Xml $xml = null,
         public ?AbstractValue $default = null,
+        public ?AbstractValue $const = null,
+        public ?AbstractValues $examples = null,
+        public ?string $comment = null,
+        public ?AbstractSchemas $defs = null,
+        public ?string $id = null,
+        public ?string $anchor = null,
+        public ?string $dynamicAnchor = null,
+        public ?self $dynamicRef = null,
+        public ?Vocabularies $vocabulary = null,
     ) {
+        foreach (['$anchor' => $anchor, '$dynamicAnchor' => $dynamicAnchor] as $keyword => $name) {
+            if ($name !== null && preg_match('{^[A-Za-z_][A-Za-z0-9._-]*$}', $name) !== 1) {
+                throw new InvalidSchemaOpenapiException(sprintf(
+                    '%s must be a plain name matching [A-Za-z_][A-Za-z0-9._-]*, got "%s".',
+                    $keyword,
+                    $name,
+                ));
+            }
+        }
+
+        if ($vocabulary !== null && $vocabulary->items !== [] && $id === null) {
+            throw new InvalidSchemaOpenapiException('"$vocabulary" is only allowed on a schema resource declaring "$id".');
+        }
     }
 
     public function toObject(Process $process): stdClass
     {
         $result = [];
 
+        // 3.0 помечает схему nullable отдельным флагом,
+        // 3.1 — вторым типом в массиве, флага nullable там нет вовсе
+        $isV31 = $process->version()->isV31();
+
         if ($this->type !== null) {
-            $result['type'] = $this->type;
+            $result['type'] = $isV31 && $this->nullable ? [$this->type, 'null'] : $this->type;
         }
 
         if ($this->title !== null) {
@@ -39,16 +68,20 @@ abstract readonly class AbstractSchema
             $result['description'] = $this->description;
         }
 
-        if ($this->nullable) {
-            $result['nullable'] = $this->nullable;
+        if ($this->nullable && !$isV31) {
+            $result['nullable'] = true;
         }
 
         if ($this->access !== null) {
             $result[$this->access->value] = true;
         }
 
+        if ($this->deprecated) {
+            $result['deprecated'] = $this->deprecated;
+        }
+
         if ($this->externalDocs !== null) {
-            $result['externalDocs'] = $this->externalDocs;
+            $result['externalDocs'] = $this->externalDocs->toObject();
         }
 
         if ($this->xml !== null) {
@@ -59,6 +92,58 @@ abstract readonly class AbstractSchema
             $result['default'] = $this->default->toNative($process);
         }
 
+        if ($this->const !== null) {
+            $process->assertV31('"const"');
+            $result['const'] = $this->const->toNative($process);
+        }
+
+        if ($this->examples !== null && $this->examples->items !== []) {
+            $process->assertV31('"examples"');
+            $result['examples'] = $this->examples->toNative($process);
+        }
+
+        if ($this->comment !== null) {
+            $process->assertV31('"$comment"');
+            $result['$comment'] = $this->comment;
+        }
+
+        if ($this->defs !== null && $this->defs->items !== []) {
+            $process->assertV31('"$defs"');
+            $result['$defs'] = $this->defs->sourceToObject($process);
+        }
+
+        foreach (['$id' => $this->id, '$anchor' => $this->anchor, '$dynamicAnchor' => $this->dynamicAnchor] as $keyword => $declared) {
+            if ($declared !== null) {
+                $process->assertV31(sprintf('"%s"', $keyword));
+                $result[$keyword] = $declared;
+            }
+        }
+
+        if ($this->vocabulary !== null && $this->vocabulary->items !== []) {
+            $process->assertV31('"$vocabulary"');
+            $result['$vocabulary'] = $this->vocabulary->toObject();
+        }
+
+        if ($this->dynamicRef !== null) {
+            $process->assertV31('"$dynamicRef"');
+
+            if ($this->dynamicRef->dynamicAnchor === null) {
+                throw new InvalidSchemaOpenapiException(
+                    '"$dynamicRef" must point at a schema that declares "$dynamicAnchor".',
+                );
+            }
+
+            $result['$dynamicRef'] = '#' . $this->dynamicRef->dynamicAnchor;
+        }
+
         return (object) $result;
+    }
+
+    /**
+     * Вложенная схема: если она зарегистрирована в components, на её месте будет $ref.
+     */
+    final protected static function nested(self $schema, Process $process): stdClass
+    {
+        return $process->findSchema($schema) ?? $schema->toObject($process);
     }
 }

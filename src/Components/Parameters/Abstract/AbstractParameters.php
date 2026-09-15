@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\Parameters\Abstract;
 
+use EugeneErg\OpenApi\Components\Parameters\In;
 use EugeneErg\OpenApi\Process;
 use stdClass;
 
@@ -19,6 +20,12 @@ abstract readonly class AbstractParameters
     }
 
     /**
+     * Раздел спецификации, к которому относится контейнер. Благодаря этому
+     * Parameters не нуждается в таблице соответствия «имя свойства => in».
+     */
+    abstract public function in(): In;
+
+    /**
      * @return array<int, stdClass>
      */
     public function toArray(Process $process): array
@@ -26,7 +33,7 @@ abstract readonly class AbstractParameters
         $result = [];
 
         foreach ($this->items as $name => $parameter) {
-            $result[] = (object) array_merge((array) $parameter->toObject($process), ['name' => $name]);
+            $result[] = (object) array_merge(get_object_vars($parameter->toObject($process)), ['name' => $name]);
         }
 
         return $result;

@@ -1,5 +1,5 @@
 {
-  "/components.yaml": {
+  "components.yaml": {
     "openapi": "3.0.3",
     "info": {
       "title": "Example API",
@@ -23,7 +23,11 @@
               "format": "email"
             }
           },
-          "required": ["id", "username", "email"]
+          "required": [
+            "id",
+            "username",
+            "email"
+          ]
         },
         "Post": {
           "type": "object",
@@ -43,7 +47,12 @@
               "format": "int64"
             }
           },
-          "required": ["id", "title", "content", "authorId"]
+          "required": [
+            "id",
+            "title",
+            "content",
+            "authorId"
+          ]
         },
         "Error": {
           "type": "object",
@@ -56,7 +65,10 @@
               "type": "string"
             }
           },
-          "required": ["code", "message"]
+          "required": [
+            "code",
+            "message"
+          ]
         }
       },
       "responses": {
@@ -79,7 +91,7 @@
       }
     }
   },
-  "/paths.yaml": {
+  "paths.yaml": {
     "openapi": "3.0.3",
     "info": {
       "title": "Example API",

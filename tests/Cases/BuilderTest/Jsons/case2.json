@@ -1,5 +1,5 @@
 {
-  "/file.yaml": {
+  "file.yaml": {
     "openapi": "3.0.3",
     "info": {
       "title": "Complex API",

@@ -18,14 +18,14 @@ abstract readonly class AbstractParameter
 
     public function toObject(Process $process): stdClass
     {
-        $result = ['required' => $this->required];
+        $result = ['required' => $this->required ?? false];
 
         if ($this->description !== null) {
             $result['description'] = $this->description;
         }
 
-        if ($this->description) {
-            $result['description'] = $this->description;
+        if ($this->deprecated === true) {
+            $result['deprecated'] = true;
         }
 
         return (object) $result;

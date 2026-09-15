@@ -13,4 +13,9 @@ final readonly class ImplicitFlow extends AbstractFlow
     ) {
         parent::__construct($scopes, $refreshUrl);
     }
+
+    protected function getUrls(): array
+    {
+        return ['authorizationUrl' => $this->authorizationUrl];
+    }
 }

@@ -9,6 +9,8 @@ use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
 use stdClass;
 
+use function gettype;
+
 abstract readonly class AbstractEnumSchema extends AbstractSchema
 {
     public function __construct(
@@ -46,21 +48,26 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
 
     private function getType(AbstractValues $enums, ?AbstractValue $default): ?string
     {
-        if ($enums->items === [] && $default === null) {
-            return null;
+        if ($default !== null) {
+            return self::typeOf($default->value);
         }
 
-        $firstValue = $default ?? $enums->items[array_key_first($enums->items)];
+        $values = array_values($enums->items);
 
-        if ($firstValue instanceof OpenapiObject) {
+        return $values === [] ? null : self::typeOf($values[0]);
+    }
+
+    private static function typeOf(null|AbstractValues|bool|float|int|string $value): string
+    {
+        if ($value instanceof OpenapiObject) {
             return 'object';
         }
 
-        if ($firstValue instanceof AbstractValues) {
+        if ($value instanceof AbstractValues) {
             return 'array';
         }
 
-        $baseType = gettype($firstValue);
+        $baseType = gettype($value);
 
         return $baseType === 'NULL' ? 'null' : $baseType;
     }

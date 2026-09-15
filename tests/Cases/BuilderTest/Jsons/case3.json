@@ -1,5 +1,5 @@
 {
-  "/case3.yaml": {
+  "case3.yaml": {
     "openapi": "3.0.3",
     "info": {
       "title": "Advanced API",
@@ -34,7 +34,11 @@
               "type": "string"
             }
           },
-          "required": ["id", "name", "price"]
+          "required": [
+            "id",
+            "name",
+            "price"
+          ]
         },
         "Category": {
           "type": "object",
@@ -47,7 +51,10 @@
               "type": "string"
             }
           },
-          "required": ["id", "name"]
+          "required": [
+            "id",
+            "name"
+          ]
         },
         "Error": {
           "type": "object",
@@ -60,7 +67,10 @@
               "type": "string"
             }
           },
-          "required": ["code", "message"]
+          "required": [
+            "code",
+            "message"
+          ]
         }
       },
       "parameters": {

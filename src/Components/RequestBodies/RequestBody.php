@@ -16,13 +16,6 @@ final readonly class RequestBody
     ) {
     }
 
-    /**
-     * @return stdClass{
-     *     content: array{},
-     *     required: bool,
-     *     description?: string,
-     * }
-     */
     public function toObject(Process $process): stdClass
     {
         $result = [

@@ -55,11 +55,11 @@ final readonly class Parameter
     }
 
     /**
-     * @param bool|string|array{}|stdClass|float|int|JsonSerializable|null $value
+     * @param null|array{}|bool|float|int|JsonSerializable|stdClass|string $value
      *
      * @throws JsonException
      */
-    public static function json(bool|string|null|array|stdClass|float|int|JsonSerializable $value): self
+    public static function json(null|array|bool|float|int|JsonSerializable|stdClass|string $value): self
     {
         return new self(json_encode($value, JSON_THROW_ON_ERROR));
     }

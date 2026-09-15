@@ -9,23 +9,23 @@ use stdClass;
 
 abstract readonly class AbstractValues
 {
-    /** @var array<self|float|int|null|string|bool> */
+    /** @var array<null|bool|float|int|self|string> */
     public array $items;
 
-    public function __construct(null|self|int|float|string|bool ...$items)
+    public function __construct(null|bool|float|int|self|string ...$items)
     {
         $this->items = $items;
     }
 
     /**
-     * @return array<float|int|null|string|bool|object|array{}>|stdClass
+     * @return array<null|array{}|bool|float|int|object|string>|stdClass
      */
     public function toNative(Process $process): array|stdClass
     {
         $result = [];
 
         foreach ($this->items as $item) {
-            $result[] = $process->findExample($item) ?? ($item instanceof self ? $item->toNative($process) : $item);
+            $result[] = $item instanceof self ? $item->toNative($process) : $item;
         }
 
         return $result;

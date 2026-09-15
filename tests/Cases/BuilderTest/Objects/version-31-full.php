@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types = 1);
+
+use EugeneErg\OpenApi\Components;
+use EugeneErg\OpenApi\Components\Responses;
+use EugeneErg\OpenApi\Components\Schemas;
+use EugeneErg\OpenApi\Components\SecuritySchemes;
+use EugeneErg\OpenApi\Components\SecuritySchemes\MutualTlsSecurityScheme;
+use EugeneErg\OpenApi\Info;
+use EugeneErg\OpenApi\Openapi;
+use EugeneErg\OpenApi\PathItems;
+use EugeneErg\OpenApi\Paths;
+use EugeneErg\OpenApi\Version;
+
+// Один и тот же Path Item лежит в components и переиспользуется, поэтому
+// в paths и webhooks на его месте окажется $ref.
+$ping = new Paths\Path(
+    get: new Paths\Operation(
+        responses: new Responses(x200: new Responses\Response(description: 'Pong.')),
+        id: 'ping',
+    ),
+    summary: 'Health check',
+    description: 'Отвечает, пока сервис жив.',
+);
+
+$openapi = new Openapi(
+    info: new Info(
+        title: 'Full 3.1 API',
+        version: '1.0.0',
+        summary: 'Короткая сводка, доступная только в 3.1.',
+        license: new Info\License(name: 'MIT', identifier: 'MIT'),
+    ),
+    components: new Components(
+        schemas: new Schemas\Untyped\Schemas(
+            Nickname: new Schemas\String\Schema(nullable: true, format: Schemas\String\Format::IdnEmail),
+            Delay: new Schemas\Number\Schema(minimum: 0.0, exclusiveMinimum: true),
+        ),
+        securitySchemes: new SecuritySchemes(
+            mtls: new MutualTlsSecurityScheme(description: 'Клиентский сертификат.'),
+        ),
+        pathItems: new PathItems(ping: $ping),
+    ),
+    paths: new Paths(...['/ping' => $ping]),
+    version: Version::V311,
+    jsonSchemaDialect: 'https://json-schema.org/draft/2020-12/schema',
+    webhooks: new PathItems(healthPinged: $ping),
+);
+
+return ['full31.json' => $openapi];

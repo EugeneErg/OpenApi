@@ -25,14 +25,13 @@ $user = new Schemas\Object\Schema(
             required: true,
         ),
         email: new Schemas\Object\Property(
-            schema: new  Schemas\String\Schema(
+            schema: new Schemas\String\Schema(
                 format: Schemas\String\Format::Email,
             ),
             required: true,
         ),
     ),
 );
-
 
 $error = new Schemas\Object\Schema(
     properties: new Schemas\Object\Properties(
@@ -161,7 +160,7 @@ return [
             ),
         ),
         paths: new Paths(...[
-            "/users/{id}" => new Paths\Path(
+            '/users/{id}' => new Paths\Path(
                 get: new Paths\Operation(
                     responses: new Responses(
                         x200: $userResponse,

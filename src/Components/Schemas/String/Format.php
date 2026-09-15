@@ -4,6 +4,13 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\Schemas\String;
 
+/**
+ * Значения format, определённые спецификацией.
+ *
+ * Первая группа описана в самой OpenAPI, вторая приходит из словаря форматов
+ * JSON Schema и применима в 3.1. Список не закрытый: спецификация разрешает
+ * произвольные значения, но эти гарантированно понимают инструменты.
+ */
 enum Format: string
 {
     case Date = 'date';
@@ -17,4 +24,16 @@ enum Format: string
     case IPv4 = 'ipv4';
     case IPv6 = 'ipv6';
     case Uri = 'uri';
+
+    case Time = 'time';
+    case Duration = 'duration';
+    case IdnEmail = 'idn-email';
+    case IdnHostname = 'idn-hostname';
+    case UriReference = 'uri-reference';
+    case UriTemplate = 'uri-template';
+    case Iri = 'iri';
+    case IriReference = 'iri-reference';
+    case JsonPointer = 'json-pointer';
+    case RelativeJsonPointer = 'relative-json-pointer';
+    case Regex = 'regex';
 }

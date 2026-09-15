@@ -1,5 +1,5 @@
 {
-  "/links.yaml": {
+  "links.yaml": {
     "openapi": "3.0.3",
     "info": {
       "title": "Linked API",

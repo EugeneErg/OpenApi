@@ -1,5 +1,5 @@
 {
-  "/links2.yaml": {
+  "links2.yaml": {
     "openapi": "3.0.3",
     "info": {
       "title": "Simple Linked API",
@@ -28,7 +28,11 @@
               "format": "email"
             }
           },
-          "required": ["id", "username", "email"]
+          "required": [
+            "id",
+            "username",
+            "email"
+          ]
         },
         "Order": {
           "type": "object",
@@ -46,7 +50,11 @@
               "format": "int64"
             }
           },
-          "required": ["id", "total", "userId"]
+          "required": [
+            "id",
+            "total",
+            "userId"
+          ]
         },
         "Error": {
           "type": "object",
@@ -59,7 +67,10 @@
               "type": "string"
             }
           },
-          "required": ["code", "message"]
+          "required": [
+            "code",
+            "message"
+          ]
         }
       },
       "responses": {

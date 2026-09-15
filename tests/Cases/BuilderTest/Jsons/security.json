@@ -1,0 +1,119 @@
+{
+    "security.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Security API",
+            "version": "1.0.0",
+            "contact": {
+                "name": "API team",
+                "email": "api@example.com"
+            },
+            "license": {
+                "name": "MIT",
+                "url": "https://opensource.org/licenses/MIT"
+            }
+        },
+        "paths": {
+            "/pets": {
+                "get": {
+                    "responses": {
+                        "200": {
+                            "description": "A list of pets."
+                        },
+                        "4XX": {
+                            "description": "Client error."
+                        }
+                    },
+                    "operationId": "listPets",
+                    "security": [
+                        {
+                            "oauth": [
+                                "read:pets"
+                            ]
+                        },
+                        {
+                            "apiKey": []
+                        }
+                    ]
+                },
+                "post": {
+                    "responses": {
+                        "201": {
+                            "description": "Created."
+                        }
+                    },
+                    "operationId": "createPet",
+                    "deprecated": true,
+                    "security": [
+                        {
+                            "oauth": [
+                                "read:pets",
+                                "write:pets"
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "security": [
+            {
+                "bearer": []
+            },
+            {
+                "machineOauth": [
+                    "machine"
+                ]
+            }
+        ],
+        "components": {
+            "securitySchemes": {
+                "oauth": {
+                    "type": "oauth2",
+                    "description": "OAuth2 authorization code flow.",
+                    "flows": {
+                        "authorizationCode": {
+                            "authorizationUrl": "https://example.com/oauth/authorize",
+                            "tokenUrl": "https://example.com/oauth/token",
+                            "refreshUrl": "https://example.com/oauth/refresh",
+                            "scopes": {
+                                "read:pets": "Read your pets",
+                                "write:pets": "Modify your pets"
+                            }
+                        }
+                    }
+                },
+                "machineOauth": {
+                    "type": "oauth2",
+                    "flows": {
+                        "clientCredentials": {
+                            "tokenUrl": "https://example.com/oauth/token",
+                            "scopes": {
+                                "machine": "Machine-to-machine access"
+                            }
+                        }
+                    }
+                },
+                "apiKey": {
+                    "type": "apiKey",
+                    "description": "Static key issued per integration.",
+                    "name": "X-Api-Key",
+                    "in": "header"
+                },
+                "basic": {
+                    "type": "http",
+                    "description": "Legacy basic auth.",
+                    "scheme": "basic"
+                },
+                "bearer": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "JWT"
+                },
+                "oidc": {
+                    "type": "openIdConnect",
+                    "openIdConnectUrl": "https://example.com/.well-known/openid-configuration"
+                }
+            }
+        }
+    }
+}

@@ -14,9 +14,6 @@ final readonly class ExternalDocs
     ) {
     }
 
-    /**
-     * @return stdClass{url: string, description?: string}
-     */
     public function toObject(): stdClass
     {
         $result = ['url' => $this->url];

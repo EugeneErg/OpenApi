@@ -1,0 +1,85 @@
+{
+    "examples.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Examples API",
+            "version": "1.0.0"
+        },
+        "paths": {
+            "/records": {
+                "get": {
+                    "responses": {
+                        "200": {
+                            "description": "A record.",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/Status"
+                                    },
+                                    "examples": {
+                                        "active": {
+                                            "$ref": "#/components/examples/Active"
+                                        },
+                                        "archived": {
+                                            "$ref": "#/components/examples/Archived"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "operationId": "getRecord",
+                    "parameters": [
+                        {
+                            "required": false,
+                            "in": "query",
+                            "schema": {
+                                "$ref": "#/components/schemas/Status"
+                            },
+                            "example": "archived",
+                            "name": "status"
+                        },
+                        {
+                            "required": false,
+                            "in": "query",
+                            "schema": {
+                                "$ref": "#/components/schemas/Mode"
+                            },
+                            "examples": {
+                                "active": {
+                                    "$ref": "#/components/examples/Active"
+                                }
+                            },
+                            "name": "mode"
+                        }
+                    ]
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "Status": {
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "archived"
+                    ]
+                },
+                "Mode": {
+                    "type": "string",
+                    "default": "active"
+                }
+            },
+            "examples": {
+                "Active": {
+                    "summary": "Active record",
+                    "value": "active"
+                },
+                "Archived": {
+                    "description": "Stored outside the document.",
+                    "externalValue": "https://example.com/examples/archived.json"
+                }
+            }
+        }
+    }
+}

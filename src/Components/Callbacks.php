@@ -4,18 +4,19 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components;
 
-use EugeneErg\OpenApi\Paths;
+use EugeneErg\OpenApi\PathItems;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Reference;
 use stdClass;
 
 final readonly class Callbacks
 {
-    /** @var array<string, Paths> */
+    /** @var array<string, PathItems|Reference> */
     public array $items;
 
-    public function __construct(Paths ...$paths)
+    public function __construct(PathItems|Reference ...$paths)
     {
-        /** @var array<string, Paths> $paths */
+        /** @var array<string, PathItems|Reference> $paths */
         $this->items = $paths;
     }
 
@@ -24,7 +25,9 @@ final readonly class Callbacks
         $result = [];
 
         foreach ($this->items as $name => $callback) {
-            $result[$name] = $process->findCallback($callback) ?? $callback->toObject($process);
+            $result[$name] = $callback instanceof Reference
+                ? $callback->toObject($process)
+                : ($process->findCallback($callback) ?? $callback->toObject($process));
         }
 
         return (object) $result;

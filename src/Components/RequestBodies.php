@@ -6,16 +6,17 @@ namespace EugeneErg\OpenApi\Components;
 
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Reference;
 use stdClass;
 
 final readonly class RequestBodies
 {
-    /** @var array<string, RequestBody> */
+    /** @var array<string, Reference|RequestBody> */
     public array $items;
 
-    public function __construct(RequestBody ...$requestBodies)
+    public function __construct(Reference|RequestBody ...$requestBodies)
     {
-        /** @var array<string, RequestBody> $requestBodies */
+        /** @var array<string, Reference|RequestBody> $requestBodies */
         $this->items = $requestBodies;
     }
 

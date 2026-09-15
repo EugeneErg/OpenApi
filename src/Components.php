@@ -5,14 +5,13 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi;
 
 use EugeneErg\OpenApi\Components\Callbacks;
+use EugeneErg\OpenApi\Components\Examples;
 use EugeneErg\OpenApi\Components\Headers;
 use EugeneErg\OpenApi\Components\Links;
 use EugeneErg\OpenApi\Components\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies;
 use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
-use EugeneErg\OpenApi\Components\Schemas\Object\OpenapiObject;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas;
 use EugeneErg\OpenApi\Components\SecuritySchemes;
 use stdClass;
@@ -22,7 +21,8 @@ final readonly class Components
     public AbstractSchemas $schemas;
     public Responses $responses;
     public Parameters $parameters;
-    public AbstractValues $examples;
+    public Examples $examples;
+    public PathItems $pathItems;
     public RequestBodies $requestBodies;
     public Headers $headers;
     public SecuritySchemes $securitySchemes;
@@ -30,7 +30,8 @@ final readonly class Components
     public Callbacks $callbacks;
 
     public function __construct(
-        ?OpenapiObject $examples = null,
+        ?Examples $examples = null,
+        ?PathItems $pathItems = null,
         ?AbstractSchemas $schemas = null,
         ?Parameters $parameters = null,
         ?Headers $headers = null,
@@ -43,7 +44,8 @@ final readonly class Components
         $this->schemas = $schemas ?? new Schemas();
         $this->responses = $responses ?? new Responses();
         $this->parameters = $parameters ?? new Parameters();
-        $this->examples = $examples ?? new OpenapiObject();
+        $this->examples = $examples ?? new Examples();
+        $this->pathItems = $pathItems ?? new PathItems();
         $this->requestBodies = $requestBodies ?? new RequestBodies();
         $this->headers = $headers ?? new Headers();
         $this->securitySchemes = $securitySchemes ?? new SecuritySchemes();
@@ -91,6 +93,10 @@ final readonly class Components
             $result['callbacks'] = $process->findCallbacks($this->callbacks) ?? $this->callbacks->sourceToObject($process);
         }
 
+        if ($this->pathItems->items !== []) {
+            $result['pathItems'] = $this->pathItems->sourceToObject($process);
+        }
+
         return (object) $result;
     }
 
@@ -104,6 +110,7 @@ final readonly class Components
             && $this->headers->items === []
             && $this->securitySchemes->items === []
             && $this->links->items === []
-            && $this->callbacks->items === [];
+            && $this->callbacks->items === []
+            && $this->pathItems->items === [];
     }
 }

@@ -14,4 +14,12 @@ final readonly class AuthorizationCodeFlow extends AbstractFlow
     ) {
         parent::__construct($scopes, $refreshUrl);
     }
+
+    protected function getUrls(): array
+    {
+        return [
+            'authorizationUrl' => $this->authorizationUrl,
+            'tokenUrl' => $this->tokenUrl,
+        ];
+    }
 }

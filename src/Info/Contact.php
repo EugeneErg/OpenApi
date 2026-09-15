@@ -4,7 +4,7 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Info;
 
-final readonly class Contacts
+final readonly class Contact
 {
     public function __construct(
         public ?string $name = null,

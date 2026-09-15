@@ -15,7 +15,7 @@ use stdClass;
 
 final readonly class Parameters
 {
-    /** @var array<string, AbstractParameters> */
+    /** @var list<AbstractParameters> */
     public array $items;
     public Headers $headers;
     public Cookies $cookies;
@@ -32,14 +32,10 @@ final readonly class Parameters
         $this->cookies = $cookies ?? new Cookies();
         $this->paths = $paths ?? new Paths();
         $this->queries = $queries ?? new Queries();
-        /** @var array<string, AbstractParameters> $items */
-        $items = array_filter([
-            'headers' => $headers,
-            'cookies' => $cookies,
-            'paths' => $paths,
-            'queries' => $queries,
-        ], static fn (mixed $item) => $item instanceof AbstractParameters);
-        $this->items = $items;
+        $this->items = array_values(array_filter(
+            [$headers, $cookies, $paths, $queries],
+            static fn (?AbstractParameters $item): bool => $item !== null,
+        ));
     }
 
     /**
@@ -49,15 +45,16 @@ final readonly class Parameters
     {
         $result = [];
 
-        foreach ($this->items as $type => $parameter) {
-            $realType = ['headers' => 'header', 'cookies' => 'cookie', 'paths' => 'path', 'queries' => 'query'][$type];
-            $in = In::from($realType);
+        foreach ($this->items as $parameter) {
+            $in = $parameter->in();
 
-            /** @var AbstractSchemaParameter|ContentParameter $item */
             foreach ($parameter->items as $name => $item) {
                 $searchItem = $item instanceof AbstractSchemaParameter ? $item : new CustomParameter($in, $item);
                 $result[] = $process->findParameter($searchItem)
-                    ?? (object) array_merge((array) $item->toObject($process), ['name' => $name, 'in' => $realType]);
+                    ?? (object) array_merge(
+                        get_object_vars($item->toObject($process)),
+                        ['name' => $name, 'in' => $in->value],
+                    );
             }
         }
 
