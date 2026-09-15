@@ -7,6 +7,7 @@ namespace EugeneErg\OpenApi\Securities;
 use EugeneErg\OpenApi\Components\SecuritySchemes\AbstractSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\Scope;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 /**
@@ -28,7 +29,7 @@ final readonly class SecuritySchemes
         $result = [];
 
         foreach ($this->items as $scopeOrScheme) {
-            $result = array_merge_recursive($result, get_object_vars($scopeOrScheme->toTargetArray($process)));
+            $result = array_merge_recursive($result, Structure::vars($scopeOrScheme->toTargetArray($process)));
         }
 
         return (object) $result;

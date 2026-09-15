@@ -6,6 +6,7 @@ namespace EugeneErg\OpenApi\Components\Parameters\Abstract;
 
 use EugeneErg\OpenApi\Components\Parameters\In;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 abstract readonly class AbstractParameters
@@ -33,7 +34,7 @@ abstract readonly class AbstractParameters
         $result = [];
 
         foreach ($this->items as $name => $parameter) {
-            $result[] = (object) array_merge(get_object_vars($parameter->toObject($process)), ['name' => $name]);
+            $result[] = (object) array_merge(Structure::vars($parameter->toObject($process)), ['name' => $name]);
         }
 
         return $result;

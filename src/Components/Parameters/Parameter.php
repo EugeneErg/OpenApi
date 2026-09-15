@@ -9,6 +9,7 @@ use EugeneErg\OpenApi\Components\Parameters\Header\SchemaParameter as HeaderSche
 use EugeneErg\OpenApi\Components\Parameters\Path\SchemaParameter as PathSchemaParameter;
 use EugeneErg\OpenApi\Components\Parameters\Query\SchemaParameter as QuerySchemaParameter;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 final class Parameter
@@ -30,21 +31,21 @@ final class Parameter
     private function getParameterArray(Process $process): array
     {
         if ($this->parameter instanceof PathSchemaParameter) {
-            return array_merge(get_object_vars($this->parameter->toObject($process)), ['in' => In::Path->value]);
+            return array_merge(Structure::vars($this->parameter->toObject($process)), ['in' => In::Path->value]);
         }
 
         if ($this->parameter instanceof CookieSchemaParameter) {
-            return array_merge(get_object_vars($this->parameter->toObject($process)), ['in' => In::Cookie->value]);
+            return array_merge(Structure::vars($this->parameter->toObject($process)), ['in' => In::Cookie->value]);
         }
 
         if ($this->parameter instanceof QuerySchemaParameter) {
-            return array_merge(get_object_vars($this->parameter->toObject($process)), ['in' => In::Query->value]);
+            return array_merge(Structure::vars($this->parameter->toObject($process)), ['in' => In::Query->value]);
         }
 
         if ($this->parameter instanceof HeaderSchemaParameter) {
-            return array_merge(get_object_vars($this->parameter->toObject($process)), ['in' => In::Header->value]);
+            return array_merge(Structure::vars($this->parameter->toObject($process)), ['in' => In::Header->value]);
         }
 
-        return get_object_vars($this->parameter->toObject($process));
+        return Structure::vars($this->parameter->toObject($process));
     }
 }

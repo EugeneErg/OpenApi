@@ -13,6 +13,7 @@ use EugeneErg\OpenApi\Components\Responses\Response;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Exceptions\ComponentsNotFoundOpenapiException;
 use EugeneErg\OpenApi\Paths\Path;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 use function sprintf;
@@ -51,7 +52,7 @@ final readonly class Reference
 
         $process->assertV31('summary and description on a Reference Object');
 
-        $decorated = get_object_vars($result);
+        $decorated = Structure::vars($result);
 
         if ($this->summary !== null) {
             $decorated['summary'] = $this->summary;

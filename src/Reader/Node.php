@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Reader;
 
 use EugeneErg\OpenApi\Exceptions\InvalidDocumentOpenapiException;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 use function is_array;
@@ -129,7 +130,7 @@ final readonly class Node
         $result = [];
 
         // PHP отдаёт числовое имя свойства как int: «200» превратилось бы в 200
-        foreach (get_object_vars($this->value) as $key => $item) {
+        foreach (Structure::vars($this->value) as $key => $item) {
             $result[(string) $key] = new self($item, $this->child((string) $key));
         }
 
@@ -146,7 +147,7 @@ final readonly class Node
         }
 
         // пустая карта из ext-yaml неотличима от пустого списка
-        if ($this->value instanceof stdClass && get_object_vars($this->value) === []) {
+        if ($this->value instanceof stdClass && Structure::vars($this->value) === []) {
             return [];
         }
 

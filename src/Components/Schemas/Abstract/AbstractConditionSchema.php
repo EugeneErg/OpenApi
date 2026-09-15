@@ -8,6 +8,7 @@ use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 use function sprintf;
@@ -88,7 +89,7 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
 
     public function toObject(Process $process): stdClass
     {
-        $result = get_object_vars(parent::toObject($process));
+        $result = Structure::vars(parent::toObject($process));
 
         if ($this->anyOf->items !== []) {
             $result['anyOf'] = $this->anyOf->toArray($process);

@@ -25,6 +25,8 @@ jobs:
           coverage: none
           ini-values: error_reporting=E_ALL, zend.assertions=1
 
+      # composer.lock зафиксирован, поэтому CI ставит ровно те версии,
+      # на которых набор проверялся
       - uses: ramsey/composer-install@v3
 
       - name: Coding standards

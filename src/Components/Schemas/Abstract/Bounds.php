@@ -16,7 +16,7 @@ use function sprintf;
  */
 trait Bounds
 {
-    private static function assertRange(string $what, null|float|int $min, null|float|int $max): void
+    private static function assertRange(string $what, float|int|null $min, float|int|null $max): void
     {
         if ($min !== null && $max !== null && $min > $max) {
             throw new InvalidSchemaOpenapiException(sprintf(
@@ -28,7 +28,7 @@ trait Bounds
         }
     }
 
-    private static function assertPositive(string $what, null|float|int $value): void
+    private static function assertPositive(string $what, float|int|null $value): void
     {
         if ($value !== null && $value <= 0) {
             throw new InvalidSchemaOpenapiException(sprintf('%s must be greater than zero, got %s.', $what, (string) $value));

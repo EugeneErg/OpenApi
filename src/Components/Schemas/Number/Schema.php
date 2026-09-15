@@ -17,6 +17,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 final readonly class Schema extends AbstractConditionSchema
@@ -94,7 +95,7 @@ final readonly class Schema extends AbstractConditionSchema
 
     public function toObject(Process $process): stdClass
     {
-        $result = get_object_vars(parent::toObject($process));
+        $result = Structure::vars(parent::toObject($process));
 
         $result = $this->appendRange($result, $process);
 

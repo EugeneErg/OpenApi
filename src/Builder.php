@@ -44,7 +44,6 @@ final readonly class Builder
             }
         }
 
-        /** @var array<string, Openapi> $openapi */
         $this->openapi = $openapi;
     }
 

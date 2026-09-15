@@ -17,6 +17,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas as UntypedSchemas;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 final readonly class Schema extends AbstractConditionSchema
@@ -52,7 +53,7 @@ final readonly class Schema extends AbstractConditionSchema
         public ?AbstractSchema $propertyNames = null,
         ?DependentRequired $dependentRequired = null,
         ?UntypedSchemas $dependentSchemas = null,
-        public null|AbstractSchema|bool $unevaluatedProperties = null,
+        public AbstractSchema|bool|null $unevaluatedProperties = null,
         ?Discriminator $discriminator = null,
         public int $minProperties = 0,
         public ?int $maxProperties = null,
@@ -121,7 +122,7 @@ final readonly class Schema extends AbstractConditionSchema
             $properties[$name] = $property->schema;
         }
 
-        $result = get_object_vars(parent::toObject($process));
+        $result = Structure::vars(parent::toObject($process));
 
         if ($properties !== []) {
             $result['properties'] = (new UntypedSchemas(...$properties))->toObject($process);

@@ -46,7 +46,7 @@ final readonly class YamlEncoder implements EncoderInterface
     {
         $result = '';
 
-        foreach (get_object_vars($map) as $key => $value) {
+        foreach (Structure::vars($map) as $key => $value) {
             $result .= str_repeat(self::INDENT, $level) . $this->scalar((string) $key) . ':' . $this->value($value, $level);
         }
 

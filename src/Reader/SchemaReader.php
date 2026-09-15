@@ -366,7 +366,7 @@ final readonly class SchemaReader
      * @return array{
      *     format: ?StringFormat,
      *     minLength: int<0, max>,
-     *     maxLength: int<0, max>|null,
+     *     maxLength: null|int<0, max>,
      *     pattern: ?string,
      *     contentEncoding: ?string,
      *     contentMediaType: ?string,
@@ -496,13 +496,13 @@ final readonly class SchemaReader
      * @return array{
      *     items: ?AbstractSchema,
      *     minItems: int<0, max>,
-     *     maxItems: int<0, max>|null,
+     *     maxItems: null|int<0, max>,
      *     uniqueItems: bool,
      *     prefixItems: ?UntypedSchemas,
      *     contains: ?AbstractSchema,
      *     minContains: ?int,
      *     maxContains: ?int,
-     *     unevaluatedItems: AbstractSchema|bool|null,
+     *     unevaluatedItems: null|AbstractSchema|bool,
      *     default: ?ArrayValue,
      *     example: ?ArrayValue,
      *     const: ?ArrayValue
@@ -530,13 +530,13 @@ final readonly class SchemaReader
      * @return array{
      *     properties: ?Properties,
      *     minProperties: int<0, max>,
-     *     maxProperties: int<0, max>|null,
+     *     maxProperties: null|int<0, max>,
      *     additionalProperties: AbstractSchema|bool,
      *     patternProperties: ?PatternProperties,
      *     propertyNames: ?AbstractSchema,
      *     dependentRequired: ?DependentRequired,
      *     dependentSchemas: ?UntypedSchemas,
-     *     unevaluatedProperties: AbstractSchema|bool|null,
+     *     unevaluatedProperties: null|AbstractSchema|bool,
      *     default: ?ObjectValue,
      *     example: ?ObjectValue,
      *     const: ?ObjectValue
@@ -583,7 +583,7 @@ final readonly class SchemaReader
         ];
     }
 
-    private function readSchemaOrBool(Node $node): null|AbstractSchema|bool
+    private function readSchemaOrBool(Node $node): AbstractSchema|bool|null
     {
         if ($node->isMissing()) {
             return null;
@@ -701,7 +701,7 @@ final readonly class SchemaReader
         );
     }
 
-    private function nativeOf(Node $node): null|AbstractValues|bool|float|int|string
+    private function nativeOf(Node $node): AbstractValues|bool|float|int|string|null
     {
         $value = $node->value;
 

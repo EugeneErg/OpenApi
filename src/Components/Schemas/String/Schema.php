@@ -17,6 +17,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 final readonly class Schema extends AbstractConditionSchema
@@ -101,7 +102,7 @@ final readonly class Schema extends AbstractConditionSchema
 
     public function toObject(Process $process): stdClass
     {
-        $result = get_object_vars(parent::toObject($process));
+        $result = Structure::vars(parent::toObject($process));
 
         if ($this->minLength !== 0) {
             $result['minLength'] = $this->minLength;

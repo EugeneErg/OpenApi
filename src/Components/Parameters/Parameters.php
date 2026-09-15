@@ -11,6 +11,7 @@ use EugeneErg\OpenApi\Components\Parameters\Header\Headers;
 use EugeneErg\OpenApi\Components\Parameters\Path\Paths;
 use EugeneErg\OpenApi\Components\Parameters\Query\Queries;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 final readonly class Parameters
@@ -52,7 +53,7 @@ final readonly class Parameters
                 $searchItem = $item instanceof AbstractSchemaParameter ? $item : new CustomParameter($in, $item);
                 $result[] = $process->findParameter($searchItem)
                     ?? (object) array_merge(
-                        get_object_vars($item->toObject($process)),
+                        Structure::vars($item->toObject($process)),
                         ['name' => $name, 'in' => $in->value],
                     );
             }

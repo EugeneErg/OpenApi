@@ -18,6 +18,7 @@ use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas as UntypedSchemas;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 final readonly class Schema extends AbstractConditionSchema
@@ -52,7 +53,7 @@ final readonly class Schema extends AbstractConditionSchema
         public ?AbstractSchema $contains = null,
         public ?int $minContains = null,
         public ?int $maxContains = null,
-        public null|AbstractSchema|bool $unevaluatedItems = null,
+        public AbstractSchema|bool|null $unevaluatedItems = null,
         ?Discriminator $discriminator = null,
         ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
@@ -109,7 +110,7 @@ final readonly class Schema extends AbstractConditionSchema
 
     public function toObject(Process $process): stdClass
     {
-        $result = get_object_vars(parent::toObject($process));
+        $result = Structure::vars(parent::toObject($process));
 
         if ($this->items !== null) {
             $result['items'] = self::nested($this->items, $process);

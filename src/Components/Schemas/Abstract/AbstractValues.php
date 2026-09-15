@@ -12,7 +12,7 @@ abstract readonly class AbstractValues
     /** @var array<null|bool|float|int|self|string> */
     public array $items;
 
-    public function __construct(null|bool|float|int|self|string ...$items)
+    public function __construct(bool|float|int|self|string|null ...$items)
     {
         $this->items = $items;
     }

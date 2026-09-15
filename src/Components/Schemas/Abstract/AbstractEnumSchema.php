@@ -57,7 +57,7 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
         return $values === [] ? null : self::typeOf($values[0]);
     }
 
-    private static function typeOf(null|AbstractValues|bool|float|int|string $value): string
+    private static function typeOf(AbstractValues|bool|float|int|string|null $value): string
     {
         if ($value instanceof OpenapiObject) {
             return 'object';

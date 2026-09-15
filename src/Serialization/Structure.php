@@ -17,6 +17,25 @@ use function sprintf;
  */
 final readonly class Structure
 {
+    /**
+     * Поля объекта со строковыми ключами.
+     *
+     * get_object_vars() отдаёт array<mixed>: числовое имя свойства PHP приводит
+     * к int, поэтому ключи нормализуются явно.
+     *
+     * @return array<string, mixed>
+     */
+    public static function vars(stdClass $value): array
+    {
+        $result = [];
+
+        foreach (get_object_vars($value) as $key => $item) {
+            $result[(string) $key] = $item;
+        }
+
+        return $result;
+    }
+
     public static function toObject(mixed $value): stdClass
     {
         $result = self::normalize($value);
