@@ -1,0 +1,66 @@
+{
+    "open-shapes.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Open shapes",
+            "version": "1.0.0"
+        },
+        "paths": {
+            "/streams": {
+                "post": {
+                    "responses": {
+                        "201": {
+                            "description": "subscription created",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/Subscription"
+                                    }
+                                }
+                            }
+                        },
+                        "200": {
+                            "description": "versions",
+                            "content": {
+                                "application/json": {
+                                    "example": {
+                                        "versions": [
+                                            {
+                                                "id": "v2.0",
+                                                "status": "CURRENT"
+                                            },
+                                            {
+                                                "id": "v3.0",
+                                                "status": "EXPERIMENTAL"
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "operationId": "createStream"
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "UriRef": {
+                    "type": "string",
+                    "format": "uriref"
+                },
+                "Subscription": {
+                    "description": "subscription information",
+                    "properties": {
+                        "subscriptionId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "subscriptionId"
+                    ]
+                }
+            }
+        }
+    }
+}

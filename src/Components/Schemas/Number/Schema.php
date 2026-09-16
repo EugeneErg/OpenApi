@@ -44,7 +44,7 @@ final readonly class Schema extends AbstractConditionSchema
         public bool $exclusiveMinimum = false,
         public bool $exclusiveMaximum = false,
         public ?float $multipleOf = null,
-        public ?Format $format = null,
+        public Format|string|null $format = null,
         ?Discriminator $discriminator = null,
         ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
@@ -100,7 +100,7 @@ final readonly class Schema extends AbstractConditionSchema
         $result = $this->appendRange($result, $process);
 
         if ($this->format !== null) {
-            $result['format'] = $this->format->value;
+            $result['format'] = $this->format instanceof Format ? $this->format->value : $this->format;
         }
 
         return (object) $result;

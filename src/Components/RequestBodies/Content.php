@@ -17,7 +17,7 @@ final readonly class Content
     public Encodings $encoding;
 
     public function __construct(
-        public AbstractSchema $schema,
+        public ?AbstractSchema $schema = null,
         public ?AbstractValue $example = null,
         ?Examples $examples = null,
         ?Encodings $encoding = null,
@@ -34,7 +34,12 @@ final readonly class Content
 
     public function toObject(Process $process): stdClass
     {
-        $result = ['schema' => $process->findSchema($this->schema) ?? $this->schema->toObject($process)];
+        $result = [];
+
+        // по спецификации media type может не описывать схему вовсе
+        if ($this->schema !== null) {
+            $result['schema'] = $process->findSchema($this->schema) ?? $this->schema->toObject($process);
+        }
 
         if ($this->example !== null) {
             $result['example'] = $this->example->toNative($process);

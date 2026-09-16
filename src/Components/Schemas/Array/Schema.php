@@ -58,6 +58,11 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
         ?string $comment = null,
+        /**
+         * Схема может описывать форму, не объявляя type: спецификация это
+         * разрешает, и при чтении чужого документа такой тип терять нельзя.
+         */
+        bool $declareType = true,
         ?AbstractSchemas $defs = null,
         ?string $id = null,
         ?string $anchor = null,
@@ -78,7 +83,7 @@ final readonly class Schema extends AbstractConditionSchema
         }
 
         parent::__construct(
-            'array',
+            $declareType ? 'array' : null,
             $title,
             $description,
             $nullable,

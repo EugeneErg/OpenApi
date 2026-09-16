@@ -61,6 +61,11 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
         ?string $comment = null,
+        /**
+         * Схема может описывать форму, не объявляя type: спецификация это
+         * разрешает, и при чтении чужого документа такой тип терять нельзя.
+         */
+        bool $declareType = true,
         ?AbstractSchemas $defs = null,
         ?string $id = null,
         ?string $anchor = null,
@@ -79,7 +84,7 @@ final readonly class Schema extends AbstractConditionSchema
         self::assertRange('Object schema property count', $this->minProperties, $this->maxProperties);
 
         parent::__construct(
-            'object',
+            $declareType ? 'object' : null,
             $title,
             $description,
             $nullable,

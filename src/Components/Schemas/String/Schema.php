@@ -45,7 +45,7 @@ final readonly class Schema extends AbstractConditionSchema
         public int $minLength = 0,
         public ?int $maxLength = null,
         public ?string $pattern = null,
-        public ?Format $format = null,
+        public Format|string|null $format = null,
         public ?string $contentEncoding = null,
         public ?string $contentMediaType = null,
         public ?AbstractSchema $contentSchema = null,
@@ -117,7 +117,7 @@ final readonly class Schema extends AbstractConditionSchema
         }
 
         if ($this->format !== null) {
-            $result['format'] = $this->format->value;
+            $result['format'] = $this->format instanceof Format ? $this->format->value : $this->format;
         }
 
         if ($this->contentEncoding !== null) {

@@ -108,7 +108,7 @@ final readonly class ComponentsReader
     public function content(Node $node): Content
     {
         return new Content(
-            schema: $this->schemas->read($node->get('schema')),
+            schema: $node->has('schema') ? $this->schemas->read($node->get('schema')) : null,
             example: $this->schemas->readValue($node->get('example')),
             examples: $this->examples($node->get('examples')),
             encoding: $this->encodings($node->get('encoding')),

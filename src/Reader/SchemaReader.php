@@ -104,13 +104,18 @@ final readonly class SchemaReader
             ]);
         }
 
+        // type может отсутствовать, а форма — быть описана: тогда выбираем ветку
+        // по ключевым словам и не объявляем type в выводе
+        $declareType = $type !== null;
+        $type ??= $this->inferShape($node);
+
         return match ($type) {
             'string' => new StringSchema(...[...$common, ...$this->stringOnly($node)]),
             'integer' => new IntegerSchema(...[...$common, ...$this->integerOnly($node)]),
             'number' => new NumberSchema(...[...$common, ...$this->numberOnly($node)]),
             'boolean' => new BooleanSchema(...[...$common, ...$this->booleanOnly($node)]),
-            'array' => new ArraySchema(...[...$common, ...$this->arrayOnly($node)]),
-            'object' => new ObjectSchema(...[...$common, ...$this->objectOnly($node)]),
+            'array' => new ArraySchema(...[...$common, ...$this->arrayOnly($node), 'declareType' => $declareType]),
+            'object' => new ObjectSchema(...[...$common, ...$this->objectOnly($node), 'declareType' => $declareType]),
             default => new UntypedSchema(...$common),
         };
     }
@@ -156,6 +161,31 @@ final readonly class SchemaReader
         }
 
         return new OpenapiObject(...$items);
+    }
+
+    /**
+     * Ветка для схемы без type: она определяется по ключевым словам,
+     * применимым только к объекту или только к массиву.
+     */
+    private function inferShape(Node $node): ?string
+    {
+        $object = ['properties', 'required', 'patternProperties', 'propertyNames', 'additionalProperties',
+            'dependentRequired', 'dependentSchemas', 'minProperties', 'maxProperties'];
+        $array = ['items', 'prefixItems', 'contains', 'minItems', 'maxItems', 'uniqueItems'];
+
+        foreach ($object as $keyword) {
+            if ($node->has($keyword)) {
+                return 'object';
+            }
+        }
+
+        foreach ($array as $keyword) {
+            if ($node->has($keyword)) {
+                return 'array';
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -364,7 +394,7 @@ final readonly class SchemaReader
 
     /**
      * @return array{
-     *     format: ?StringFormat,
+     *     format: null|string|StringFormat,
      *     minLength: int<0, max>,
      *     maxLength: null|int<0, max>,
      *     pattern: ?string,
@@ -379,7 +409,7 @@ final readonly class SchemaReader
     private function stringOnly(Node $node): array
     {
         return [
-            'format' => $this->readEnumCase(StringFormat::class, $node->get('format')),
+            'format' => $this->readFormat(StringFormat::class, $node->get('format')),
             'minLength' => $this->nonNegative($node->get('minLength')) ?? 0,
             'maxLength' => $this->nonNegative($node->get('maxLength')),
             'pattern' => $node->get('pattern')->stringOrNull(),
@@ -433,7 +463,7 @@ final readonly class SchemaReader
 
     /**
      * @return array{
-     *     format: ?IntegerFormat,
+     *     format: null|IntegerFormat|string,
      *     minimum: ?int,
      *     maximum: ?int,
      *     multipleOf: ?int,
@@ -450,7 +480,7 @@ final readonly class SchemaReader
         $multipleOf = $node->get('multipleOf')->floatOrNull();
 
         return [
-            'format' => $this->readEnumCase(IntegerFormat::class, $node->get('format')),
+            'format' => $this->readFormat(IntegerFormat::class, $node->get('format')),
             'minimum' => $range['minimum'] === null ? null : (int) $range['minimum'],
             'maximum' => $range['maximum'] === null ? null : (int) $range['maximum'],
             'multipleOf' => $multipleOf === null ? null : (int) $multipleOf,
@@ -464,7 +494,7 @@ final readonly class SchemaReader
 
     /**
      * @return array{
-     *     format: ?NumberFormat,
+     *     format: null|NumberFormat|string,
      *     minimum: ?float,
      *     maximum: ?float,
      *     multipleOf: ?float,
@@ -480,7 +510,7 @@ final readonly class SchemaReader
         $range = $this->range($node);
 
         return [
-            'format' => $this->readEnumCase(NumberFormat::class, $node->get('format')),
+            'format' => $this->readFormat(NumberFormat::class, $node->get('format')),
             'minimum' => $range['minimum'],
             'maximum' => $range['maximum'],
             'multipleOf' => $node->get('multipleOf')->floatOrNull(),
@@ -715,20 +745,19 @@ final readonly class SchemaReader
     }
 
     /**
+     * format — открытое значение: незнакомая строка остаётся строкой,
+     * а не считается ошибкой документа.
+     *
      * @template T of BackedEnum
      *
      * @param class-string<T> $enum
      *
-     * @return null|T
+     * @return null|string|T
      */
-    private function readEnumCase(string $enum, Node $node): ?object
+    private function readFormat(string $enum, Node $node): object|string|null
     {
         $value = $node->stringOrNull();
 
-        if ($value === null) {
-            return null;
-        }
-
-        return $enum::tryFrom($value) ?? throw $node->unexpected(sprintf('one of %s', $enum));
+        return $value === null ? null : $enum::tryFrom($value) ?? $value;
     }
 }
