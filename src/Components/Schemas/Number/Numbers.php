@@ -11,7 +11,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
  */
 final readonly class Numbers extends AbstractValues
 {
-    public function __construct(float ...$items)
+    public function __construct(float|int ...$items)
     {
         parent::__construct(...$items);
     }

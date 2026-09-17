@@ -9,51 +9,81 @@ use EugeneErg\OpenApi\Components\Parameters\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
 use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Reference;
 use EugeneErg\OpenApi\Securities;
 use EugeneErg\OpenApi\Servers;
 use EugeneErg\OpenApi\Tags;
 use stdClass;
 
+use function sprintf;
+
 final readonly class Operation
 {
+    public Extensions $extensions;
+
     public Parameters $parameters;
     public Tags $tags;
-    public Securities $security;
     public Servers $servers;
     public Callbacks $callbacks;
 
     public function __construct(
-        public Responses $responses,
+        /** В 3.0 обязательны, в 3.1 могут отсутствовать. */
+        public ?Responses $responses = null,
         public ?string $summary = null,
         public ?string $description = null,
         public ?string $id = null,
         public bool $deprecated = false,
         ?Parameters $parameters = null,
-        public ?RequestBody $requestBody = null,
+        public Reference|RequestBody|null $requestBody = null,
         ?Tags $tags = null,
-        ?Securities $security = null,
+        /**
+         * null — наследовать `security` документа; `new Securities()` — операция
+         * открыта, даже если на уровне документа авторизация требуется.
+         */
+        public ?Securities $security = null,
         ?Servers $servers = null,
         ?Callbacks $callbacks = null,
         public ?ExternalDocs $externalDocs = null,
+        ?Extensions $extensions = null,
     ) {
-        if ($responses->items === []) {
+        $this->extensions = $extensions ?? new Extensions();
+
+        if ($responses !== null && $responses->items === []) {
             throw new InvalidArgumentOpenapiException('Operation must declare at least one response.');
+        }
+
+        foreach (array_keys($responses->items ?? []) as $code) {
+            // x200 / x4XX — запись кода именованным аргументом; '200' приходит через fromArray()
+            if (preg_match('{^(?:x?[1-5](?:\d\d|XX)|default)$}', (string) $code) !== 1) {
+                throw new InvalidArgumentOpenapiException(sprintf(
+                    'Response key "%s" is neither an HTTP status code (200, 4XX; x200 as a named argument) nor "default".',
+                    $code,
+                ));
+            }
         }
 
         $this->parameters = $parameters ?? new Parameters();
         $this->tags = $tags ?? new Tags();
-        $this->security = $security ?? new Securities();
         $this->servers = $servers ?? new Servers();
         $this->callbacks = $callbacks ?? new Callbacks();
     }
 
     public function toObject(Process $process): stdClass
     {
-        $result = [
-            'responses' => $this->responses->toObject($process),
-        ];
+        $result = [];
+
+        if ($this->responses !== null) {
+            $result['responses'] = $this->responses->toObject($process);
+        } elseif (!$process->version()->isV31()) {
+            throw new InvalidArgumentOpenapiException(sprintf(
+                'Operation%s must declare responses in OpenAPI %s; they became optional in 3.1.',
+                $this->id === null ? '' : sprintf(' "%s"', $this->id),
+                $process->version()->value,
+            ));
+        }
 
         if ($this->summary !== null) {
             $result['summary'] = $this->summary;
@@ -76,14 +106,17 @@ final readonly class Operation
         }
 
         if ($this->requestBody !== null) {
-            $result['requestBody'] = $this->requestBody->toObject($process);
+            // тело, объявленное в components.requestBodies, здесь пишется ссылкой
+            $result['requestBody'] = $this->requestBody instanceof Reference
+                ? $this->requestBody->toObject($process)
+                : ($process->findRequestBody($this->requestBody) ?? $this->requestBody->toObject($process));
         }
 
         if ($this->tags->items !== []) {
             $result['tags'] = $this->tags->toNames();
         }
 
-        if ($this->security->items !== []) {
+        if ($this->security !== null) {
             $result['security'] = $this->security->toArray($process);
         }
 
@@ -99,6 +132,6 @@ final readonly class Operation
             $result['externalDocs'] = $this->externalDocs->toObject();
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

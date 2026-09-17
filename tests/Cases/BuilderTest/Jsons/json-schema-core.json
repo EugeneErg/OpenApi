@@ -5,7 +5,6 @@
             "title": "JSON Schema core",
             "version": "1.0.0"
         },
-        "paths": {},
         "components": {
             "schemas": {
                 "User": {

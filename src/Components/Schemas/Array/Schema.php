@@ -7,7 +7,6 @@ namespace EugeneErg\OpenApi\Components\Schemas\Array;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractConditionSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Bounds;
@@ -16,6 +15,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas as UntypedSchemas;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Serialization\Structure;
@@ -35,6 +35,7 @@ final readonly class Schema extends AbstractConditionSchema
         public ?AbstractSchema $items = null,
         ?string $title = null,
         ?string $description = null,
+        ?string $format = null,
         bool $nullable = false,
         ?Access $access = null,
         bool $deprecated = false,
@@ -55,7 +56,6 @@ final readonly class Schema extends AbstractConditionSchema
         public ?int $maxContains = null,
         public AbstractSchema|bool|null $unevaluatedItems = null,
         ?Discriminator $discriminator = null,
-        ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
         ?string $comment = null,
         /**
@@ -72,8 +72,10 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
+        ?Extensions $extensions = null,
     ) {
         $this->prefixItems = $prefixItems ?? new UntypedSchemas();
+        $this->prefixItems->assertListed('prefixItems');
 
         self::assertRange('Array schema size', $this->minItems, $this->maxItems);
         self::assertRange('Array schema contains count', $minContains, $maxContains);
@@ -84,6 +86,7 @@ final readonly class Schema extends AbstractConditionSchema
 
         parent::__construct(
             $declareType ? 'array' : null,
+            $format,
             $title,
             $description,
             $nullable,
@@ -98,7 +101,6 @@ final readonly class Schema extends AbstractConditionSchema
             $not,
             $example,
             $discriminator,
-            $const,
             $examples,
             $comment,
             $defs,
@@ -110,6 +112,7 @@ final readonly class Schema extends AbstractConditionSchema
             $if,
             $then,
             $else,
+            $extensions,
         );
     }
 
@@ -119,7 +122,9 @@ final readonly class Schema extends AbstractConditionSchema
 
         if ($this->items !== null) {
             $result['items'] = self::nested($this->items, $process);
-        } elseif (!$process->version()->isV31()) {
+        } elseif ($this->type !== null && !$process->version()->isV31()) {
+            // 3.0: «items MUST be present if type is "array"» — без объявленного типа
+            // требования нет, и слово о массиве живёт само по себе
             throw new InvalidSchemaOpenapiException(
                 'An array schema must declare "items" in OpenAPI 3.0; it is optional only since 3.1.',
             );
@@ -162,6 +167,6 @@ final readonly class Schema extends AbstractConditionSchema
                 : $this->unevaluatedItems;
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

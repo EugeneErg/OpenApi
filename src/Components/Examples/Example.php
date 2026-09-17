@@ -6,6 +6,7 @@ namespace EugeneErg\OpenApi\Components\Examples;
 
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use stdClass;
 
@@ -18,12 +19,17 @@ use stdClass;
  */
 final readonly class Example
 {
+    public Extensions $extensions;
+
     public function __construct(
         public ?AbstractValue $value = null,
         public ?string $summary = null,
         public ?string $description = null,
         public ?string $externalValue = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         if ($value !== null && $externalValue !== null) {
             throw new InvalidArgumentOpenapiException(
                 'Example cannot have both value and externalValue: they are mutually exclusive.',
@@ -51,6 +57,6 @@ final readonly class Example
             $result['externalValue'] = $this->externalValue;
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

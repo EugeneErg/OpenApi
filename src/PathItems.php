@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi;
 
 use EugeneErg\OpenApi\Paths\Path;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
@@ -16,13 +17,37 @@ use stdClass;
  */
 readonly class PathItems
 {
-    /** @var array<string, Path|Reference> */
+    use NamedItems {
+        fromArray as private fromNamedArray;
+    }
+
+    /** @var array<array-key, Path|Reference> */
     public array $items;
 
-    public function __construct(Path|Reference ...$paths)
+    public Extensions $extensions;
+
+    /**
+     * Расширения есть у Paths Object и Callback Object. В webhooks и
+     * components.pathItems это обычная карта, и там они отклоняются.
+     */
+    public function __construct(?Extensions $extensions = null, Path|Reference ...$paths)
     {
-        /** @var array<string, Path|Reference> $paths */
-        $this->items = $paths;
+        $this->items = self::named($paths);
+        $this->extensions = $extensions ?? new Extensions();
+    }
+
+    /**
+     * Карта с любыми именами, включая `{$request.body#/url}`, и расширениями `x-*`.
+     *
+     * Имя, совпадающее с «extensions», можно передать только так: именованным
+     * аргументом оно попало бы в параметр расширений.
+     *
+     * @param array<array-key, mixed> $items
+     */
+    public static function fromArray(array $items, ?Extensions $extensions = null): static
+    {
+        /** @phpstan-ignore new.static */
+        return new static($extensions, ...self::marked($items));
     }
 
     /**
@@ -38,7 +63,7 @@ readonly class PathItems
                 : ($process->findPathItem($path) ?? $path->toObject($process));
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 
     /**

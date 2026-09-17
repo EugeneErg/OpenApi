@@ -5,7 +5,6 @@
             "title": "JSON Schema 2020-12",
             "version": "1.0.0"
         },
-        "paths": {},
         "components": {
             "schemas": {
                 "Card": {
@@ -129,10 +128,13 @@
                 },
                 "Status": {
                     "type": "string",
-                    "const": "active",
                     "examples": [
                         "active"
                     ]
+                },
+                "Active": {
+                    "type": "string",
+                    "const": "active"
                 }
             }
         }

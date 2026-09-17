@@ -25,12 +25,36 @@ $ping = new Paths\Path(
     ),
 );
 
+$pageQuery = new Components\Parameters\Query\SchemaParameter(
+    schema: new Schemas\Integer\Schema(),
+    description: 'Component level page.',
+);
+
+$upload = new RequestBodies\RequestBody(
+    content: new RequestBodies\Contents(...[
+        'application/json' => new RequestBodies\Content(schema: new Schemas\String\Schema()),
+    ]),
+    description: 'Component level body.',
+);
+
+// Callback Object — карта runtime-выражений; как компонент он адресуется ссылкой
+$onEvent = PathItems::fromArray([
+    '{$request.body#/callbackUrl}' => new Paths\Path(
+        post: new Paths\Operation(
+            responses: new Responses(x204: new Responses\Response(description: 'Accepted.')),
+        ),
+    ),
+]);
+
 $openapi = new Openapi(
     info: new Info(title: 'References', version: '1.0.0'),
     components: new Components(
         responses: new Responses(NotFound: $notFound),
         examples: new Examples(Sample: $sample),
         pathItems: new PathItems(Ping: $ping),
+        requestBodies: new RequestBodies(Upload: $upload),
+        parameters: new Components\Parameters(page: new Components\Parameters\Parameter(name: 'page', parameter: $pageQuery)),
+        callbacks: new Components\Callbacks(onEvent: $onEvent),
     ),
     paths: new Paths(...[
         // тот же объект: без Reference — голый $ref, с Reference — с переопределением
@@ -53,6 +77,26 @@ $openapi = new Openapi(
                     x500: $notFound,
                 ),
                 id: 'getUser',
+            ),
+            post: new Paths\Operation(
+                responses: new Responses(x201: new Responses\Response(description: 'Created.')),
+                id: 'createUser',
+                requestBody: new Reference($upload, description: 'A user to create.'),
+                callbacks: new Components\Callbacks(onCreated: $onEvent),
+                parameters: new Components\Parameters\Parameters(
+                    queries: new Components\Parameters\Query\Queries($pageQuery),
+                ),
+            ),
+            put: new Paths\Operation(
+                responses: new Responses(x200: new Responses\Response(description: 'Replaced.')),
+                id: 'replaceUser',
+                requestBody: $upload,
+                // имя параметра берётся из объявления компонента, поэтому его здесь не передают
+                parameters: new Components\Parameters\Parameters(
+                    queries: new Components\Parameters\Query\Queries(
+                        new Reference($pageQuery, description: 'Overridden at use site.'),
+                    ),
+                ),
             ),
         ),
         '/health' => new Reference($ping, summary: 'Liveness probe'),

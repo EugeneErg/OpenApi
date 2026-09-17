@@ -7,17 +7,19 @@ namespace EugeneErg\OpenApi\Components;
 use EugeneErg\OpenApi\PathItems;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Reference;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class Callbacks
 {
-    /** @var array<string, PathItems|Reference> */
+    use NamedItems;
+
+    /** @var array<array-key, PathItems|Reference> */
     public array $items;
 
     public function __construct(PathItems|Reference ...$paths)
     {
-        /** @var array<string, PathItems|Reference> $paths */
-        $this->items = $paths;
+        $this->items = self::named($paths);
     }
 
     public function toObject(Process $process): stdClass

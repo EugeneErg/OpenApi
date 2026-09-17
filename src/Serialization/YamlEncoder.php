@@ -65,6 +65,14 @@ final readonly class YamlEncoder implements EncoderInterface
             if ($value instanceof stdClass || is_array($value)) {
                 $block = $this->block($value, $level + 1);
 
+                // пустую карту и пустой список нужно записать явно, иначе после дефиса
+                // не окажется значения и следующая строка прилипнет к нему
+                if ($block === '') {
+                    $result .= $indent . '-' . $this->value($value, $level);
+
+                    continue;
+                }
+
                 // первый ключ элемента ставится на одну строку с дефисом
                 $result .= $indent . '- ' . ltrim($block);
 

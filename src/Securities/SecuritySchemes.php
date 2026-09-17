@@ -8,28 +8,38 @@ use EugeneErg\OpenApi\Components\SecuritySchemes\AbstractSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\Scope;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Serialization\Structure;
+use EugeneErg\OpenApi\Support\ListedItems;
 use stdClass;
 
 /**
- * Каждая строка это ссылка на components.securitySchemes.{name}
- * значения, это ссылки на components.securitySchemes.{name}.flows.*.scopes.{scope}.
+ * Одно Security Requirement: все перечисленные схемы требуются одновременно.
+ *
+ * Схема без уточнений даёт `{name: []}`, Scope — скоуп oauth2-схемы,
+ * ScopeName — скоуп, названный именем, Role — роль любой другой схемы (3.1).
+ * Пустой набор даёт `{}`: так спецификация разрешает анонимный доступ.
  */
 final readonly class SecuritySchemes
 {
-    /** @var array<AbstractSecurityScheme|Scope> */
+    use ListedItems;
+
+    /** @var array<AbstractSecurityScheme|Role|Scope|ScopeName> */
     public array $items;
 
-    public function __construct(AbstractSecurityScheme|Scope ...$scopes)
+    public function __construct(AbstractSecurityScheme|Role|Scope|ScopeName ...$scopes)
     {
-        $this->items = $scopes;
+        $this->items = self::listed($scopes);
     }
 
     public function toObject(Process $process): stdClass
     {
+        /** @var array<string, list<string>> $result */
         $result = [];
 
         foreach ($this->items as $scopeOrScheme) {
-            $result = array_merge_recursive($result, Structure::vars($scopeOrScheme->toTargetArray($process)));
+            foreach (Structure::vars($scopeOrScheme->toTargetArray($process)) as $name => $names) {
+                /** @var list<string> $names */
+                $result[(string) $name] = array_values(array_unique([...$result[(string) $name] ?? [], ...$names]));
+            }
         }
 
         return (object) $result;

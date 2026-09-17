@@ -7,19 +7,26 @@ namespace EugeneErg\OpenApi\Components\Schemas\Untyped;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractConditionSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
+use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Serialization\Structure;
+use stdClass;
+
+use function count;
+use function is_array;
 
 final readonly class Schema extends AbstractConditionSchema
 {
     public function __construct(
         ?string $title = null,
         ?string $description = null,
+        ?string $format = null,
         bool $nullable = false,
         ?Access $access = null,
         bool $deprecated = false,
@@ -32,7 +39,6 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractSchema $not = null,
         ?Value $example = null,
         ?Discriminator $discriminator = null,
-        ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
         ?string $comment = null,
         ?AbstractSchemas $defs = null,
@@ -44,9 +50,11 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
+        ?Extensions $extensions = null,
     ) {
         parent::__construct(
             null,
+            $format,
             $title,
             $description,
             $nullable,
@@ -61,7 +69,6 @@ final readonly class Schema extends AbstractConditionSchema
             $not,
             $example,
             $discriminator,
-            $const,
             $examples,
             $comment,
             $defs,
@@ -73,6 +80,23 @@ final readonly class Schema extends AbstractConditionSchema
             $if,
             $then,
             $else,
+            $extensions,
         );
+    }
+
+    public function toObject(Process $process): stdClass
+    {
+        $result = parent::toObject($process);
+
+        // схема из одного allOf с единственным элементом — это сам элемент
+        if (array_keys(Structure::vars($result)) === ['allOf'] && is_array($result->allOf) && count($result->allOf) === 1) {
+            foreach ($result->allOf as $single) {
+                if ($single instanceof stdClass) {
+                    return $single;
+                }
+            }
+        }
+
+        return (object) $this->extensions->appendTo($result);
     }
 }

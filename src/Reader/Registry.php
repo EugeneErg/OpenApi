@@ -9,6 +9,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\DeferredSchema;
 use EugeneErg\OpenApi\Components\SecuritySchemes\AbstractSecurityScheme;
 use EugeneErg\OpenApi\Exceptions\InvalidDocumentOpenapiException;
+use EugeneErg\OpenApi\Paths\DeferredOperation;
 use EugeneErg\OpenApi\Paths\Operation;
 use EugeneErg\OpenApi\Tags\Tag;
 use stdClass;
@@ -50,6 +51,16 @@ final class Registry
         return $clone;
     }
 
+    /**
+     * В 3.1 `$ref` в схеме — обычное ключевое слово, в 3.0 соседи `$ref` не действуют.
+     */
+    public function isV31(): bool
+    {
+        $version = ($this->documents[$this->currentFile] ?? new Node(null))->get('openapi')->stringOrNull();
+
+        return $version !== null && str_starts_with($version, '3.1.');
+    }
+
     public function currentFile(): string
     {
         return $this->currentFile;
@@ -78,7 +89,7 @@ final class Registry
      * Операция — обычный объект, а не отложенная ссылка, поэтому взаимные ссылки
      * между двумя операциями представить нельзя; о таком цикле сообщается явно.
      */
-    public function operation(Node $link): Operation
+    public function operation(Node $link): DeferredOperation|Operation
     {
         $id = $link->get('operationId')->stringOrNull();
         $ref = $link->get('operationRef')->stringOrNull();
@@ -92,11 +103,12 @@ final class Registry
             throw $link->unexpected('either operationId or operationRef');
         }
 
-        $result = $this->resolve($pointer);
+        // операция может ссылаться на саму себя — так описана пагинация
+        if (isset($this->references->building[$pointer])) {
+            return new DeferredOperation(fn (): Operation => $this->builtOperation($pointer));
+        }
 
-        return $result instanceof Operation
-            ? $result
-            : throw new InvalidDocumentOpenapiException(sprintf('"%s" is not an operation.', $pointer));
+        return $this->builtOperation($pointer);
     }
 
     public function declareTag(string $name, Tag $tag): void
@@ -115,7 +127,19 @@ final class Registry
 
     public function securityScheme(string $name, Node $at): AbstractSecurityScheme
     {
-        $result = $this->resolve($this->currentFile . '#/components/securitySchemes/' . $name);
+        $pointer = $this->currentFile . '#/components/securitySchemes/' . $name;
+
+        if (!$this->has($pointer)) {
+            // единственное, чего спецификация требует от Security Requirement:
+            // сообщение говорит о самой схеме, а не о типе значения рядом с ней
+            throw new InvalidDocumentOpenapiException(sprintf(
+                '%s: security scheme "%s" is not declared in components.securitySchemes.',
+                $at->path === '' ? 'Document root' : $at->path,
+                $name,
+            ));
+        }
+
+        $result = $this->resolve($pointer);
 
         return $result instanceof AbstractSecurityScheme
             ? $result
@@ -260,6 +284,15 @@ final class Registry
     public function document(string $fileName): Node
     {
         return $this->documents[$fileName] ?? new Node(new stdClass(), $fileName);
+    }
+
+    private function builtOperation(string $pointer): Operation
+    {
+        $result = $this->resolve($pointer);
+
+        return $result instanceof Operation
+            ? $result
+            : throw new InvalidDocumentOpenapiException(sprintf('"%s" is not an operation.', $pointer));
     }
 
     private function schema(string $pointer): AbstractSchema

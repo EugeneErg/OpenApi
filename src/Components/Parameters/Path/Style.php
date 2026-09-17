@@ -6,7 +6,7 @@ namespace EugeneErg\OpenApi\Components\Parameters\Path;
 
 enum Style: string
 {
-    case matrix = 'matrix';
+    case Matrix = 'matrix';
     case Label = 'label';
     case Simple = 'simple';
 }

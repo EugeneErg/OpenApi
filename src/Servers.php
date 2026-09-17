@@ -5,16 +5,19 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi;
 
 use EugeneErg\OpenApi\Servers\Server;
+use EugeneErg\OpenApi\Support\ListedItems;
 use stdClass;
 
 final readonly class Servers
 {
+    use ListedItems;
+
     /** @var array<Server> */
     public array $items;
 
     public function __construct(Server ...$servers)
     {
-        $this->items = $servers;
+        $this->items = self::listed($servers);
     }
 
     /**

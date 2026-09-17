@@ -5,17 +5,19 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components;
 
 use EugeneErg\OpenApi\Components\SecuritySchemes\AbstractSecurityScheme;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class SecuritySchemes
 {
-    /** @var array<string, AbstractSecurityScheme> */
+    use NamedItems;
+
+    /** @var array<array-key, AbstractSecurityScheme> */
     public array $items;
 
     public function __construct(AbstractSecurityScheme ...$securitySchemes)
     {
-        /** @var array<string, AbstractSecurityScheme> $securitySchemes */
-        $this->items = $securitySchemes;
+        $this->items = self::named($securitySchemes);
     }
 
     public function sourceToObject(): stdClass

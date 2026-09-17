@@ -6,6 +6,7 @@ namespace Tests;
 
 use EugeneErg\OpenApi\Serialization\YamlEncoder;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 /**
  * Кавычки ставятся не по вкусу, а по необходимости: лишние допустимы,
@@ -113,5 +114,35 @@ final class YamlEncoderTest extends TestCase
             YAML;
 
         self::assertSame($expected, (new YamlEncoder())->encode($document));
+    }
+
+    /**
+     * Пустая карта и пустой список в последовательности обязаны быть записаны явно:
+     * иначе после дефиса нет значения, и следующая строка прилипает к нему.
+     */
+    public function testEmptyContainersInsideSequence(): void
+    {
+        $document = (object) [
+            'security' => [(object) ['oauth' => ['read']], new stdClass()],
+            'list' => [[], new stdClass(), [1]],
+            'servers' => [(object) ['url' => 'https://example.com']],
+        ];
+
+        self::assertSame(
+            <<<'YAML'
+                security:
+                  - oauth:
+                      - read
+                  - {}
+                list:
+                  - []
+                  - {}
+                  - - 1
+                servers:
+                  - url: https://example.com
+
+                YAML,
+            (new YamlEncoder())->encode($document),
+        );
     }
 }

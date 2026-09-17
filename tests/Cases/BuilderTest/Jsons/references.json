@@ -37,6 +37,45 @@
                         }
                     },
                     "operationId": "getUser"
+                },
+                "put": {
+                    "responses": {
+                        "200": {
+                            "description": "Replaced."
+                        }
+                    },
+                    "operationId": "replaceUser",
+                    "parameters": [
+                        {
+                            "$ref": "#/components/parameters/page",
+                            "description": "Overridden at use site."
+                        }
+                    ],
+                    "requestBody": {
+                        "$ref": "#/components/requestBodies/Upload"
+                    }
+                },
+                "post": {
+                    "responses": {
+                        "201": {
+                            "description": "Created."
+                        }
+                    },
+                    "operationId": "createUser",
+                    "parameters": [
+                        {
+                            "$ref": "#/components/parameters/page"
+                        }
+                    ],
+                    "requestBody": {
+                        "$ref": "#/components/requestBodies/Upload",
+                        "description": "A user to create."
+                    },
+                    "callbacks": {
+                        "onCreated": {
+                            "$ref": "#/components/callbacks/onEvent"
+                        }
+                    }
                 }
             },
             "/health": {
@@ -50,10 +89,45 @@
                     "description": "Resource not found."
                 }
             },
+            "parameters": {
+                "page": {
+                    "description": "Component level page.",
+                    "schema": {
+                        "type": "integer"
+                    },
+                    "in": "query",
+                    "name": "page"
+                }
+            },
             "examples": {
                 "Sample": {
                     "summary": "Component level summary.",
                     "value": "abc-123"
+                }
+            },
+            "requestBodies": {
+                "Upload": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "description": "Component level body."
+                }
+            },
+            "callbacks": {
+                "onEvent": {
+                    "{$request.body#/callbackUrl}": {
+                        "post": {
+                            "responses": {
+                                "204": {
+                                    "description": "Accepted."
+                                }
+                            }
+                        }
+                    }
                 }
             },
             "pathItems": {

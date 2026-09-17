@@ -21,4 +21,9 @@ final readonly class OpenapiObject extends AbstractValues
 
         return (object) $result;
     }
+
+    protected static function isMap(): bool
+    {
+        return true;
+    }
 }

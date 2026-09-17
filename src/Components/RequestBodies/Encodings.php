@@ -5,17 +5,19 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\RequestBodies;
 
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class Encodings
 {
-    /** @var array<string, Encoding> */
+    use NamedItems;
+
+    /** @var array<array-key, Encoding> */
     public array $items;
 
     public function __construct(Encoding ...$encodings)
     {
-        /** @var array<string, Encoding> $encodings */
-        $this->items = $encodings;
+        $this->items = self::named($encodings);
     }
 
     public function toObject(Process $process): stdClass

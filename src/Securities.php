@@ -5,16 +5,19 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi;
 
 use EugeneErg\OpenApi\Securities\SecuritySchemes;
+use EugeneErg\OpenApi\Support\ListedItems;
 use stdClass;
 
 final readonly class Securities
 {
+    use ListedItems;
+
     /** @var SecuritySchemes[] */
     public array $items;
 
     public function __construct(SecuritySchemes ...$securities)
     {
-        $this->items = $securities;
+        $this->items = self::listed($securities);
     }
 
     /**

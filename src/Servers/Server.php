@@ -4,17 +4,23 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Servers;
 
+use EugeneErg\OpenApi\Extensions;
 use stdClass;
 
 final readonly class Server
 {
+    public Extensions $extensions;
+
     public Variables $variables;
 
     public function __construct(
         public string $url,
         public ?string $description = null,
         ?Variables $variables = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         $this->variables = $variables ?? new Variables();
     }
 
@@ -30,6 +36,6 @@ final readonly class Server
             $result['variables'] = $this->variables->toObject();
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

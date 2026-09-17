@@ -10,6 +10,7 @@ use EugeneErg\OpenApi\Components\Parameters\Abstract\AbstractSchemaParameter;
 use EugeneErg\OpenApi\Components\Parameters\ContentParameter;
 use EugeneErg\OpenApi\Components\Parameters\CustomParameter;
 use EugeneErg\OpenApi\Components\Parameters\Header\SchemaParameter as HeaderSchemaParameter;
+use EugeneErg\OpenApi\Components\Parameters\Parameter;
 use EugeneErg\OpenApi\Components\Parameters\Parameters as OperationParameters;
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
 use EugeneErg\OpenApi\Components\Responses\Response;
@@ -31,6 +32,8 @@ use function sprintf;
 
 final readonly class Openapi
 {
+    public Extensions $extensions;
+
     public Components $components;
     public Securities $security;
     public Tags $tags;
@@ -52,7 +55,10 @@ final readonly class Openapi
         public Version $version = Version::V303,
         public ?string $jsonSchemaDialect = null,
         ?PathItems $webhooks = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         if (!$version->isV31()) {
             self::assertNoV31Fields($version, [
                 'webhooks' => $webhooks !== null && $webhooks->items !== [],
@@ -65,6 +71,12 @@ final readonly class Openapi
         }
 
         $this->webhooks = $webhooks ?? new PathItems();
+
+        if ($this->webhooks->extensions->items !== []) {
+            throw new InvalidArgumentOpenapiException(
+                'webhooks is a plain map: its extensions belong to the OpenAPI object itself.',
+            );
+        }
         $this->paths = $paths ?? new Paths();
         $this->components = $components ?? new Components();
         $this->security = $security ?? new Securities();
@@ -81,8 +93,17 @@ final readonly class Openapi
         $result = [
             'openapi' => $this->version->value,
             'info' => $this->info->toObject(),
-            'paths' => $this->paths->toObject($process),
         ];
+
+        // в 3.1 paths необязательны, если есть webhooks или components;
+        // пустой объект в этом случае ничего не добавляет
+        if (
+            $this->paths->items !== []
+            || !$this->version->isV31()
+            || ($this->webhooks->items === [] && $this->components->isEmpty())
+        ) {
+            $result['paths'] = $this->paths->toObject($process);
+        }
 
         if ($this->jsonSchemaDialect !== null) {
             $result['jsonSchemaDialect'] = $this->jsonSchemaDialect;
@@ -112,7 +133,7 @@ final readonly class Openapi
             $result['servers'] = $this->servers->toArray();
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 
     public function findResponse(Response $value): ?string
@@ -167,7 +188,7 @@ final readonly class Openapi
             $searchName = array_search($operation, $path->operations, true);
 
             if ($searchName !== false) {
-                return self::quotePath($pathName) . '/' . self::quotePath($searchName);
+                return self::quotePath((string) $pathName) . '/' . self::quotePath($searchName);
             }
         }
 
@@ -176,27 +197,18 @@ final readonly class Openapi
 
     public function findParameter(AbstractSchemaParameter|CustomParameter $value): ?string
     {
-        if ($value instanceof CustomParameter) {
-            foreach ($this->components->parameters->items as $searchName => $parameter) {
-                if (
-                    $parameter->parameter instanceof CustomParameter
-                    && $value->in === $parameter->parameter->in
-                    && $value->contentParameter === $parameter->parameter->contentParameter
-                ) {
-                    return self::quotePath($searchName);
-                }
-            }
+        $found = $this->parameterComponent($value);
 
-            return null;
-        }
+        return $found === null ? null : self::quotePath($found[0]);
+    }
 
-        foreach ($this->components->parameters->items as $searchName => $parameter) {
-            if ($parameter->parameter === $value) {
-                return self::quotePath($searchName);
-            }
-        }
-
-        return null;
+    /**
+     * Имя, под которым параметр объявлен в components. Рядом с `$ref` его не пишут,
+     * но проверка на повторы в списке параметров сравнивает именно имена.
+     */
+    public function findParameterName(AbstractSchemaParameter|CustomParameter $value): ?string
+    {
+        return $this->parameterComponent($value)[1]->name ?? null;
     }
 
     /**
@@ -235,6 +247,27 @@ final readonly class Openapi
         }
 
         return (string) $name;
+    }
+
+    /**
+     * @return null|array{string, Parameter} имя в components и само объявление
+     */
+    private function parameterComponent(AbstractSchemaParameter|CustomParameter $value): ?array
+    {
+        foreach ($this->components->parameters->items as $searchName => $parameter) {
+            $declared = $parameter->parameter;
+            $same = $value instanceof CustomParameter
+                ? $declared instanceof CustomParameter
+                    && $value->in === $declared->in
+                    && $value->contentParameter === $declared->contentParameter
+                : $declared === $value;
+
+            if ($same) {
+                return [(string) $searchName, $parameter];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -336,8 +369,10 @@ final readonly class Openapi
             $expected = Paths::templateVariables($template);
             $shared = self::namesOf($path->parameters, $names);
 
+            // Пустой Path Item (например, скрытый ACL) по спецификации может не объявлять
+            // параметры шаблона, но объявленные всё равно обязаны в нём встречаться.
             if ($path->operations === []) {
-                self::assertMatches($template, null, $expected, $shared);
+                self::assertMatches($template, null, $expected, $shared, requireAll: false);
 
                 continue;
             }
@@ -364,6 +399,13 @@ final readonly class Openapi
             $result[] = $names[spl_object_id($parameter)] ?? (string) $key;
         }
 
+        foreach ($parameters->paths->registered as $parameter) {
+            $result[] = $names[spl_object_id($parameter)] ?? throw new InvalidPathOpenapiException(
+                'A path parameter was passed without a name, but it is not registered in components.parameters: '
+                . 'pass it by name, or register it so the name comes from the registration.',
+            );
+        }
+
         return $result;
     }
 
@@ -371,13 +413,18 @@ final readonly class Openapi
      * @param list<string> $expected
      * @param list<string> $declared
      */
-    private static function assertMatches(string $template, ?string $method, array $expected, array $declared): void
-    {
+    private static function assertMatches(
+        string $template,
+        ?string $method,
+        array $expected,
+        array $declared,
+        bool $requireAll = true,
+    ): void {
         $where = $method === null
             ? sprintf('Path %s', $template)
             : sprintf('Operation %s %s', strtoupper($method), $template);
 
-        $missing = array_diff($expected, $declared);
+        $missing = $requireAll ? array_diff($expected, $declared) : [];
 
         if ($missing !== []) {
             throw new InvalidPathOpenapiException(sprintf(

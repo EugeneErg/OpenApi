@@ -13,6 +13,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 
 final readonly class Schema extends AbstractConditionSchema
@@ -20,6 +21,7 @@ final readonly class Schema extends AbstractConditionSchema
     public function __construct(
         ?string $title = null,
         ?string $description = null,
+        ?string $format = null,
         bool $nullable = false,
         ?Access $access = null,
         bool $deprecated = false,
@@ -32,7 +34,6 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractSchema $not = null,
         ?AbstractValue $example = null,
         ?Discriminator $discriminator = null,
-        ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
         ?string $comment = null,
         ?AbstractSchemas $defs = null,
@@ -44,9 +45,11 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
+        ?Extensions $extensions = null,
     ) {
         parent::__construct(
             'boolean',
+            $format,
             $title,
             $description,
             $nullable,
@@ -61,7 +64,6 @@ final readonly class Schema extends AbstractConditionSchema
             $not,
             $example,
             $discriminator,
-            $const,
             $examples,
             $comment,
             $defs,
@@ -73,6 +75,7 @@ final readonly class Schema extends AbstractConditionSchema
             $if,
             $then,
             $else,
+            $extensions,
         );
     }
 }

@@ -7,17 +7,19 @@ namespace EugeneErg\OpenApi\Components;
 use EugeneErg\OpenApi\Components\Examples\Example;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Reference;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class Examples
 {
-    /** @var array<string, Example|Reference> */
+    use NamedItems;
+
+    /** @var array<array-key, Example|Reference> */
     public array $items;
 
     public function __construct(Example|Reference ...$examples)
     {
-        /** @var array<string, Example|Reference> $examples */
-        $this->items = $examples;
+        $this->items = self::named($examples);
     }
 
     /**

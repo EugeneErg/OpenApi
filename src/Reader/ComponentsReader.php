@@ -38,6 +38,7 @@ use EugeneErg\OpenApi\Components\SecuritySchemes\AbstractSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\ApiKeySecurity;
 use EugeneErg\OpenApi\Components\SecuritySchemes\BasicHttpSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\BearerHttpSecurityScheme;
+use EugeneErg\OpenApi\Components\SecuritySchemes\HttpSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\MutualTlsSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows;
@@ -91,6 +92,7 @@ final readonly class ComponentsReader
             summary: $node->get('summary')->stringOrNull(),
             description: $node->get('description')->stringOrNull(),
             externalValue: $node->get('externalValue')->stringOrNull(),
+            extensions: $node->extensions(),
         );
     }
 
@@ -102,16 +104,18 @@ final readonly class ComponentsReader
             $items[$name] = $this->withOverrides($item, $this->example($item));
         }
 
-        return $items === [] ? null : new Examples(...$items);
+        return $items === [] ? null : Examples::fromArray($items);
     }
 
-    public function content(Node $node): Content
+    public function content(Node $node, string $mediaType): Content
     {
         return new Content(
             schema: $node->has('schema') ? $this->schemas->read($node->get('schema')) : null,
             example: $this->schemas->readValue($node->get('example')),
             examples: $this->examples($node->get('examples')),
-            encoding: $this->encodings($node->get('encoding')),
+            // у других типов encoding ничего не меняет
+            encoding: Contents::acceptsEncoding($mediaType) ? $this->encodings($node->get('encoding')) : null,
+            extensions: $node->extensions(),
         );
     }
 
@@ -120,10 +124,10 @@ final readonly class ComponentsReader
         $items = [];
 
         foreach ($node->map() as $mimeType => $item) {
-            $items[$mimeType] = $this->content($item);
+            $items[$mimeType] = $this->content($item, (string) $mimeType);
         }
 
-        return $items === [] ? null : new Contents(...$items);
+        return $items === [] ? null : Contents::fromArray($items);
     }
 
     public function requestBody(Node $node): RequestBody
@@ -137,6 +141,15 @@ final readonly class ComponentsReader
         return $this->buildRequestBody($node);
     }
 
+    /**
+     * Тело запроса операции: сам объект либо ссылка на компонент, у которой
+     * в 3.1 может быть своё описание.
+     */
+    public function operationRequestBody(Node $node): Reference|RequestBody
+    {
+        return $this->withOverrides($node, $this->requestBody($node));
+    }
+
     public function buildRequestBody(Node $node): RequestBody
     {
         if ($node->has('$ref')) {
@@ -148,6 +161,7 @@ final readonly class ComponentsReader
                 ?? throw $node->get('content')->unexpected('at least one media type'),
             required: $node->get('required')->boolOr(false),
             description: $node->get('description')->stringOrNull(),
+            extensions: $node->extensions(),
         );
     }
 
@@ -173,6 +187,7 @@ final readonly class ComponentsReader
             headers: $this->headers($node->get('headers')),
             content: $this->contents($node->get('content')),
             links: $this->links($node->get('links')),
+            extensions: $node->extensions(),
         );
     }
 
@@ -180,15 +195,11 @@ final readonly class ComponentsReader
     {
         $items = [];
 
-        foreach ($node->map() as $code => $item) {
-            // PHP приводит числовой ключ массива к int, и распаковка стала бы позиционной,
-            // поэтому код пишется с тем же префиксом x, который Responses снимает при сборке
-            $code = (string) $code;
-            $items[preg_match('{^(?:\d{3}|\dXX)$}', $code) === 1 ? 'x' . $code : $code]
-                = $this->withOverrides($item, $this->response($item));
+        foreach ($node->extensibleMap() as $code => $item) {
+            $items[$code] = $this->withOverrides($item, $this->response($item));
         }
 
-        return new Responses(...$items);
+        return Responses::fromArray($items, $node->extensions());
     }
 
     public function headers(Node $node): ?Headers
@@ -199,7 +210,7 @@ final readonly class ComponentsReader
             $items[$name] = $this->withOverrides($item, $this->header($item));
         }
 
-        return $items === [] ? null : new Headers(...$items);
+        return $items === [] ? null : Headers::fromArray($items);
     }
 
     public function header(Node $node): ContentParameter|Header\SchemaParameter
@@ -235,6 +246,7 @@ final readonly class ComponentsReader
             description: $node->get('description')->stringOrNull(),
             required: $node->get('required')->boolOr(false),
             deprecated: $node->get('deprecated')->boolOr(false),
+            extensions: $node->extensions(),
         );
     }
 
@@ -263,10 +275,11 @@ final readonly class ComponentsReader
 
         return new Link(
             operation: $this->registry->operation($node),
-            parameters: $parameters === [] ? null : new LinkParameters(...$parameters),
+            parameters: $parameters === [] ? null : LinkParameters::fromArray($parameters),
             requestBody: $node->has('requestBody') ? $this->requestBody($node->get('requestBody')) : null,
             description: $node->get('description')->stringOrNull(),
             server: $this->server($node->get('server')),
+            extensions: $node->extensions(),
         );
     }
 
@@ -278,7 +291,7 @@ final readonly class ComponentsReader
             $items[$name] = $this->withOverrides($item, $this->link($item));
         }
 
-        return $items === [] ? null : new Links(...$items);
+        return $items === [] ? null : Links::fromArray($items);
     }
 
     public function callbacks(Node $node, PathsReader $paths): ?Callbacks
@@ -286,10 +299,31 @@ final readonly class ComponentsReader
         $items = [];
 
         foreach ($node->map() as $expression => $item) {
-            $items[$expression] = $paths->pathItems($item);
+            $items[$expression] = $this->withOverrides($item, $this->callback($item, $paths));
         }
 
-        return $items === [] ? null : new Callbacks(...$items);
+        return $items === [] ? null : Callbacks::fromArray($items);
+    }
+
+    /**
+     * Значение в callbacks — сам Callback Object либо ссылка на него.
+     *
+     * Ключи Callback Object — runtime-выражения, поэтому `$ref` здесь нельзя
+     * разбирать как выражение: иначе ссылка стала бы именем обратного вызова.
+     */
+    public function callback(Node $node, PathsReader $paths): PathItems
+    {
+        $registered = $this->registered($node);
+
+        if ($registered instanceof PathItems) {
+            return $registered;
+        }
+
+        if ($node->has('$ref')) {
+            return $this->referenced($node, PathItems::class);
+        }
+
+        return $paths->callback($node);
     }
 
     /**
@@ -306,28 +340,32 @@ final readonly class ComponentsReader
         foreach ($node->list() as $item) {
             [$in, $name, $parameter] = $this->parameter($item);
 
+            // контейнер выбирается по самому параметру, а храниться может ссылка
+            // на него: у ссылки в 3.1 бывает своё описание
+            $stored = $this->withOverrides($item, $parameter);
+
             if ($parameter instanceof ContentParameter) {
                 if ($in === In::Header) {
-                    $headers[$name] = $parameter;
+                    $headers[$name] = $stored;
                 } elseif ($in === In::Cookie) {
-                    $cookies[$name] = $parameter;
+                    $cookies[$name] = $stored;
                 } elseif ($in === In::Path) {
-                    $paths[$name] = $parameter;
+                    $paths[$name] = $stored;
                 } else {
-                    $queries[$name] = $parameter;
+                    $queries[$name] = $stored;
                 }
 
                 continue;
             }
 
             if ($parameter instanceof Header\SchemaParameter) {
-                $headers[$name] = $parameter;
+                $headers[$name] = $stored;
             } elseif ($parameter instanceof Cookie\SchemaParameter) {
-                $cookies[$name] = $parameter;
+                $cookies[$name] = $stored;
             } elseif ($parameter instanceof Path\SchemaParameter) {
-                $paths[$name] = $parameter;
+                $paths[$name] = $stored;
             } else {
-                $queries[$name] = $parameter;
+                $queries[$name] = $stored;
             }
         }
 
@@ -336,10 +374,10 @@ final readonly class ComponentsReader
         }
 
         return new OperationParameters(
-            headers: $headers === [] ? null : new Header\Headers(...$headers),
-            cookies: $cookies === [] ? null : new Cookie\Cookies(...$cookies),
-            paths: $paths === [] ? null : new Path\Paths(...$paths),
-            queries: $queries === [] ? null : new Query\Queries(...$queries),
+            headers: $headers === [] ? null : Header\Headers::fromArray($headers),
+            cookies: $cookies === [] ? null : Cookie\Cookies::fromArray($cookies),
+            paths: $paths === [] ? null : Path\Paths::fromArray($paths),
+            queries: $queries === [] ? null : Query\Queries::fromArray($queries),
         );
     }
 
@@ -384,12 +422,16 @@ final readonly class ComponentsReader
             'examples' => $this->examples($node->get('examples')),
             'description' => $node->get('description')->stringOrNull(),
             'deprecated' => $node->get('deprecated')->boolOr(false),
+            'extensions' => $node->extensions(),
         ];
+
+        // explode не задан — значение по умолчанию зависит от стиля, и его знает сам параметр
+        $explode = $node->has('explode') ? $node->get('explode')->bool() : null;
 
         return [$in, $name, match ($in) {
             In::Query => new Query\SchemaParameter(
                 ...$shared,
-                explode: $node->has('explode') ? $node->get('explode')->bool() : null,
+                explode: $explode,
                 allowEmptyValue: $node->get('allowEmptyValue')->boolOr(false),
                 allowReserved: $node->get('allowReserved')->boolOr(false),
                 required: $node->get('required')->boolOr(false),
@@ -397,17 +439,17 @@ final readonly class ComponentsReader
             ),
             In::Path => new Path\SchemaParameter(
                 ...$shared,
-                explode: $node->get('explode')->boolOr(false),
+                explode: $explode,
                 style: $this->style(Path\Style::class, $node) ?? Path\Style::Simple,
             ),
             In::Header => new Header\SchemaParameter(
                 ...$shared,
-                explode: $node->get('explode')->boolOr(false),
+                explode: $explode,
                 required: $node->get('required')->boolOr(false),
             ),
             In::Cookie => new Cookie\SchemaParameter(
                 ...$shared,
-                explode: $node->get('explode')->boolOr(false),
+                explode: $explode,
                 required: $node->get('required')->boolOr(false),
             ),
         }];
@@ -443,7 +485,7 @@ final readonly class ComponentsReader
             $items[$key] = $this->parameterComponent($item);
         }
 
-        return $items === [] ? null : new ParameterComponents(...$items);
+        return $items === [] ? null : ParameterComponents::fromArray($items);
     }
 
     public function requestBodies(Node $node): ?RequestBodies
@@ -454,7 +496,7 @@ final readonly class ComponentsReader
             $items[$name] = $this->requestBody($item);
         }
 
-        return $items === [] ? null : new RequestBodies(...$items);
+        return $items === [] ? null : RequestBodies::fromArray($items);
     }
 
     public function securitySchemes(Node $node): ?SecuritySchemes
@@ -465,7 +507,7 @@ final readonly class ComponentsReader
             $items[$name] = $this->securityScheme($item);
         }
 
-        return $items === [] ? null : new SecuritySchemes(...$items);
+        return $items === [] ? null : SecuritySchemes::fromArray($items);
     }
 
     public function securityScheme(Node $node): AbstractSecurityScheme
@@ -489,13 +531,29 @@ final readonly class ComponentsReader
                 in: ApiKeySecurity\In::tryFrom($node->get('in')->string())
                     ?? throw $node->get('in')->unexpected('header, query or cookie'),
                 description: $description,
+                extensions: $node->extensions(),
             ),
-            'http' => $node->get('scheme')->string() === 'bearer'
-                ? new BearerHttpSecurityScheme($node->get('bearerFormat')->stringOrNull(), $description)
-                : new BasicHttpSecurityScheme($description),
-            'oauth2' => new Oauth2Security\Scheme($this->flows($node->get('flows')), $description),
-            'openIdConnect' => new OpenIdConnectSecurityScheme($node->get('openIdConnectUrl')->string(), $description),
-            'mutualTLS' => new MutualTlsSecurityScheme($description),
+            // имя HTTP-схемы регистронезависимо (RFC 7235): Bearer и bearer — одно и то же
+            'http' => match (strtolower($scheme = $node->get('scheme')->string())) {
+                'bearer' => new BearerHttpSecurityScheme(
+                    $node->get('bearerFormat')->stringOrNull(),
+                    $description,
+                    $node->extensions(),
+                ),
+                'basic' => new BasicHttpSecurityScheme($description, $node->extensions()),
+                default => new HttpSecurityScheme($scheme, $description, $node->extensions()),
+            },
+            'oauth2' => new Oauth2Security\Scheme(
+                $this->flows($node->get('flows')),
+                $description,
+                $node->extensions(),
+            ),
+            'openIdConnect' => new OpenIdConnectSecurityScheme(
+                $node->get('openIdConnectUrl')->string(),
+                $description,
+                $node->extensions(),
+            ),
+            'mutualTLS' => new MutualTlsSecurityScheme($description, $node->extensions()),
             default => throw $node->get('type')->unexpected('a known security scheme type'),
         };
     }
@@ -515,13 +573,15 @@ final readonly class ComponentsReader
                 default: $variable->get('default')->string(),
                 enum: $enum->isMissing() ? null : new Strings(...$enum->strings()),
                 description: $variable->get('description')->stringOrNull(),
+                extensions: $variable->extensions(),
             );
         }
 
         return new Server(
             url: $node->get('url')->string(),
             description: $node->get('description')->stringOrNull(),
-            variables: $variables === [] ? null : new Variables(...$variables),
+            variables: $variables === [] ? null : Variables::fromArray($variables),
+            extensions: $node->extensions(),
         );
     }
 
@@ -574,17 +634,20 @@ final readonly class ComponentsReader
             tokenUrl: $password->get('tokenUrl')->string(),
             scopes: $this->scopes($password->get('scopes')),
             refreshUrl: $password->get('refreshUrl')->stringOrNull(),
+            extensions: $password->extensions(),
         );
         $clientFlow = $clientCredentials->isMissing() ? null : new ClientCredentialsFlow(
             tokenUrl: $clientCredentials->get('tokenUrl')->string(),
             scopes: $this->scopes($clientCredentials->get('scopes')),
             refreshUrl: $clientCredentials->get('refreshUrl')->stringOrNull(),
+            extensions: $clientCredentials->extensions(),
         );
         $codeFlow = $authorizationCode->isMissing() ? null : new AuthorizationCodeFlow(
             authorizationUrl: $authorizationCode->get('authorizationUrl')->string(),
             tokenUrl: $authorizationCode->get('tokenUrl')->string(),
             scopes: $this->scopes($authorizationCode->get('scopes')),
             refreshUrl: $authorizationCode->get('refreshUrl')->stringOrNull(),
+            extensions: $authorizationCode->extensions(),
         );
 
         if (!$implicit->isMissing()) {
@@ -593,23 +656,26 @@ final readonly class ComponentsReader
                     authorizationUrl: $implicit->get('authorizationUrl')->string(),
                     scopes: $this->scopes($implicit->get('scopes')),
                     refreshUrl: $implicit->get('refreshUrl')->stringOrNull(),
+                    extensions: $implicit->extensions(),
                 ),
                 $passwordFlow,
                 $clientFlow,
                 $codeFlow,
+                $node->extensions(),
             );
         }
 
         if ($passwordFlow !== null) {
-            return Flows::createPassword($passwordFlow, $clientFlow, $codeFlow);
+            return Flows::createPassword($passwordFlow, $clientFlow, $codeFlow, $node->extensions());
         }
 
         if ($clientFlow !== null) {
-            return Flows::createClientCredentials($clientFlow, $codeFlow);
+            return Flows::createClientCredentials($clientFlow, $codeFlow, $node->extensions());
         }
 
         return Flows::createAuthorizationCode(
             $codeFlow ?? throw $node->unexpected('at least one oauth2 flow'),
+            $node->extensions(),
         );
     }
 
@@ -621,7 +687,7 @@ final readonly class ComponentsReader
             $items[$name] = new Scope($item->string());
         }
 
-        return new Scopes(...$items);
+        return Scopes::fromArray($items);
     }
 
     private function encodings(Node $node): ?Encodings
@@ -631,14 +697,15 @@ final readonly class ComponentsReader
         foreach ($node->map() as $property => $item) {
             $items[$property] = new Encoding(
                 contentType: $item->get('contentType')->stringOrNull(),
-                explode: $item->get('explode')->boolOr(false),
-                allowReserved: $item->get('allowReserved')->boolOr(false),
-                style: $this->style(EncodingStyle::class, $item) ?? EncodingStyle::Form,
+                explode: $item->has('explode') ? $item->get('explode')->bool() : null,
+                allowReserved: $item->has('allowReserved') ? $item->get('allowReserved')->bool() : null,
+                style: $this->style(EncodingStyle::class, $item),
                 headers: $this->headers($item->get('headers')),
+                extensions: $item->extensions(),
             );
         }
 
-        return $items === [] ? null : new Encodings(...$items);
+        return $items === [] ? null : Encodings::fromArray($items);
     }
 
     private function contentParameter(Node $node): ContentParameter
@@ -654,10 +721,11 @@ final readonly class ComponentsReader
     {
         return new ContentParameter(
             mimeType: $mimeType,
-            content: $this->content($media),
+            content: $this->content($media, $mimeType),
             description: $node->get('description')->stringOrNull(),
             required: $node->get('required')->boolOr(false),
             deprecated: $node->get('deprecated')->boolOr(false),
+            extensions: $node->extensions(),
         );
     }
 

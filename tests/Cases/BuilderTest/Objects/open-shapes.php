@@ -25,6 +25,12 @@ $subscription = new Schemas\Object\Schema(
     declareType: false,
 );
 
+// проверка живёт и без объявленного типа: значению другого типа она не помеха
+$longEnough = new Schemas\String\Schema(minLength: 3, declareType: false);
+$even = new Schemas\Number\Schema(multipleOf: 2, declareType: false);
+// в 3.0 items обязателен только при объявленном type: array
+$unique = new Schemas\Array\Schema(uniqueItems: true, declareType: false);
+
 // пример-значение содержит вложенный список объектов
 $versions = new Schemas\Object\Value(new Schemas\Object\OpenapiObject(
     versions: new Schemas\Untyped\Values(
@@ -36,7 +42,13 @@ $versions = new Schemas\Object\Value(new Schemas\Object\OpenapiObject(
 $openapi = new Openapi(
     info: new Info(title: 'Open shapes', version: '1.0.0'),
     components: new Components(
-        schemas: new Schemas\Untyped\Schemas(UriRef: $uriRef, Subscription: $subscription),
+        schemas: new Schemas\Untyped\Schemas(
+            UriRef: $uriRef,
+            Subscription: $subscription,
+            LongEnough: $longEnough,
+            Even: $even,
+            Unique: $unique,
+        ),
     ),
     paths: new Paths(...[
         '/streams' => new Paths\Path(

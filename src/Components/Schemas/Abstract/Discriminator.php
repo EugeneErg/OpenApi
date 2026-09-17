@@ -6,6 +6,7 @@ namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas;
 use EugeneErg\OpenApi\Exceptions\ComponentsNotFoundOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use stdClass;
 
@@ -21,11 +22,16 @@ final readonly class Discriminator
 {
     public AbstractSchemas $mapping;
 
+    public Extensions $extensions;
+
     public function __construct(
         public string $propertyName,
         ?AbstractSchemas $mapping = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
         $this->mapping = $mapping ?? new Schemas();
+        $this->mapping->assertNamed('discriminator.mapping');
     }
 
     public function toObject(Process $process): stdClass
@@ -51,6 +57,11 @@ final readonly class Discriminator
             $result['mapping'] = (object) $mapping;
         }
 
-        return (object) $result;
+        if ($this->extensions->items !== []) {
+            // расширения у Discriminator Object появились только в 3.1
+            $process->assertV31('Specification extensions on a discriminator');
+        }
+
+        return (object) $this->extensions->appendTo($result);
     }
 }

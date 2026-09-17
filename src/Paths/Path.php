@@ -5,12 +5,15 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Paths;
 
 use EugeneErg\OpenApi\Components\Parameters\Parameters;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Servers;
 use stdClass;
 
 final readonly class Path
 {
+    public Extensions $extensions;
+
     /** @var array<string, Operation> */
     public array $operations;
     public Servers $servers;
@@ -29,7 +32,10 @@ final readonly class Path
         ?Parameters $parameters = null,
         public ?string $summary = null,
         public ?string $description = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         $this->operations = array_filter([
             'get' => $this->get,
             'put' => $this->put,
@@ -68,6 +74,6 @@ final readonly class Path
             $result['parameters'] = $this->parameters->toArray($process);
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

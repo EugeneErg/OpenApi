@@ -7,17 +7,19 @@ namespace EugeneErg\OpenApi\Components;
 use EugeneErg\OpenApi\Components\Links\Link;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Reference;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class Links
 {
-    /** @var array<string, Link|Reference> */
+    use NamedItems;
+
+    /** @var array<array-key, Link|Reference> */
     public array $items;
 
     public function __construct(Link|Reference ...$links)
     {
-        /** @var array<string, Link|Reference> $links */
-        $this->items = $links;
+        $this->items = self::named($links);
     }
 
     public function toObject(Process $process): stdClass

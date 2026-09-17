@@ -7,7 +7,6 @@ namespace EugeneErg\OpenApi\Components\Schemas\Integer;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractConditionSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Bounds;
@@ -15,6 +14,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\NumericRange;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Serialization\Structure;
@@ -39,14 +39,13 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractSchemas $oneOf = null,
         ?AbstractSchema $not = null,
         ?Value $example = null,
-        public ?int $minimum = null,
-        public ?int $maximum = null,
+        public float|int|null $minimum = null,
+        public float|int|null $maximum = null,
         public bool $exclusiveMinimum = false,
         public bool $exclusiveMaximum = false,
-        public ?int $multipleOf = null,
-        public Format|string|null $format = null,
+        public float|int|null $multipleOf = null,
+        Format|string|null $format = null,
         ?Discriminator $discriminator = null,
-        ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
         ?string $comment = null,
         ?AbstractSchemas $defs = null,
@@ -58,12 +57,20 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
+        /**
+         * Слово, проверяющее число, можно написать и не объявляя type: для значения
+         * другого типа оно просто ничего не значит. Спецификация это разрешает,
+         * и при чтении чужого документа такую проверку терять нельзя.
+         */
+        bool $declareType = true,
+        ?Extensions $extensions = null,
     ) {
         self::assertRange('Integer schema range', $this->minimum, $this->maximum);
         self::assertPositive('Integer schema multipleOf', $this->multipleOf);
 
         parent::__construct(
-            'integer',
+            $declareType ? 'integer' : null,
+            $format instanceof Format ? $format->value : $format,
             $title,
             $description,
             $nullable,
@@ -78,7 +85,6 @@ final readonly class Schema extends AbstractConditionSchema
             $not,
             $example,
             $discriminator,
-            $const,
             $examples,
             $comment,
             $defs,
@@ -90,6 +96,7 @@ final readonly class Schema extends AbstractConditionSchema
             $if,
             $then,
             $else,
+            $extensions,
         );
     }
 
@@ -99,10 +106,6 @@ final readonly class Schema extends AbstractConditionSchema
 
         $result = $this->appendRange($result, $process);
 
-        if ($this->format !== null) {
-            $result['format'] = $this->format instanceof Format ? $this->format->value : $this->format;
-        }
-
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

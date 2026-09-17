@@ -6,6 +6,7 @@ namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Serialization\Structure;
@@ -21,6 +22,7 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
 
     public function __construct(
         ?string $type,
+        ?string $format = null,
         ?string $title = null,
         ?string $description = null,
         bool $nullable = false,
@@ -35,7 +37,6 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
         public ?AbstractSchema $not = null,
         public ?AbstractValue $example = null,
         public ?Discriminator $discriminator = null,
-        ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
         ?string $comment = null,
         ?AbstractSchemas $defs = null,
@@ -47,9 +48,11 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
         public ?AbstractSchema $if = null,
         public ?AbstractSchema $then = null,
         public ?AbstractSchema $else = null,
+        ?Extensions $extensions = null,
     ) {
         parent::__construct(
             $type,
+            $format,
             $title,
             $description,
             $nullable,
@@ -58,7 +61,6 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
             $externalDocs,
             $xml,
             $default,
-            $const,
             $examples,
             $comment,
             $defs,
@@ -67,10 +69,15 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
             $dynamicAnchor,
             $dynamicRef,
             $vocabulary,
+            $extensions,
         );
         $this->anyOf = $anyOf ?? new Schemas();
         $this->allOf = $allOf ?? new Schemas();
         $this->oneOf = $oneOf ?? new Schemas();
+
+        foreach (['anyOf' => $this->anyOf, 'allOf' => $this->allOf, 'oneOf' => $this->oneOf] as $keyword => $schemas) {
+            $schemas->assertListed($keyword);
+        }
 
         if (($then !== null || $else !== null) && $if === null) {
             throw new InvalidSchemaOpenapiException('"then" and "else" are meaningless without "if".');
@@ -122,6 +129,6 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
             $result['example'] = $this->example->toNative($process);
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

@@ -1,0 +1,53 @@
+{
+    "self-link.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Self-linking operations",
+            "version": "1.0.0"
+        },
+        "paths": {
+            "/users": {
+                "get": {
+                    "responses": {
+                        "200": {
+                            "description": "A page of users",
+                            "links": {
+                                "next": {
+                                    "operationId": "listUsers",
+                                    "description": "The next page of the same listing.",
+                                    "parameters": {
+                                        "page": "$response.body#/next"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "operationId": "listUsers",
+                    "parameters": [
+                        {
+                            "schema": {
+                                "type": "integer"
+                            },
+                            "name": "page",
+                            "in": "query"
+                        }
+                    ]
+                }
+            },
+            "/ping": {
+                "get": {
+                    "responses": {
+                        "200": {
+                            "description": "Pong",
+                            "links": {
+                                "again": {
+                                    "operationRef": "#/paths/~1ping/get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

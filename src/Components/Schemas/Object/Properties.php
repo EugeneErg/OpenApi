@@ -4,14 +4,17 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\Schemas\Object;
 
+use EugeneErg\OpenApi\Support\NamedItems;
+
 final readonly class Properties
 {
-    /** @var array<string, Property> */
+    use NamedItems;
+
+    /** @var array<array-key, Property> */
     public array $items;
 
     public function __construct(Property ...$properties)
     {
-        /** @var array<string, Property> $properties */
-        $this->items = $properties;
+        $this->items = self::named($properties);
     }
 }

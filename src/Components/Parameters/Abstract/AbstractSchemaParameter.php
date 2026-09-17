@@ -9,6 +9,7 @@ use EugeneErg\OpenApi\Components\Parameters\In;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use stdClass;
 
@@ -25,8 +26,9 @@ abstract readonly class AbstractSchemaParameter extends AbstractParameter
         ?bool $deprecated = false,
         public ?AbstractValue $example = null,
         ?Examples $examples = null,
+        ?Extensions $extensions = null,
     ) {
-        parent::__construct($description, $required, $deprecated);
+        parent::__construct($description, $required, $deprecated, $extensions);
 
         if ($example !== null && $examples !== null && $examples->items !== []) {
             throw new InvalidArgumentOpenapiException(
@@ -56,7 +58,7 @@ abstract readonly class AbstractSchemaParameter extends AbstractParameter
             $result->examples = $this->examples->toObject($process);
         }
 
-        return $result;
+        return (object) $this->extensions->appendTo($result);
     }
 
     /**

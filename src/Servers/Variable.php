@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Servers;
 
 use EugeneErg\OpenApi\Components\Schemas\String\Strings;
+use EugeneErg\OpenApi\Extensions;
 use stdClass;
 
 /**
@@ -12,13 +13,18 @@ use stdClass;
  */
 final readonly class Variable
 {
+    public Extensions $extensions;
+
     public Strings $enum;
 
     public function __construct(
         public string $default,
         ?Strings $enum = null,
         public ?string $description = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         $this->enum = $enum ?? new Strings();
     }
 
@@ -36,6 +42,6 @@ final readonly class Variable
             $result['description'] = $this->description;
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

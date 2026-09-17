@@ -4,16 +4,21 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\Parameters\Abstract;
 
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use stdClass;
 
 abstract readonly class AbstractParameter
 {
+    public Extensions $extensions;
+
     public function __construct(
         public ?string $description = null,
         public ?bool $required = false,
         public ?bool $deprecated = false,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
     }
 
     public function toObject(Process $process): stdClass
@@ -34,6 +39,6 @@ abstract readonly class AbstractParameter
             $result['deprecated'] = true;
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

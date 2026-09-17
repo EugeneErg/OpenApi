@@ -7,17 +7,19 @@ namespace EugeneErg\OpenApi\Components;
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Reference;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class RequestBodies
 {
-    /** @var array<string, Reference|RequestBody> */
+    use NamedItems;
+
+    /** @var array<array-key, Reference|RequestBody> */
     public array $items;
 
     public function __construct(Reference|RequestBody ...$requestBodies)
     {
-        /** @var array<string, Reference|RequestBody> $requestBodies */
-        $this->items = $requestBodies;
+        $this->items = self::named($requestBodies);
     }
 
     public function sourceToObject(Process $process): stdClass

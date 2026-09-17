@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Tests;
 
+use EugeneErg\OpenApi\Serialization\YamlDecoder;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -21,6 +22,10 @@ final class ReadmeTest extends TestCase
      */
     public function testExampleRuns(string $code): void
     {
+        if (str_contains($code, 'new YamlDecoder()') && !YamlDecoder::isAvailable()) {
+            self::markTestSkipped('ext-yaml is not installed.');
+        }
+
         $directory = sys_get_temp_dir() . '/openapi-readme-' . bin2hex(random_bytes(6));
 
         mkdir($directory, 0o775, true);

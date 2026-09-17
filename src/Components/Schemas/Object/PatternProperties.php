@@ -6,6 +6,7 @@ namespace EugeneErg\OpenApi\Components\Schemas\Object;
 
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
@@ -16,13 +17,14 @@ use stdClass;
  */
 final readonly class PatternProperties
 {
-    /** @var array<string, AbstractSchema> */
+    use NamedItems;
+
+    /** @var array<array-key, AbstractSchema> */
     public array $items;
 
     public function __construct(AbstractSchema ...$schemas)
     {
-        /** @var array<string, AbstractSchema> $schemas */
-        $this->items = $schemas;
+        $this->items = self::named($schemas);
     }
 
     public function toObject(Process $process): stdClass

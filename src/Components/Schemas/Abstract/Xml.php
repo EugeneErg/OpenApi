@@ -4,17 +4,22 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
+use EugeneErg\OpenApi\Extensions;
 use stdClass;
 
 final readonly class Xml
 {
+    public Extensions $extensions;
+
     public function __construct(
         public ?string $name = null,
         public ?string $namespace = null,
         public ?string $prefix = null,
         public bool $attribute = false,
         public bool $wrapped = false,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
     }
 
     public function toObject(): stdClass
@@ -41,6 +46,6 @@ final readonly class Xml
             $result['wrapped'] = $this->wrapped;
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

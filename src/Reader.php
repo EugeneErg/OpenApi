@@ -110,6 +110,7 @@ final readonly class Reader
             version: $this->readVersion($document),
             jsonSchemaDialect: $document->get('jsonSchemaDialect')->stringOrNull(),
             webhooks: $document->has('webhooks') ? $paths->pathItems($document->get('webhooks')) : null,
+            extensions: $document->extensions(),
         );
     }
 
@@ -118,13 +119,13 @@ final readonly class Reader
         $components = $document->get('components');
 
         foreach ($components->get('schemas')->map() as $name => $node) {
-            $this->declareSchema($registry, $fileName . '#/components/schemas/' . $name, $node);
+            $this->declareSchema($registry, $fileName . '#/components/schemas/' . self::escape((string) $name), $node);
         }
 
         foreach (self::SECTIONS as $section => $method) {
             foreach ($components->get($section)->map() as $name => $node) {
                 $registry->declare(
-                    $fileName . '#/components/' . $section . '/' . $name,
+                    $fileName . '#/components/' . $section . '/' . self::escape((string) $name),
                     $node,
                     static fn (Node $item): object => self::readSection($registry, $method, $item),
                 );
@@ -132,7 +133,17 @@ final readonly class Reader
         }
 
         foreach ($components->get('pathItems')->map() as $name => $node) {
-            $this->declarePath($registry, $fileName . '#/components/pathItems/' . $name, $node);
+            $this->declarePath($registry, $fileName . '#/components/pathItems/' . self::escape((string) $name), $node);
+        }
+
+        // Callback Object — карта выражений, а не один объект, поэтому он объявляется
+        // здесь, а не среди SECTIONS: строит его читатель путей
+        foreach ($components->get('callbacks')->map() as $name => $node) {
+            $registry->declare(
+                $fileName . '#/components/callbacks/' . self::escape((string) $name),
+                $node,
+                static fn (Node $item): object => self::pathsReader($registry)->callback($item),
+            );
         }
 
         foreach ($document->get('paths')->map() as $template => $node) {
@@ -175,11 +186,11 @@ final readonly class Reader
         $registry->declare(
             $pointer,
             $node,
-            static fn (Node $item): AbstractSchema => (new SchemaReader($registry))->readSchema($item),
+            static fn (Node $item): AbstractSchema => (new SchemaReader($registry))->readComponentSchema($item),
         );
 
         foreach ($node->get('$defs')->map() as $name => $child) {
-            $this->declareSchema($registry, $pointer . '/$defs/' . $name, $child);
+            $this->declareSchema($registry, $pointer . '/$defs/' . self::escape((string) $name), $child);
         }
     }
 
@@ -222,6 +233,7 @@ final readonly class Reader
             securitySchemes: $components->securitySchemes($node->get('securitySchemes')),
             links: $components->links($node->get('links')),
             callbacks: $components->callbacks($node->get('callbacks'), $paths),
+            extensions: $node->extensions(),
         );
     }
 
@@ -245,7 +257,7 @@ final readonly class Reader
                 : throw new InvalidDocumentOpenapiException(sprintf('"%s" is not a schema.', $pointer));
         }
 
-        return $items === [] ? null : new UntypedSchemas(...$items);
+        return $items === [] ? null : UntypedSchemas::fromArray($items);
     }
 
     private function readVersion(Node $document): Version
@@ -276,12 +288,15 @@ final readonly class Reader
                 name: $contact->get('name')->stringOrNull(),
                 url: $contact->get('url')->stringOrNull(),
                 email: $contact->get('email')->stringOrNull(),
+                extensions: $contact->extensions(),
             ),
             license: $license->isMissing() ? null : new Info\License(
                 name: $license->get('name')->string(),
                 url: $license->get('url')->stringOrNull(),
                 identifier: $license->get('identifier')->stringOrNull(),
+                extensions: $license->extensions(),
             ),
+            extensions: $node->extensions(),
         );
     }
 
@@ -299,13 +314,15 @@ final readonly class Reader
                     default: $variable->get('default')->string(),
                     enum: $enum->isMissing() ? null : new Strings(...$enum->strings()),
                     description: $variable->get('description')->stringOrNull(),
+                    extensions: $variable->extensions(),
                 );
             }
 
             $items[] = new Servers\Server(
                 url: $item->get('url')->string(),
                 description: $item->get('description')->stringOrNull(),
-                variables: $variables === [] ? null : new Servers\Variables(...$variables),
+                variables: $variables === [] ? null : Servers\Variables::fromArray($variables),
+                extensions: $item->extensions(),
             );
         }
 
@@ -326,6 +343,7 @@ final readonly class Reader
                 name: $name,
                 description: $item->get('description')->stringOrNull(),
                 externalDocs: $this->readExternalDocs($item->get('externalDocs')),
+                extensions: $item->extensions(),
             ));
 
             $items[$name] = $registry->tag($name);
@@ -343,6 +361,7 @@ final readonly class Reader
         return new ExternalDocs(
             url: $node->get('url')->string(),
             description: $node->get('description')->stringOrNull(),
+            extensions: $node->extensions(),
         );
     }
 

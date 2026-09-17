@@ -4,16 +4,21 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Tags;
 
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use stdClass;
 
 final readonly class Tag
 {
+    public Extensions $extensions;
+
     public function __construct(
         public string $name,
         public ?string $description = null,
         public ?ExternalDocs $externalDocs = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
     }
 
     public function toObject(): stdClass
@@ -28,6 +33,6 @@ final readonly class Tag
             $result['externalDocs'] = $this->externalDocs->toObject();
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

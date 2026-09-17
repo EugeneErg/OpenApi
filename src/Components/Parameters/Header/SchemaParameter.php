@@ -9,19 +9,21 @@ use EugeneErg\OpenApi\Components\Parameters\Abstract\AbstractSchemaParameter;
 use EugeneErg\OpenApi\Components\Parameters\In;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
+use EugeneErg\OpenApi\Extensions;
 
 final readonly class SchemaParameter extends AbstractSchemaParameter
 {
     public function __construct(
         AbstractSchema $schema,
-        bool $explode = false,
+        ?bool $explode = null,
         ?AbstractValue $example = null,
         ?Examples $examples = null,
         ?string $description = null,
         bool $required = false,
         bool $deprecated = false,
+        ?Extensions $extensions = null,
     ) {
-        parent::__construct(In::Header, $schema, $explode, $description, $required, $deprecated, $example, $examples);
+        parent::__construct(In::Header, $schema, $explode ?? false, $description, $required, $deprecated, $example, $examples, $extensions);
     }
 
     /**

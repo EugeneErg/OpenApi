@@ -9,6 +9,7 @@ use EugeneErg\OpenApi\Components\Examples;
 use EugeneErg\OpenApi\Components\Parameters\Abstract\AbstractSchemaParameter;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use stdClass;
 
@@ -16,14 +17,15 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
 {
     public function __construct(
         AbstractSchema $schema,
-        bool $explode = false,
+        ?bool $explode = null,
         ?AbstractValue $example = null,
         ?Examples $examples = null,
         ?string $description = null,
         bool $deprecated = false,
         public Style $style = Style::Simple,
+        ?Extensions $extensions = null,
     ) {
-        parent::__construct(Components\Parameters\In::Path, $schema, $explode, $description, true, $deprecated, $example, $examples);
+        parent::__construct(Components\Parameters\In::Path, $schema, $explode ?? false, $description, true, $deprecated, $example, $examples, $extensions);
     }
 
     public function toObject(Process $process): stdClass
@@ -34,7 +36,7 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
             $result->style = $this->style->value;
         }
 
-        return $result;
+        return (object) $this->extensions->appendTo($result);
     }
 
     /**

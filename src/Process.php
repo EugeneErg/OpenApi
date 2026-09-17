@@ -21,6 +21,7 @@ use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Components\Responses\Response;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\DeferredSchema;
 use EugeneErg\OpenApi\Components\SecuritySchemes;
 use EugeneErg\OpenApi\Components\SecuritySchemes\AbstractSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\Scope;
@@ -112,6 +113,11 @@ final readonly class Process
 
     public function findSchema(AbstractSchema $value): ?stdClass
     {
+        // отложенная ссылка из рекурсии указывает на ту же зарегистрированную схему
+        if ($value instanceof DeferredSchema) {
+            $value = $value->resolve();
+        }
+
         return $this->toRef(static fn (Openapi $openapi) => $openapi->findSchema($value), 'schemas');
     }
 

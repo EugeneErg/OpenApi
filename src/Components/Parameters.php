@@ -6,17 +6,19 @@ namespace EugeneErg\OpenApi\Components;
 
 use EugeneErg\OpenApi\Components\Parameters\Parameter;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class Parameters
 {
-    /** @var array<string, Parameter> */
+    use NamedItems;
+
+    /** @var array<array-key, Parameter> */
     public array $items;
 
     public function __construct(Parameter ...$parameters)
     {
-        /** @var array<string, Parameter> $parameters */
-        $this->items = $parameters;
+        $this->items = self::named($parameters);
     }
 
     public function sourceToObject(Process $process): stdClass

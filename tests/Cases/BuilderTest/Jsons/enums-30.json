@@ -1,0 +1,95 @@
+{
+    "enums-30.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Enums",
+            "version": "1.0.0"
+        },
+        "paths": {},
+        "components": {
+            "schemas": {
+                "ObjectKind": {
+                    "type": "string",
+                    "description": "String representing the object's type.",
+                    "enum": [
+                        "payment_intent"
+                    ]
+                },
+                "Conclusion": {
+                    "type": "string",
+                    "nullable": true,
+                    "readOnly": true,
+                    "enum": [
+                        "success",
+                        "failure",
+                        "neutral",
+                        "cancelled",
+                        null
+                    ]
+                },
+                "HttpMethod": {
+                    "type": "string",
+                    "default": "POST",
+                    "enum": [
+                        "GET",
+                        "POST"
+                    ],
+                    "format": "http-method"
+                },
+                "Deleted": {
+                    "type": "boolean",
+                    "description": "Always true for a deleted object.",
+                    "enum": [
+                        true
+                    ]
+                },
+                "Priority": {
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        2,
+                        3
+                    ],
+                    "format": "int32"
+                },
+                "Ratio": {
+                    "type": "number",
+                    "enum": [
+                        0.5,
+                        1.0,
+                        2.0
+                    ]
+                },
+                "Size": {
+                    "enum": [
+                        "auto",
+                        0,
+                        null
+                    ]
+                },
+                "Origin": {
+                    "type": "array",
+                    "enum": [
+                        [
+                            0,
+                            0
+                        ],
+                        [
+                            1,
+                            1
+                        ]
+                    ]
+                },
+                "Unit": {
+                    "type": "object",
+                    "enum": [
+                        {
+                            "code": "kg",
+                            "factor": 1
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

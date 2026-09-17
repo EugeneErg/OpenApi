@@ -1,0 +1,77 @@
+{
+    "extensions.json": {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "Extensions",
+            "version": "1.0.0",
+            "contact": {
+                "name": "API team",
+                "x-slack": "#api"
+            },
+            "license": {
+                "name": "MIT",
+                "x-spdx": true
+            },
+            "x-logo": {
+                "url": "https://example.com/logo.png"
+            }
+        },
+        "paths": {
+            "/users": {
+                "get": {
+                    "responses": {
+                        "200": {
+                            "description": "OK",
+                            "x-cache": 60
+                        },
+                        "x-error-codes": [
+                            400,
+                            500
+                        ]
+                    },
+                    "operationId": "listUsers",
+                    "x-curl-samples": [
+                        "curl …"
+                    ]
+                },
+                "x-owner": "platform"
+            },
+            "x-section": "users"
+        },
+        "components": {
+            "schemas": {
+                "Name": {
+                    "type": "string",
+                    "x-twilio": {
+                        "pii": {
+                            "handling": "standard",
+                            "deleteSla": 30
+                        }
+                    }
+                }
+            },
+            "securitySchemes": {
+                "apiKey": {
+                    "type": "apiKey",
+                    "name": "X-Api-Key",
+                    "in": "header",
+                    "x-internal": true
+                }
+            },
+            "x-generated": true
+        },
+        "servers": [
+            {
+                "url": "https://{region}.example.com",
+                "variables": {
+                    "region": {
+                        "default": "eu",
+                        "x-dns": "geo"
+                    }
+                },
+                "x-internal": false
+            }
+        ],
+        "x-spec-filename": "extensions.json"
+    }
+}

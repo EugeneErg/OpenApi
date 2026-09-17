@@ -1,0 +1,219 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "t",
+    "version": "1"
+  },
+  "paths": {
+    "/y": {
+      "get": {
+        "operationId": "y",
+        "responses": {
+          "200": {
+            "description": "y"
+          }
+        }
+      }
+    },
+    "/r/{7}": {
+      "parameters": [
+        {
+          "name": "7",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "parameters": [
+          {
+            "name": "-1",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/42"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok",
+            "headers": {
+              "5": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/404"
+                },
+                "examples": {
+                  "1": {
+                    "value": {
+                      "0": "a",
+                      "b": {
+                        "-1": [
+                          1,
+                          {
+                            "2": 3
+                          }
+                        ]
+                      }
+                    }
+                  }
+                },
+                "encoding": {
+                  "3": {
+                    "contentType": "text/plain"
+                  }
+                }
+              }
+            },
+            "links": {
+              "9": {
+                "operationId": "y",
+                "parameters": {
+                  "8": "$request.path.7"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "x",
+        "callbacks": {
+          "6": {
+            "{$request.body#/url}": {
+              "post": {
+                "responses": {
+                  "200": {
+                    "description": "cb"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {
+    "11": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "w"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "404": {
+        "type": "object",
+        "required": [
+          "-1",
+          "7"
+        ],
+        "properties": {
+          "-1": {
+            "type": "integer"
+          },
+          "7": {
+            "type": "string",
+            "default": "x"
+          },
+          "+1": {
+            "type": "integer"
+          }
+        },
+        "patternProperties": {
+          "1": {
+            "type": "string"
+          }
+        },
+        "dependentRequired": {
+          "7": [
+            "-1"
+          ]
+        },
+        "default": {
+          "7": "a",
+          "-1": 1
+        },
+        "$defs": {
+          "0": {
+            "type": "string"
+          }
+        },
+        "discriminator": {
+          "propertyName": "7",
+          "mapping": {
+            "1": "#/components/schemas/404"
+          }
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/404"
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "42": {
+        "name": "42",
+        "in": "header",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "securitySchemes": {
+      "0": {
+        "type": "oauth2",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://t",
+            "scopes": {
+              "1": "one"
+            }
+          }
+        }
+      }
+    },
+    "examples": {
+      "2": {
+        "value": 1
+      }
+    },
+    "responses": {
+      "500": {
+        "description": "err"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://{0}.example.com",
+      "variables": {
+        "0": {
+          "default": "eu"
+        }
+      }
+    }
+  ],
+  "security": [
+    {
+      "0": [
+        "1"
+      ]
+    }
+  ]
+}

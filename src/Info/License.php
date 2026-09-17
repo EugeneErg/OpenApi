@@ -5,9 +5,12 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Info;
 
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 
 final readonly class License
 {
+    public Extensions $extensions;
+
     /**
      * @param null|string $identifier SPDX-идентификатор, доступен начиная с OpenAPI 3.1
      */
@@ -15,7 +18,10 @@ final readonly class License
         public string $name,
         public ?string $url = null,
         public ?string $identifier = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         if ($url !== null && $identifier !== null) {
             throw new InvalidArgumentOpenapiException(
                 'License cannot have both url and identifier: they are mutually exclusive.',
@@ -24,7 +30,7 @@ final readonly class License
     }
 
     /**
-     * @return array{name: string, identifier?: string, url?: string}
+     * @return array<array-key, mixed>
      */
     public function toArray(): array
     {
@@ -38,6 +44,6 @@ final readonly class License
             $result['url'] = $this->url;
         }
 
-        return $result;
+        return $this->extensions->appendTo($result);
     }
 }

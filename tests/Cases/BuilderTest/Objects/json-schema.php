@@ -19,7 +19,7 @@ $card = new Schemas\Object\Schema(
     ),
     if: new Schemas\Object\Schema(
         properties: new Schemas\Object\Properties(
-            kind: new Schemas\Object\Property(schema: new Schemas\String\Schema(const: new Schemas\String\Value('credit'))),
+            kind: new Schemas\Object\Property(schema: new Schemas\String\EnumSchema(new Schemas\String\Strings('credit'))),
         ),
     ),
     then: new Schemas\Object\Schema(
@@ -79,11 +79,11 @@ $attachment = new Schemas\String\Schema(
     ),
 );
 
-// const и examples
+// examples у обычной схемы; единственное значение перечисления в 3.1 печатается как const
 $status = new Schemas\String\Schema(
-    const: new Schemas\String\Value('active'),
     examples: new Schemas\Untyped\Values('active'),
 );
+$active = new Schemas\String\EnumSchema(new Schemas\String\Strings('active'));
 
 $openapi = new Openapi(
     info: new Info(title: 'JSON Schema 2020-12', version: '1.0.0'),
@@ -94,6 +94,7 @@ $openapi = new Openapi(
             Tuple: $tuple,
             Attachment: $attachment,
             Status: $status,
+            Active: $active,
         ),
     ),
     version: Version::V311,

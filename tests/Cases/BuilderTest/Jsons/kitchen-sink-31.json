@@ -1,0 +1,668 @@
+{
+    "kitchen-sink-31.json": {
+        "openapi": "3.1.1",
+        "info": {
+            "title": "Everything the package can build",
+            "version": "1.0.0",
+            "summary": "A single document exercising every supported field.",
+            "description": "Built by tests/Cases/BuilderTest/Objects/kitchen-sink-31.php.",
+            "contact": {
+                "name": "API team",
+                "url": "https://example.com/team",
+                "email": "api@example.com",
+                "x-slack": "#api"
+            },
+            "license": {
+                "name": "MIT",
+                "identifier": "MIT"
+            },
+            "termsOfService": "https://example.com/terms",
+            "x-logo": {
+                "url": "https://example.com/logo.png"
+            }
+        },
+        "paths": {
+            "/payments": {
+                "get": {
+                    "responses": {
+                        "200": {
+                            "description": "A page of payments",
+                            "headers": {
+                                "X-Rate-Limit": {
+                                    "$ref": "#/components/headers/x_trace"
+                                },
+                                "X-Trace": {
+                                    "content": {
+                                        "application/json": {
+                                            "schema": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "array",
+                                        "items": {
+                                            "$ref": "#/components/schemas/Payment"
+                                        }
+                                    },
+                                    "examples": {
+                                        "page": {
+                                            "$ref": "#/components/examples/page"
+                                        }
+                                    }
+                                }
+                            },
+                            "links": {
+                                "next": {
+                                    "operationId": "listPayments",
+                                    "description": "The next page.",
+                                    "parameters": {
+                                        "page": "$response.body#//next",
+                                        "trace": "$request.header.X-Trace",
+                                        "fixed": "1"
+                                    },
+                                    "server": {
+                                        "url": "https://example.com"
+                                    }
+                                }
+                            },
+                            "x-cache": 60
+                        },
+                        "4XX": {
+                            "$ref": "#/components/responses/NotFound",
+                            "summary": "Client error",
+                            "description": "Anything 4xx."
+                        },
+                        "default": {
+                            "$ref": "#/components/responses/NotFound"
+                        },
+                        "x-error-codes": [
+                            400,
+                            404
+                        ]
+                    },
+                    "summary": "List payments",
+                    "description": "Everything an operation can carry.",
+                    "operationId": "listPayments",
+                    "parameters": [
+                        {
+                            "deprecated": true,
+                            "schema": {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            "name": "x_trace",
+                            "in": "header"
+                        },
+                        {
+                            "schema": {
+                                "type": "string"
+                            },
+                            "name": "session",
+                            "in": "cookie"
+                        },
+                        {
+                            "schema": {
+                                "type": "object"
+                            },
+                            "explode": true,
+                            "allowEmptyValue": true,
+                            "allowReserved": true,
+                            "style": "deepObject",
+                            "name": "filter",
+                            "in": "query"
+                        },
+                        {
+                            "schema": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "style": "pipeDelimited",
+                            "name": "tags",
+                            "in": "query"
+                        },
+                        {
+                            "content": {
+                                "application/json": {
+                                    "schema": {}
+                                }
+                            },
+                            "name": "body",
+                            "in": "query"
+                        },
+                        {
+                            "$ref": "#/components/parameters/page"
+                        }
+                    ],
+                    "tags": [
+                        "payments"
+                    ],
+                    "security": [
+                        {
+                            "oauth": [
+                                "read:all",
+                                "write:all"
+                            ],
+                            "apiKey": []
+                        },
+                        {
+                            "bearer": [
+                                "admin"
+                            ]
+                        },
+                        {
+                            "oidc": [
+                                "openid"
+                            ]
+                        },
+                        {}
+                    ],
+                    "servers": [
+                        {
+                            "url": "https://payments.example.com"
+                        }
+                    ],
+                    "callbacks": {
+                        "onPaid": {
+                            "{$request.body#/callbackUrl}": {
+                                "post": {
+                                    "responses": {
+                                        "204": {
+                                            "description": "Accepted"
+                                        }
+                                    }
+                                }
+                            },
+                            "x-retry": {
+                                "attempts": 3
+                            }
+                        }
+                    },
+                    "externalDocs": {
+                        "url": "https://example.com/payments"
+                    },
+                    "x-curl-samples": [
+                        "curl …"
+                    ]
+                },
+                "post": {
+                    "responses": {
+                        "201": {
+                            "description": "Created"
+                        }
+                    },
+                    "operationId": "upload",
+                    "requestBody": {
+                        "content": {
+                            "multipart/form-data": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "file": {
+                                            "$ref": "#/components/schemas/Attachment"
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/Tree"
+                                        }
+                                    },
+                                    "required": [
+                                        "file"
+                                    ]
+                                },
+                                "encoding": {
+                                    "file": {
+                                        "contentType": "application/octet-stream",
+                                        "headers": {
+                                            "x_size": {
+                                                "$ref": "#/components/headers/x_trace"
+                                            }
+                                        },
+                                        "x-streamed": true
+                                    },
+                                    "meta": {
+                                        "style": "deepObject",
+                                        "explode": true,
+                                        "allowReserved": false
+                                    }
+                                }
+                            }
+                        },
+                        "required": true,
+                        "description": "An upload"
+                    }
+                }
+            },
+            "/payments/{id}": {
+                "get": {
+                    "responses": {
+                        "200": {
+                            "description": "One payment"
+                        }
+                    },
+                    "parameters": [
+                        {
+                            "required": true,
+                            "schema": {
+                                "type": "string"
+                            },
+                            "style": "label",
+                            "name": "id",
+                            "in": "path"
+                        }
+                    ]
+                }
+            },
+            "/ping": {
+                "$ref": "#/components/pathItems/ping"
+            },
+            "x-section": "payments"
+        },
+        "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+        "webhooks": {
+            "paymentReceived": {
+                "$ref": "#/components/pathItems/ping"
+            }
+        },
+        "externalDocs": {
+            "url": "https://example.com/docs",
+            "description": "The docs"
+        },
+        "tags": [
+            {
+                "name": "payments",
+                "description": "Everything about payments",
+                "externalDocs": {
+                    "url": "https://example.com/tags",
+                    "description": "More"
+                },
+                "x-order": 1
+            }
+        ],
+        "security": [
+            {
+                "oauth": [
+                    "read:all"
+                ]
+            }
+        ],
+        "components": {
+            "schemas": {
+                "Street": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "pattern": "^[^\\n]+$"
+                },
+                "Node": {
+                    "type": "object",
+                    "$defs": {
+                        "Street": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80,
+                            "pattern": "^[^\\n]+$"
+                        }
+                    },
+                    "$anchor": "node",
+                    "$dynamicAnchor": "node",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value"
+                    ],
+                    "unevaluatedProperties": false,
+                    "x-internal": true
+                },
+                "Tree": {
+                    "type": "object",
+                    "$comment": "Рекурсивное дерево.",
+                    "$id": "https://example.com/schemas/tree",
+                    "properties": {
+                        "root": {
+                            "$dynamicRef": "#node"
+                        },
+                        "kind": {
+                            "type": "string",
+                            "format": "tree-kind",
+                            "enum": [
+                                "binary",
+                                "trie"
+                            ]
+                        },
+                        "nothing": {
+                            "type": "null",
+                            "description": "Always null."
+                        },
+                        "mixed": {
+                            "enum": [
+                                "auto",
+                                0,
+                                null
+                            ]
+                        }
+                    },
+                    "required": [
+                        "x-generated"
+                    ],
+                    "minProperties": 1,
+                    "maxProperties": 20,
+                    "additionalProperties": {},
+                    "patternProperties": {
+                        "^x-": {
+                            "type": "string"
+                        }
+                    },
+                    "propertyNames": {
+                        "type": "string",
+                        "pattern": "^[a-z-]+$"
+                    },
+                    "dependentRequired": {
+                        "kind": [
+                            "root"
+                        ]
+                    },
+                    "dependentSchemas": {
+                        "kind": {
+                            "minProperties": 1
+                        }
+                    }
+                },
+                "Measurement": {
+                    "type": "number",
+                    "format": "double",
+                    "xml": {
+                        "name": "measure",
+                        "attribute": true
+                    },
+                    "exclusiveMinimum": 0,
+                    "maximum": 9223372036854775807,
+                    "multipleOf": 0.5
+                },
+                "Tuple": {
+                    "type": "array",
+                    "items": {},
+                    "minItems": 2,
+                    "maxItems": 5,
+                    "uniqueItems": true,
+                    "prefixItems": [
+                        {
+                            "$ref": "#/components/schemas/Street"
+                        },
+                        {
+                            "$ref": "#/components/schemas/Measurement"
+                        }
+                    ],
+                    "contains": {
+                        "$ref": "#/components/schemas/Measurement"
+                    },
+                    "minContains": 1,
+                    "maxContains": 3,
+                    "unevaluatedItems": false
+                },
+                "Attachment": {
+                    "type": "string",
+                    "contentEncoding": "base64",
+                    "contentMediaType": "application/json",
+                    "contentSchema": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "Card": {
+                    "type": "object",
+                    "readOnly": true,
+                    "externalDocs": {
+                        "url": "https://example.com/cards",
+                        "description": "Cards"
+                    },
+                    "if": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "const": "credit"
+                            }
+                        }
+                    },
+                    "then": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {
+                                "type": "integer",
+                                "format": "int64",
+                                "minimum": 0,
+                                "multipleOf": 100
+                            }
+                        },
+                        "required": [
+                            "limit"
+                        ]
+                    },
+                    "else": {
+                        "not": {}
+                    },
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "const": "credit"
+                        }
+                    },
+                    "required": [
+                        "kind"
+                    ]
+                },
+                "Cash": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "const": "cash"
+                        }
+                    },
+                    "required": [
+                        "kind"
+                    ]
+                },
+                "Payment": {
+                    "deprecated": true,
+                    "oneOf": [
+                        {
+                            "$ref": "#/components/schemas/Card"
+                        },
+                        {
+                            "$ref": "#/components/schemas/Cash"
+                        }
+                    ],
+                    "discriminator": {
+                        "propertyName": "kind",
+                        "mapping": {
+                            "credit": "#/components/schemas/Card",
+                            "cash": "#/components/schemas/Cash"
+                        },
+                        "x-closed": true
+                    }
+                },
+                "Flag": {
+                    "type": "boolean",
+                    "description": "Always true.",
+                    "const": true
+                }
+            },
+            "responses": {
+                "NotFound": {
+                    "description": "Not found"
+                }
+            },
+            "parameters": {
+                "page": {
+                    "schema": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "in": "query",
+                    "name": "page"
+                },
+                "trace": {
+                    "schema": {
+                        "type": "string"
+                    },
+                    "in": "header",
+                    "name": "X-Trace"
+                }
+            },
+            "examples": {
+                "page": {
+                    "summary": "One payment",
+                    "value": [
+                        {
+                            "kind": "cash",
+                            "0": null
+                        }
+                    ],
+                    "x-source": "docs"
+                }
+            },
+            "requestBodies": {
+                "Upload": {
+                    "content": {
+                        "text/plain": {
+                            "schema": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "headers": {
+                "x_trace": {
+                    "schema": {
+                        "type": "string"
+                    }
+                }
+            },
+            "securitySchemes": {
+                "oauth": {
+                    "type": "oauth2",
+                    "description": "Everything OAuth2 has.",
+                    "flows": {
+                        "implicit": {
+                            "authorizationUrl": "https://example.com/oauth/authorize",
+                            "refreshUrl": "https://example.com/oauth/refresh",
+                            "scopes": {
+                                "read:all": "Read everything"
+                            }
+                        },
+                        "password": {
+                            "tokenUrl": "https://example.com/oauth/token",
+                            "scopes": {
+                                "write:all": "Write everything"
+                            }
+                        },
+                        "clientCredentials": {
+                            "tokenUrl": "https://example.com/oauth/token",
+                            "scopes": {},
+                            "x-machine": true
+                        },
+                        "authorizationCode": {
+                            "authorizationUrl": "https://example.com/oauth/authorize",
+                            "tokenUrl": "https://example.com/oauth/token",
+                            "scopes": {}
+                        }
+                    }
+                },
+                "apiKey": {
+                    "type": "apiKey",
+                    "name": "X-Api-Key",
+                    "in": "cookie"
+                },
+                "bearer": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "JWT"
+                },
+                "digest": {
+                    "type": "http",
+                    "scheme": "Digest"
+                },
+                "mtls": {
+                    "type": "mutualTLS",
+                    "description": "Client certificate."
+                },
+                "oidc": {
+                    "type": "openIdConnect",
+                    "openIdConnectUrl": "https://example.com/.well-known/openid-configuration"
+                }
+            },
+            "links": {
+                "self": {
+                    "operationId": "listPayments"
+                }
+            },
+            "callbacks": {
+                "onPing": {
+                    "ping": {
+                        "$ref": "#/components/pathItems/ping"
+                    }
+                }
+            },
+            "pathItems": {
+                "ping": {
+                    "summary": "Health check",
+                    "description": "Answers while the service is alive.",
+                    "get": {
+                        "responses": {
+                            "200": {
+                                "description": "Pong"
+                            }
+                        }
+                    },
+                    "servers": [
+                        {
+                            "url": "https://health.example.com"
+                        }
+                    ],
+                    "x-owner": "platform"
+                }
+            },
+            "x-generated": true
+        },
+        "servers": [
+            {
+                "url": "https://{region}.example.com/{ver}",
+                "description": "Regional",
+                "variables": {
+                    "region": {
+                        "enum": [
+                            "eu",
+                            "us"
+                        ],
+                        "default": "eu",
+                        "description": "Region",
+                        "x-dns": "geo"
+                    },
+                    "ver": {
+                        "default": "v1"
+                    }
+                },
+                "x-internal": false
+            }
+        ],
+        "x-spec-filename": "kitchen-sink-31.json"
+    }
+}

@@ -102,6 +102,47 @@ final class DecoderTest extends TestCase
         (new JsonDecoder())->decode('[1, 2, 3]');
     }
 
+    /**
+     * OpenAPI требует YAML 1.2: правила YAML 1.1, которыми по умолчанию пользуется
+     * ext-yaml, молча превращают строки в числа и логические значения.
+     */
+    public function testYamlIsReadByCoreSchema(): void
+    {
+        if (!YamlDecoder::isAvailable()) {
+            self::markTestSkipped('ext-yaml is not installed.');
+        }
+
+        $decoded = (new YamlDecoder())->decode(<<<'YAML'
+            y: yes
+            n: 1
+            country: NO
+            switch: on
+            ids: 521621,621373
+            time: 12:30
+            padded: 012
+            hex: 0x1F
+            flag: true
+            nothing: ~
+            date: 2024-01-02
+            ratio: -.5E-3
+            YAML);
+
+        self::assertSame([
+            'y' => 'yes',
+            'n' => 1,
+            'country' => 'NO',
+            'switch' => 'on',
+            'ids' => '521621,621373',
+            'time' => '12:30',
+            'padded' => 12,
+            'hex' => 31,
+            'flag' => true,
+            'nothing' => null,
+            'date' => '2024-01-02',
+            'ratio' => -0.0005,
+        ], get_object_vars($decoded));
+    }
+
     private static function withoutEmptyShape(mixed $value): mixed
     {
         if ($value instanceof stdClass) {

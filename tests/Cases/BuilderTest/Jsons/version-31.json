@@ -5,7 +5,6 @@
             "title": "Webhook API",
             "version": "1.0.0"
         },
-        "paths": {},
         "webhooks": {
             "userCreated": {
                 "post": {

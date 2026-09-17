@@ -6,9 +6,14 @@ namespace EugeneErg\OpenApi\Reader;
 
 use EugeneErg\OpenApi\Components\Schemas\String\Strings;
 use EugeneErg\OpenApi\Components\SecuritySchemes\AbstractSecurityScheme;
+use EugeneErg\OpenApi\Components\SecuritySchemes\ApiKeySecurity\Scheme as ApiKeyScheme;
+use EugeneErg\OpenApi\Components\SecuritySchemes\BasicHttpSecurityScheme;
+use EugeneErg\OpenApi\Components\SecuritySchemes\BearerHttpSecurityScheme;
+use EugeneErg\OpenApi\Components\SecuritySchemes\HttpSecurityScheme;
+use EugeneErg\OpenApi\Components\SecuritySchemes\MutualTlsSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\Scope;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Scheme as Oauth2Scheme;
-use EugeneErg\OpenApi\Exceptions\InvalidDocumentOpenapiException;
+use EugeneErg\OpenApi\Components\SecuritySchemes\OpenIdConnectSecurityScheme;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\PathItems;
 use EugeneErg\OpenApi\Paths;
@@ -16,10 +21,10 @@ use EugeneErg\OpenApi\Paths\Operation;
 use EugeneErg\OpenApi\Paths\Path;
 use EugeneErg\OpenApi\Reference;
 use EugeneErg\OpenApi\Securities;
+use EugeneErg\OpenApi\Securities\Role;
+use EugeneErg\OpenApi\Securities\ScopeName;
 use EugeneErg\OpenApi\Servers;
 use EugeneErg\OpenApi\Tags;
-
-use function sprintf;
 
 /**
  * Разбор paths, webhooks и callbacks.
@@ -36,11 +41,25 @@ final readonly class PathsReader
     {
         $items = [];
 
-        foreach ($node->map() as $template => $item) {
+        foreach ($node->extensibleMap() as $template => $item) {
             $items[(string) $template] = $this->reference($item) ?? $this->path($item);
         }
 
-        return $items === [] ? null : new Paths(...$items);
+        return $items === [] ? null : Paths::fromArray($items, $node->extensions());
+    }
+
+    /**
+     * Callback Object: в отличие от webhooks и components.pathItems, он расширяем.
+     */
+    public function callback(Node $node): PathItems
+    {
+        $items = [];
+
+        foreach ($node->extensibleMap() as $name => $item) {
+            $items[(string) $name] = $this->reference($item) ?? $this->path($item);
+        }
+
+        return PathItems::fromArray($items, $node->extensions());
     }
 
     public function pathItems(Node $node): PathItems
@@ -51,7 +70,7 @@ final readonly class PathsReader
             $items[(string) $name] = $this->reference($item) ?? $this->path($item);
         }
 
-        return new PathItems(...$items);
+        return PathItems::fromArray($items);
     }
 
     public function path(Node $node): Path
@@ -88,6 +107,7 @@ final readonly class PathsReader
             parameters: $this->components->parameters($node->get('parameters')),
             summary: $node->get('summary')->stringOrNull(),
             description: $node->get('description')->stringOrNull(),
+            extensions: $node->extensions(),
         );
     }
 
@@ -107,18 +127,21 @@ final readonly class PathsReader
     public function buildOperation(Node $node): Operation
     {
         return new Operation(
-            responses: $this->components->responses($node->get('responses')),
+            responses: $node->has('responses') ? $this->components->responses($node->get('responses')) : null,
             summary: $node->get('summary')->stringOrNull(),
             description: $node->get('description')->stringOrNull(),
             id: $node->get('operationId')->stringOrNull(),
             deprecated: $node->get('deprecated')->boolOr(false),
             parameters: $this->components->parameters($node->get('parameters')),
-            requestBody: $node->has('requestBody') ? $this->components->requestBody($node->get('requestBody')) : null,
+            requestBody: $node->has('requestBody')
+                ? $this->components->operationRequestBody($node->get('requestBody'))
+                : null,
             tags: $this->operationTags($node->get('tags')),
             security: $this->securities($node->get('security')),
             servers: $this->servers($node->get('servers')),
             callbacks: $this->components->callbacks($node->get('callbacks'), $this),
             externalDocs: $this->externalDocs($node->get('externalDocs')),
+            extensions: $node->extensions(),
         );
     }
 
@@ -168,6 +191,12 @@ final readonly class PathsReader
 
     private function securities(Node $node): ?Securities
     {
+        // отсутствие поля и пустой список различаются: `security: []` на операции
+        // снимает авторизацию, заданную на уровне документа
+        if ($node->isMissing()) {
+            return null;
+        }
+
         $items = [];
 
         foreach ($node->list() as $requirement) {
@@ -189,21 +218,32 @@ final readonly class PathsReader
                 }
             }
 
-            if ($scopes !== []) {
-                $items[] = new Securities\SecuritySchemes(...$scopes);
-            }
+            // пустое требование `{}` значимо: оно разрешает анонимный доступ
+            $items[] = new Securities\SecuritySchemes(...$scopes);
         }
 
-        return $items === [] ? null : new Securities(...$items);
+        return new Securities(...$items);
     }
 
-    private function scopeOf(AbstractSecurityScheme $scheme, string $name, Node $at): Scope
+    private function scopeOf(AbstractSecurityScheme $scheme, string $name, Node $at): Role|Scope|ScopeName
     {
+        if ($scheme instanceof OpenIdConnectSecurityScheme) {
+            return new ScopeName($scheme, $name);
+        }
+
+        if (
+            $scheme instanceof ApiKeyScheme
+            || $scheme instanceof BasicHttpSecurityScheme
+            || $scheme instanceof BearerHttpSecurityScheme
+            || $scheme instanceof HttpSecurityScheme
+            || $scheme instanceof MutualTlsSecurityScheme
+        ) {
+            // 3.1 разрешает перечислять роли для любых схем; для 3.0 это отклонит сборка
+            return new Role($scheme, $name);
+        }
+
         if (!$scheme instanceof Oauth2Scheme) {
-            throw new InvalidDocumentOpenapiException(sprintf(
-                '%s: scopes are only meaningful for oauth2 schemes.',
-                $at->path,
-            ));
+            throw $at->unexpected('a scheme that accepts scope or role names');
         }
 
         foreach ($scheme->flows->items as $flow) {
@@ -212,11 +252,8 @@ final readonly class PathsReader
             }
         }
 
-        throw new InvalidDocumentOpenapiException(sprintf(
-            '%s: scope "%s" is not declared in any flow of the referenced scheme.',
-            $at->path,
-            $name,
-        ));
+        // объявлять скоуп во flow спецификация не требует, поэтому такой документ законен
+        return new ScopeName($scheme, $name);
     }
 
     private function servers(Node $node): ?Servers
@@ -233,13 +270,15 @@ final readonly class PathsReader
                     default: $variable->get('default')->string(),
                     enum: $enum->isMissing() ? null : new Strings(...$enum->strings()),
                     description: $variable->get('description')->stringOrNull(),
+                    extensions: $variable->extensions(),
                 );
             }
 
             $items[] = new Servers\Server(
                 url: $item->get('url')->string(),
                 description: $item->get('description')->stringOrNull(),
-                variables: $variables === [] ? null : new Servers\Variables(...$variables),
+                variables: $variables === [] ? null : Servers\Variables::fromArray($variables),
+                extensions: $item->extensions(),
             );
         }
 
@@ -255,6 +294,7 @@ final readonly class PathsReader
         return new ExternalDocs(
             url: $node->get('url')->string(),
             description: $node->get('description')->stringOrNull(),
+            extensions: $node->extensions(),
         );
     }
 }

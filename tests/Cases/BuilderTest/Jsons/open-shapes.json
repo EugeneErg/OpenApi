@@ -59,6 +59,15 @@
                     "required": [
                         "subscriptionId"
                     ]
+                },
+                "LongEnough": {
+                    "minLength": 3
+                },
+                "Even": {
+                    "multipleOf": 2
+                },
+                "Unique": {
+                    "uniqueItems": true
                 }
             }
         }

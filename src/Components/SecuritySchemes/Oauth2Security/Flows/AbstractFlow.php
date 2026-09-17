@@ -4,14 +4,19 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows;
 
+use EugeneErg\OpenApi\Extensions;
 use stdClass;
 
 abstract readonly class AbstractFlow
 {
+    public Extensions $extensions;
+
     public function __construct(
         public Scopes $scopes,
         public ?string $refreshUrl = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
     }
 
     public function toObject(): stdClass
@@ -24,7 +29,7 @@ abstract readonly class AbstractFlow
 
         $result['scopes'] = $this->scopes->toObject();
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 
     /**

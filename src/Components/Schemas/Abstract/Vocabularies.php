@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
@@ -14,13 +15,14 @@ use stdClass;
  */
 final readonly class Vocabularies
 {
-    /** @var array<string, bool> */
+    use NamedItems;
+
+    /** @var array<array-key, bool> */
     public array $items;
 
     public function __construct(bool ...$vocabularies)
     {
-        /** @var array<string, bool> $vocabularies */
-        $this->items = $vocabularies;
+        $this->items = self::named($vocabularies);
     }
 
     public function toObject(): stdClass

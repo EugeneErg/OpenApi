@@ -6,18 +6,44 @@ namespace EugeneErg\OpenApi\Components\Parameters\Abstract;
 
 use EugeneErg\OpenApi\Components\Parameters\In;
 use EugeneErg\OpenApi\Process;
+use EugeneErg\OpenApi\Reference;
 use EugeneErg\OpenApi\Serialization\Structure;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
+
+use function is_int;
 
 abstract readonly class AbstractParameters
 {
-    /** @var array<string, AbstractParameter> */
+    use NamedItems;
+
+    /** @var array<array-key, AbstractParameter|Reference> */
     public array $items;
 
-    public function __construct(AbstractParameter ...$parameters)
+    /**
+     * Параметры без имени. Так можно передать только параметр, зарегистрированный
+     * в components.parameters: имя у него берётся из регистрации, а на месте
+     * использования окажется $ref. Незарегистрированный отклонит сборка.
+     *
+     * @var list<AbstractParameter|Reference>
+     */
+    public array $registered;
+
+    public function __construct(AbstractParameter|Reference ...$parameters)
     {
-        /** @var array<string, AbstractParameter> $parameters */
-        $this->items = $parameters;
+        $named = [];
+        $registered = [];
+
+        foreach ($parameters as $name => $parameter) {
+            if (is_int($name)) {
+                $registered[] = $parameter;
+            } else {
+                $named[$name] = $parameter;
+            }
+        }
+
+        $this->items = self::named($named);
+        $this->registered = $registered;
     }
 
     /**
@@ -34,7 +60,10 @@ abstract readonly class AbstractParameters
         $result = [];
 
         foreach ($this->items as $name => $parameter) {
-            $result[] = (object) array_merge(Structure::vars($parameter->toObject($process)), ['name' => $name]);
+            // у ссылки имя берётся из объявления компонента и рядом с $ref не пишется
+            $result[] = $parameter instanceof Reference
+                ? $parameter->toObject($process)
+                : (object) array_merge(Structure::vars($parameter->toObject($process)), ['name' => (string) $name]);
         }
 
         return $result;

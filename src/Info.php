@@ -10,6 +10,8 @@ use stdClass;
 
 final readonly class Info
 {
+    public Extensions $extensions;
+
     public Contact $contact;
 
     public function __construct(
@@ -20,7 +22,10 @@ final readonly class Info
         public ?string $termsOfService = null,
         ?Contact $contact = null,
         public ?License $license = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         $this->contact = $contact ?? new Contact();
     }
 
@@ -51,6 +56,6 @@ final readonly class Info
             $result['termsOfService'] = $this->termsOfService;
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

@@ -19,13 +19,13 @@ use function sprintf;
  */
 final readonly class Paths extends PathItems
 {
-    public function __construct(Path|Reference ...$paths)
+    public function __construct(?Extensions $extensions = null, Path|Reference ...$paths)
     {
-        foreach ($paths as $template => $path) {
+        parent::__construct($extensions, ...$paths);
+
+        foreach ($this->items as $template => $path) {
             self::assertValidTemplate((string) $template);
         }
-
-        parent::__construct(...$paths);
     }
 
     /**

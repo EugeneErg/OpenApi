@@ -4,17 +4,19 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows;
 
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class Scopes
 {
-    /** @var array<string, Scope> */
+    use NamedItems;
+
+    /** @var array<array-key, Scope> */
     public array $items;
 
     public function __construct(Scope ...$scopes)
     {
-        /** @var array<string, Scope> $scopes */
-        $this->items = $scopes;
+        $this->items = self::named($scopes);
     }
 
     /**

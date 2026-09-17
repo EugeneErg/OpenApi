@@ -6,6 +6,8 @@ namespace EugeneErg\OpenApi\Components\Links;
 
 use EugeneErg\OpenApi\Components\Links\Link\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
+use EugeneErg\OpenApi\Extensions;
+use EugeneErg\OpenApi\Paths\DeferredOperation;
 use EugeneErg\OpenApi\Paths\Operation;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Servers\Server;
@@ -13,26 +15,33 @@ use stdClass;
 
 final readonly class Link
 {
+    public Extensions $extensions;
+
     public Parameters $parameters;
 
     public function __construct(
-        public Operation $operation,
+        public DeferredOperation|Operation $operation,
         ?Parameters $parameters = null,
         public ?RequestBody $requestBody = null,
         public ?string $description = null,
         public ?Server $server = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         $this->parameters = $parameters ?? new Parameters();
     }
 
     public function toObject(Process $process): stdClass
     {
         $result = [];
+        $operation = $this->operation();
 
-        if (isset($this->operation->id)) {
-            $result['operationId'] = $this->operation->id;
+        // операция названа своим operationId, иначе — указателем на место в paths
+        if ($operation->id !== null) {
+            $result['operationId'] = $operation->id;
         } else {
-            $result['operationRef'] = $process->findOperation($this->operation);
+            $result['operationRef'] = $process->findOperation($operation);
         }
 
         if ($this->description !== null) {
@@ -51,6 +60,14 @@ final readonly class Link
             $result['server'] = $this->server->toObject();
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
+    }
+
+    /**
+     * Операция, на которую ведёт ссылка: отложенная разворачивается здесь.
+     */
+    public function operation(): Operation
+    {
+        return $this->operation instanceof DeferredOperation ? $this->operation->resolve() : $this->operation;
     }
 }

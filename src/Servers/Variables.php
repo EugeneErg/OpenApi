@@ -4,17 +4,19 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Servers;
 
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class Variables
 {
-    /** @var array<string, Variable> */
+    use NamedItems;
+
+    /** @var array<array-key, Variable> */
     public array $items;
 
     public function __construct(Variable ...$variables)
     {
-        /** @var array<string, Variable> $variables */
-        $this->items = $variables;
+        $this->items = self::named($variables);
     }
 
     public function toObject(): stdClass

@@ -8,10 +8,14 @@ use stdClass;
 
 final readonly class ExternalDocs
 {
+    public Extensions $extensions;
+
     public function __construct(
         public string $url,
         public ?string $description,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
     }
 
     public function toObject(): stdClass
@@ -22,6 +26,6 @@ final readonly class ExternalDocs
             $result['description'] = $this->description;
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

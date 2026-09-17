@@ -51,14 +51,18 @@
       "@cs",
       "@stan",
       "@test"
-    ]
+    ],
+    "real-world": "@php tools/real-world.php",
+    "validate-output": "@php tools/validate-output.php"
   },
   "scripts-descriptions": {
     "test": "Run the PHPUnit test suite.",
     "stan": "Run PHPStan static analysis at max level.",
     "cs": "Report coding standard violations without changing files.",
     "cs:fix": "Apply coding standard fixes.",
-    "check": "Run coding standards, static analysis and tests."
+    "check": "Run coding standards, static analysis and tests.",
+    "real-world": "Round-trip large public OpenAPI specifications and report what is lost.",
+    "validate-output": "Validate every document the test cases build with the Redocly linter (needs Node.js)."
   },
   "config": {
     "optimize-autoloader": true,

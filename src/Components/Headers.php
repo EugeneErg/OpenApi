@@ -8,17 +8,19 @@ use EugeneErg\OpenApi\Components\Parameters\ContentParameter;
 use EugeneErg\OpenApi\Components\Parameters\Header\SchemaParameter;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Reference;
+use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 final readonly class Headers
 {
-    /** @var array<string, ContentParameter|Reference|SchemaParameter> */
+    use NamedItems;
+
+    /** @var array<array-key, ContentParameter|Reference|SchemaParameter> */
     public array $items;
 
     public function __construct(ContentParameter|Reference|SchemaParameter ...$headers)
     {
-        /** @var array<string, ContentParameter|Reference|SchemaParameter> $headers */
-        $this->items = $headers;
+        $this->items = self::named($headers);
     }
 
     public function toObject(Process $process): stdClass

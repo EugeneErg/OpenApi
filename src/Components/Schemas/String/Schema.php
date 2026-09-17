@@ -7,7 +7,6 @@ namespace EugeneErg\OpenApi\Components\Schemas\String;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractConditionSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Bounds;
@@ -15,6 +14,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Serialization\Structure;
@@ -45,12 +45,11 @@ final readonly class Schema extends AbstractConditionSchema
         public int $minLength = 0,
         public ?int $maxLength = null,
         public ?string $pattern = null,
-        public Format|string|null $format = null,
+        Format|string|null $format = null,
         public ?string $contentEncoding = null,
         public ?string $contentMediaType = null,
         public ?AbstractSchema $contentSchema = null,
         ?Discriminator $discriminator = null,
-        ?AbstractValue $const = null,
         ?AbstractValues $examples = null,
         ?string $comment = null,
         ?AbstractSchemas $defs = null,
@@ -62,6 +61,13 @@ final readonly class Schema extends AbstractConditionSchema
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
+        /**
+         * Слово, проверяющее строку, можно написать и не объявляя type: для значения
+         * другого типа оно просто ничего не значит. Спецификация это разрешает,
+         * и при чтении чужого документа такую проверку терять нельзя.
+         */
+        bool $declareType = true,
+        ?Extensions $extensions = null,
     ) {
         self::assertRange('String schema length', $this->minLength, $this->maxLength);
 
@@ -70,7 +76,8 @@ final readonly class Schema extends AbstractConditionSchema
         }
 
         parent::__construct(
-            'string',
+            $declareType ? 'string' : null,
+            $format instanceof Format ? $format->value : $format,
             $title,
             $description,
             $nullable,
@@ -85,7 +92,6 @@ final readonly class Schema extends AbstractConditionSchema
             $not,
             $example,
             $discriminator,
-            $const,
             $examples,
             $comment,
             $defs,
@@ -97,6 +103,7 @@ final readonly class Schema extends AbstractConditionSchema
             $if,
             $then,
             $else,
+            $extensions,
         );
     }
 
@@ -116,10 +123,6 @@ final readonly class Schema extends AbstractConditionSchema
             $result['pattern'] = $this->pattern;
         }
 
-        if ($this->format !== null) {
-            $result['format'] = $this->format instanceof Format ? $this->format->value : $this->format;
-        }
-
         if ($this->contentEncoding !== null) {
             $process->assertV31('"contentEncoding"');
             $result['contentEncoding'] = $this->contentEncoding;
@@ -135,6 +138,6 @@ final readonly class Schema extends AbstractConditionSchema
             $result['contentSchema'] = self::nested($this->contentSchema, $process);
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 }

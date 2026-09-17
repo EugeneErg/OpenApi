@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
+use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
 use stdClass;
@@ -13,8 +14,16 @@ use function sprintf;
 
 abstract readonly class AbstractSchema
 {
+    public Extensions $extensions;
+
     public function __construct(
         public ?string $type = null,
+        /**
+         * Открытая аннотация: JSON Schema разрешает `format` у значения любого типа,
+         * а незнакомое значение инструменты просто игнорируют. У строк и чисел есть
+         * enum известных значений — он лишь подсказка, строку принимают и они.
+         */
+        public ?string $format = null,
         public ?string $title = null,
         public ?string $description = null,
         public bool $nullable = false,
@@ -23,7 +32,6 @@ abstract readonly class AbstractSchema
         public ?ExternalDocs $externalDocs = null,
         public ?Xml $xml = null,
         public ?AbstractValue $default = null,
-        public ?AbstractValue $const = null,
         public ?AbstractValues $examples = null,
         public ?string $comment = null,
         public ?AbstractSchemas $defs = null,
@@ -32,7 +40,10 @@ abstract readonly class AbstractSchema
         public ?string $dynamicAnchor = null,
         public ?self $dynamicRef = null,
         public ?Vocabularies $vocabulary = null,
+        ?Extensions $extensions = null,
     ) {
+        $this->extensions = $extensions ?? new Extensions();
+
         foreach (['$anchor' => $anchor, '$dynamicAnchor' => $dynamicAnchor] as $keyword => $name) {
             if ($name !== null && preg_match('{^[A-Za-z_][A-Za-z0-9._-]*$}', $name) !== 1) {
                 throw new InvalidSchemaOpenapiException(sprintf(
@@ -42,6 +53,8 @@ abstract readonly class AbstractSchema
                 ));
             }
         }
+
+        $defs?->assertNamed('$defs');
 
         if ($vocabulary !== null && $vocabulary->items !== [] && $id === null) {
             throw new InvalidSchemaOpenapiException('"$vocabulary" is only allowed on a schema resource declaring "$id".');
@@ -76,6 +89,10 @@ abstract readonly class AbstractSchema
             $result[$this->access->value] = true;
         }
 
+        if ($this->format !== null) {
+            $result['format'] = $this->format;
+        }
+
         if ($this->deprecated) {
             $result['deprecated'] = $this->deprecated;
         }
@@ -90,11 +107,6 @@ abstract readonly class AbstractSchema
 
         if ($this->default !== null) {
             $result['default'] = $this->default->toNative($process);
-        }
-
-        if ($this->const !== null) {
-            $process->assertV31('"const"');
-            $result['const'] = $this->const->toNative($process);
         }
 
         if ($this->examples !== null && $this->examples->items !== []) {
@@ -136,7 +148,7 @@ abstract readonly class AbstractSchema
             $result['$dynamicRef'] = '#' . $this->dynamicRef->dynamicAnchor;
         }
 
-        return (object) $result;
+        return (object) $this->extensions->appendTo($result);
     }
 
     /**
