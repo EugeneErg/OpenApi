@@ -8,6 +8,8 @@ use InvalidArgumentException;
 
 final class InvalidArgumentOpenapiException extends InvalidArgumentException implements OpenapiExceptionInterface
 {
+    use HasPlace;
+
     public function __construct(string $message = 'Invalid argument.')
     {
         parent::__construct($message);

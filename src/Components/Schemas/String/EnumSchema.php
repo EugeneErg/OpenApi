@@ -7,10 +7,9 @@ namespace EugeneErg\OpenApi\Components\Schemas\String;
 use DateTimeImmutable;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractEnumSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\Extensions;
@@ -23,10 +22,11 @@ use function is_string;
 use function sprintf;
 
 /**
- * Перечисление строк. См. AbstractEnumSchema — почему здесь нет minLength, pattern и example.
+ * An enumeration of strings. AbstractEnumSchema says why minLength, pattern and example
+ * are absent here.
  *
- * format остаётся: это не только проверка, но и аннотация (генераторы кода выбирают
- * по нему тип). Значения известных форматов проверяются сразу.
+ * format stays: it is not only a check but an annotation as well — code generators pick a
+ * type by it. The values of the known formats are checked right away.
  */
 final readonly class EnumSchema extends AbstractEnumSchema
 {
@@ -44,12 +44,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
         public ?string $contentEncoding = null,
         public ?string $contentMediaType = null,
         public ?AbstractSchema $contentSchema = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?Extensions $extensions = null,
     ) {
         if ($contentSchema !== null && $contentMediaType === null) {
@@ -68,12 +63,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
             externalDocs: $externalDocs,
             xml: $xml,
             default: $default,
-            comment: $comment,
-            defs: $defs,
-            id: $id,
-            anchor: $anchor,
-            dynamicAnchor: $dynamicAnchor,
-            vocabulary: $vocabulary,
+            resource: $resource,
             extensions: $extensions,
         );
     }
@@ -116,7 +106,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
             Format::IPv4 => filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false,
             Format::IPv6 => filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false,
             Format::Byte => base64_decode($value, true) !== false,
-            // остальные форматы проверяются только там, где проверка однозначна
+            // the remaining formats are checked only where the check is unambiguous
             default => true,
         };
 

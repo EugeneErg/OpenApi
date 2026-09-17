@@ -43,7 +43,7 @@ $pet = new Schemas\Untyped\Schema(
     ),
 );
 
-// deprecated + externalDocs + additionalProperties как схема
+// deprecated + externalDocs + additionalProperties as a schema
 $legacyBag = new Schemas\Object\Schema(
     properties: new Schemas\Object\Properties(
         id: new Schemas\Object\Property(schema: new Schemas\String\Schema(), required: true),

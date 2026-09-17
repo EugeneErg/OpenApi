@@ -8,8 +8,8 @@ use PhpCsFixer\Finder;
 $finder = Finder::create()
     ->in(__DIR__)
     ->exclude('vendor')
-    // Пролог для ReadmeTest намеренно импортирует всё, что может понадобиться
-    // примерам из README: для самого файла эти импорты «неиспользуемые».
+    // The prelude for ReadmeTest deliberately imports everything the README examples
+    // may need: for the file itself those imports are "unused".
     ->exclude('tests/Fixtures')
     ->name('*.php');
 
@@ -17,8 +17,8 @@ return (new Config())
     ->setFinder($finder)
     ->setRiskyAllowed(true)
     ->setRules([
-        // Максимальный набор: PSR-12 + опинионированный набор php-cs-fixer + миграция на 8.3,
-        // включая risky-правила. Ниже — только осознанные отступления от него.
+        // The maximum set: PSR-12 + the opinionated php-cs-fixer set + the migration to
+        // 8.3, risky rules included. Below are the deliberate departures from it only.
         '@PSR12' => true,
         '@PSR12:risky' => true,
         '@PhpCsFixer' => true,
@@ -26,38 +26,41 @@ return (new Config())
         '@PHP83Migration' => true,
         '@PHP80Migration:risky' => true,
 
-        // Классы, функции и константы импортируются через use, а не пишутся с ведущим «\».
+        // Classes, functions and constants are imported through use rather than written
+        // with a leading "\".
         'global_namespace_import' => [
             'import_classes' => true,
             'import_constants' => true,
             'import_functions' => true,
         ],
 
-        // Йода-условия: весь проект написан в обычном порядке, менять его нет смысла.
+        // Yoda conditions: the whole project is written in the usual order, and there is
+        // no point in changing that.
         'yoda_style' => false,
 
-        // @PhpCsFixer превращает /** @var */ в обычный комментарий, а на нём держится PHPStan.
+        // @PhpCsFixer turns /** @var */ into an ordinary comment, and PHPStan rests on it.
         'phpdoc_to_comment' => false,
 
-        // Пустое тело в одну строку конфликтует с открывающей скобкой на новой строке.
+        // A one-line empty body conflicts with the opening brace on a new line.
         'single_line_empty_body' => false,
 
-        // Стиль проекта: declare(strict_types = 1) с пробелами вокруг «=».
+        // The project's style: declare(strict_types = 1), with spaces around the "=".
         'declare_equal_normalize' => ['space' => 'single'],
 
-        // Открывающая скобка функций и классов — с новой строки.
+        // The opening brace of functions and classes goes on a new line.
         'braces_position' => [
             'functions_opening_brace' => 'next_line_unless_newline_at_signature_end',
             'classes_opening_brace' => 'next_line_unless_newline_at_signature_end',
         ],
 
-        // Пробелы вокруг конкатенации.
+        // Spaces around a concatenation.
         'concat_space' => ['spacing' => 'one'],
 
-        // Выравнивание PHPDoc по столбцам только мешает при длинных generic-типах.
+        // Aligning PHPDoc into columns only gets in the way with long generic types.
         'phpdoc_align' => false,
 
-        // Порядок членов класса: константы, свойства, конструктор, публичные методы, приватные.
+        // The order of a class's members: constants, properties, the constructor, the
+        // public methods, the private ones.
         'ordered_class_elements' => [
             'order' => [
                 'use_trait',
@@ -79,17 +82,17 @@ return (new Config())
             'sort_algorithm' => 'none',
         ],
 
-        // Запятая в конце многострочных списков — везде, где допустимо.
+        // A trailing comma in multiline lists, wherever that is admissible.
         'trailing_comma_in_multiline' => [
             'elements' => ['arrays', 'arguments', 'parameters', 'match'],
         ],
 
-        // Тесты-фикстуры возвращают значение из файла, отдельный namespace им не нужен.
+        // The fixture files return a value, and need no namespace of their own.
         'php_unit_internal_class' => false,
         'php_unit_test_class_requires_covers' => false,
 
-        // assertSame сравнивает объекты по идентичности. Ожидаемый результат тестов —
-        // раскодированный JSON, его можно сравнивать только по значению, поэтому
-        // assertEquals здесь осознанный выбор, а не недосмотр.
+        // assertSame compares objects by identity. The expected result of the tests is
+        // decoded JSON, which can only be compared by value, so assertEquals here is a
+        // deliberate choice rather than an oversight.
         'php_unit_strict' => false,
     ]);

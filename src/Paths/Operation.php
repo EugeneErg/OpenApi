@@ -9,6 +9,7 @@ use EugeneErg\OpenApi\Components\Parameters\Parameters;
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
 use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
@@ -30,7 +31,7 @@ final readonly class Operation
     public Callbacks $callbacks;
 
     public function __construct(
-        /** В 3.0 обязательны, в 3.1 могут отсутствовать. */
+        /** Required in 3.0, and may be absent in 3.1. */
         public ?Responses $responses = null,
         public ?string $summary = null,
         public ?string $description = null,
@@ -40,8 +41,8 @@ final readonly class Operation
         public Reference|RequestBody|null $requestBody = null,
         ?Tags $tags = null,
         /**
-         * null — наследовать `security` документа; `new Securities()` — операция
-         * открыта, даже если на уровне документа авторизация требуется.
+         * null means inherit the document's `security`; `new Securities()` means the
+         * operation is open even when the document level requires authorisation.
          */
         public ?Securities $security = null,
         ?Servers $servers = null,
@@ -56,7 +57,7 @@ final readonly class Operation
         }
 
         foreach (array_keys($responses->items ?? []) as $code) {
-            // x200 / x4XX — запись кода именованным аргументом; '200' приходит через fromArray()
+            // x200 / x4XX is how a code is written as a named argument; '200' comes through fromArray()
             if (preg_match('{^(?:x?[1-5](?:\d\d|XX)|default)$}', (string) $code) !== 1) {
                 throw new InvalidArgumentOpenapiException(sprintf(
                     'Response key "%s" is neither an HTTP status code (200, 4XX; x200 as a named argument) nor "default".',
@@ -76,7 +77,10 @@ final readonly class Operation
         $result = [];
 
         if ($this->responses !== null) {
-            $result['responses'] = $this->responses->toObject($process);
+            $result['responses'] = Place::in(
+                fn (): stdClass => $this->responses->toObject($process),
+                'responses',
+            );
         } elseif (!$process->version()->isV31()) {
             throw new InvalidArgumentOpenapiException(sprintf(
                 'Operation%s must declare responses in OpenAPI %s; they became optional in 3.1.',
@@ -97,19 +101,25 @@ final readonly class Operation
             $result['operationId'] = $this->id;
         }
 
-        if ($this->deprecated) {
+        if ($this->deprecated || $process->verbose) {
             $result['deprecated'] = $this->deprecated;
         }
 
         if ($this->parameters->items !== []) {
-            $result['parameters'] = $this->parameters->toArray($process);
+            $result['parameters'] = Place::in(
+                fn (): array => $this->parameters->toArray($process),
+                'parameters',
+            );
         }
 
         if ($this->requestBody !== null) {
-            // тело, объявленное в components.requestBodies, здесь пишется ссылкой
-            $result['requestBody'] = $this->requestBody instanceof Reference
-                ? $this->requestBody->toObject($process)
-                : ($process->findRequestBody($this->requestBody) ?? $this->requestBody->toObject($process));
+            // a body declared in components.requestBodies is written as a reference here
+            $result['requestBody'] = Place::in(
+                fn (): stdClass => $this->requestBody instanceof Reference
+                    ? $this->requestBody->toObject($process)
+                    : ($process->findRequestBody($this->requestBody) ?? $this->requestBody->toObject($process)),
+                'requestBody',
+            );
         }
 
         if ($this->tags->items !== []) {
@@ -125,7 +135,10 @@ final readonly class Operation
         }
 
         if ($this->callbacks->items !== []) {
-            $result['callbacks'] = $this->callbacks->toObject($process);
+            $result['callbacks'] = Place::in(
+                fn (): stdClass => $this->callbacks->toObject($process),
+                'callbacks',
+            );
         }
 
         if ($this->externalDocs !== null) {

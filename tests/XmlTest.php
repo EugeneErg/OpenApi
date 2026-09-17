@@ -4,7 +4,11 @@ declare(strict_types = 1);
 
 namespace Tests;
 
+use EugeneErg\OpenApi\Builder;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
+use EugeneErg\OpenApi\Info;
+use EugeneErg\OpenApi\Openapi;
+use EugeneErg\OpenApi\Process;
 use PHPUnit\Framework\TestCase;
 use UnexpectedValueException;
 
@@ -17,7 +21,12 @@ final class XmlTest extends TestCase
      */
     public function testToObject(Xml $xml, string $expected): void
     {
-        self::assertEquals(json_decode($expected), $xml->toObject());
+        $openapi = new Openapi(info: new Info(title: 'Xml', version: '1.0.0'));
+
+        self::assertEquals(
+            json_decode($expected),
+            $xml->toObject(new Process(new Builder(...['openapi.json' => $openapi]), $openapi)),
+        );
     }
 
     /**

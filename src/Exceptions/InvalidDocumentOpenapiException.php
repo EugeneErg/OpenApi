@@ -7,10 +7,12 @@ namespace EugeneErg\OpenApi\Exceptions;
 use RuntimeException;
 
 /**
- * Читаемый документ не соответствует спецификации или испорчен.
+ * The document being read does not match the specification, or is broken.
  */
 final class InvalidDocumentOpenapiException extends RuntimeException implements OpenapiExceptionInterface
 {
+    use HasPlace;
+
     public function __construct(string $message = 'Invalid document.')
     {
         parent::__construct($message);

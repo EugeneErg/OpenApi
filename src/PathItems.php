@@ -4,16 +4,17 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi;
 
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Paths\Path;
 use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
- * Именованная карта Path Item Object.
+ * A named map of Path Item Objects.
  *
- * Используется там, где ключ — не шаблон пути: webhooks (имя вебхука) и
- * callbacks (runtime-выражение вроде `{$request.body#/callbackUrl}`).
- * Для секции paths есть наследник Paths, который дополнительно проверяет шаблоны.
+ * Used where the key is not a path template: webhooks (the webhook's name) and callbacks
+ * (a runtime expression such as `{$request.body#/callbackUrl}`). The paths section has a
+ * subclass of its own, Paths, which checks the templates as well.
  */
 readonly class PathItems
 {
@@ -27,8 +28,8 @@ readonly class PathItems
     public Extensions $extensions;
 
     /**
-     * Расширения есть у Paths Object и Callback Object. В webhooks и
-     * components.pathItems это обычная карта, и там они отклоняются.
+     * A Paths Object and a Callback Object have extensions. In webhooks and
+     * components.pathItems it is an ordinary map, and there they are rejected.
      */
     public function __construct(?Extensions $extensions = null, Path|Reference ...$paths)
     {
@@ -37,10 +38,11 @@ readonly class PathItems
     }
 
     /**
-     * Карта с любыми именами, включая `{$request.body#/url}`, и расширениями `x-*`.
+     * A map with any names at all, `{$request.body#/url}` included, plus the `x-*`
+     * extensions.
      *
-     * Имя, совпадающее с «extensions», можно передать только так: именованным
-     * аргументом оно попало бы в параметр расширений.
+     * A name that happens to be "extensions" can only be passed this way: as a named
+     * argument it would land in the extensions parameter.
      *
      * @param array<array-key, mixed> $items
      */
@@ -51,30 +53,33 @@ readonly class PathItems
     }
 
     /**
-     * Использование по месту: если Path Item лежит в components.pathItems, здесь будет $ref.
+     * Use in place: when the Path Item lives in components.pathItems, a $ref stands here.
      */
     public function toObject(Process $process): stdClass
     {
         $result = [];
 
         foreach ($this->items as $name => $path) {
-            $result[$name] = $path instanceof Reference
-                ? $path->toObject($process)
-                : ($process->findPathItem($path) ?? $path->toObject($process));
+            $result[$name] = Place::in(
+                static fn (): stdClass => $path instanceof Reference
+                    ? $path->toObject($process)
+                    : ($process->findPathItem($path) ?? $path->toObject($process)),
+                $name,
+            );
         }
 
         return (object) $this->extensions->appendTo($result);
     }
 
     /**
-     * Объявление в components: разворачивается целиком, без ссылок на самого себя.
+     * The declaration in components: written out in full, without references to itself.
      */
     public function sourceToObject(Process $process): stdClass
     {
         $result = [];
 
         foreach ($this->items as $name => $path) {
-            $result[$name] = $path->toObject($process);
+            $result[$name] = Place::in(static fn (): stdClass => $path->toObject($process), $name);
         }
 
         return (object) $result;

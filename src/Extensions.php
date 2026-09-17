@@ -12,32 +12,32 @@ use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
- * Расширения спецификации — поля `x-*`.
+ * The extensions of the specification — the `x-*` fields.
  *
- * Спецификация требует от имени ровно одного: оно начинается с `x-`. Этот префикс
- * добавляется всегда, поэтому имя пишется без него:
+ * The specification asks exactly one thing of the name: that it start with `x-`. This
+ * prefix is always added, so the name is written without it:
  *
  *     new Extensions(internal: true)                   // x-internal
  *     new Extensions(...['code-samples' => $samples])  // x-code-samples
  *     new Extensions(...['x-legacy' => $value])        // x-x-legacy
  *
- * Правило одно и без исключений, так что у каждого поля документа ровно одна запись,
- * а `x-x-legacy`, которое спецификация разрешает, выражается как `x-legacy`.
- * Обратная сторона: префикс никогда не пишут руками — написанный, он удвоится.
+ * The rule is one and has no exceptions, so every field of the document has exactly one
+ * spelling here, and `x-x-legacy`, which the specification allows, is expressed as
+ * `x-legacy`. The other side of it: the prefix is never written by hand — written, it
+ * doubles.
  *
- * Имена вида `7` передаются через fromArray(), как и в остальных картах.
- * Значение — любое значение JSON: скаляр, null либо контейнер
- * (`OpenapiObject`, `OpenapiArray`).
+ * Names such as `7` are passed through fromArray(), as in every other map. A value is any
+ * JSON value: a scalar, null, or a container (`OpenapiObject`, `OpenapiArray`).
  *
- * Префиксы `x-oai-` и `x-oas-` спецификация 3.1 оставила за OpenAPI Initiative:
- * пакет их принимает — документ с ними законен, — но своё расширение так называть
- * не стоит.
+ * The 3.1 specification reserved the `x-oai-` and `x-oas-` prefixes for the OpenAPI
+ * Initiative: the package accepts them — a document with them is legal — but an extension
+ * of one's own is better named otherwise.
  */
 final readonly class Extensions
 {
     use NamedItems;
 
-    /** @var array<array-key, null|AbstractValues|bool|float|int|string> имена без префикса */
+    /** @var array<array-key, null|AbstractValues|bool|float|int|string> the names without the prefix */
     public array $items;
 
     public function __construct(AbstractValues|bool|float|int|string|null ...$extensions)
@@ -52,10 +52,10 @@ final readonly class Extensions
     }
 
     /**
-     * Дописывает расширения в конец полей объекта.
+     * Appends the extensions after the object's fields.
      *
-     * Подкласс дополняет вывод родителя, поэтому расширения переносятся в конец
-     * при каждом вызове: иначе они оказались бы в середине объекта.
+     * A subclass adds to what its parent printed, so the extensions are moved to the end
+     * on every call: otherwise they would end up in the middle of the object.
      *
      * @param array<array-key, mixed>|stdClass $fields
      *

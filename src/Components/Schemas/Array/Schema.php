@@ -11,10 +11,11 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Bounds;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas as UntypedSchemas;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
@@ -57,18 +58,12 @@ final readonly class Schema extends AbstractConditionSchema
         public AbstractSchema|bool|null $unevaluatedItems = null,
         ?Discriminator $discriminator = null,
         ?AbstractValues $examples = null,
-        ?string $comment = null,
+        ?Resource $resource = null,
         /**
-         * Схема может описывать форму, не объявляя type: спецификация это
-         * разрешает, и при чтении чужого документа такой тип терять нельзя.
+         * A schema may describe a shape without declaring type: the specification allows
+         * that, and reading somebody else's document must not lose such a shape.
          */
         bool $declareType = true,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?AbstractSchema $dynamicRef = null,
-        ?Vocabularies $vocabulary = null,
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
@@ -85,34 +80,28 @@ final readonly class Schema extends AbstractConditionSchema
         }
 
         parent::__construct(
-            $declareType ? 'array' : null,
-            $format,
-            $title,
-            $description,
-            $nullable,
-            $access,
-            $deprecated,
-            $externalDocs,
-            $xml,
-            $default,
-            $anyOf,
-            $allOf,
-            $oneOf,
-            $not,
-            $example,
-            $discriminator,
-            $examples,
-            $comment,
-            $defs,
-            $id,
-            $anchor,
-            $dynamicAnchor,
-            $dynamicRef,
-            $vocabulary,
-            $if,
-            $then,
-            $else,
-            $extensions,
+            type: $declareType ? 'array' : null,
+            format: $format,
+            title: $title,
+            description: $description,
+            nullable: $nullable,
+            access: $access,
+            deprecated: $deprecated,
+            externalDocs: $externalDocs,
+            xml: $xml,
+            default: $default,
+            anyOf: $anyOf,
+            allOf: $allOf,
+            oneOf: $oneOf,
+            not: $not,
+            example: $example,
+            discriminator: $discriminator,
+            examples: $examples,
+            if: $if,
+            then: $then,
+            else: $else,
+            resource: $resource,
+            extensions: $extensions,
         );
     }
 
@@ -121,16 +110,16 @@ final readonly class Schema extends AbstractConditionSchema
         $result = Structure::vars(parent::toObject($process));
 
         if ($this->items !== null) {
-            $result['items'] = self::nested($this->items, $process);
+            $result['items'] = Place::in(fn (): stdClass => self::nested($this->items, $process), 'items');
         } elseif ($this->type !== null && !$process->version()->isV31()) {
-            // 3.0: «items MUST be present if type is "array"» — без объявленного типа
-            // требования нет, и слово о массиве живёт само по себе
+            // 3.0 says items MUST be present if type is "array"; without a declared type
+            // there is no such requirement, and a word about arrays stands on its own
             throw new InvalidSchemaOpenapiException(
                 'An array schema must declare "items" in OpenAPI 3.0; it is optional only since 3.1.',
             );
         }
 
-        if ($this->minItems > 0) {
+        if ($this->minItems > 0 || $process->verbose) {
             $result['minItems'] = $this->minItems;
         }
 
@@ -138,7 +127,7 @@ final readonly class Schema extends AbstractConditionSchema
             $result['maxItems'] = $this->maxItems;
         }
 
-        if ($this->uniqueItems) {
+        if ($this->uniqueItems || $process->verbose) {
             $result['uniqueItems'] = $this->uniqueItems;
         }
 

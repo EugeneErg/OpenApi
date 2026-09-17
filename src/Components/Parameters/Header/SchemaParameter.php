@@ -23,7 +23,17 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
         bool $deprecated = false,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct(In::Header, $schema, $explode ?? false, $description, $required, $deprecated, $example, $examples, $extensions);
+        parent::__construct(
+            in: In::Header,
+            schema: $schema,
+            explode: $explode ?? false,
+            description: $description,
+            required: $required,
+            deprecated: $deprecated,
+            example: $example,
+            examples: $examples,
+            extensions: $extensions,
+        );
     }
 
     /**

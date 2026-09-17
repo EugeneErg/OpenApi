@@ -3,23 +3,24 @@
 declare(strict_types = 1);
 
 /*
- * Проверка вывода сторонним валидатором.
+ * A check of the output by a third-party validator.
  *
  *     composer validate-output
  *
- * Круг «чтение → запись» доказывает, что документ не потерялся, но не то, что он
- * валиден: пакет мог бы одинаково неверно и читать, и писать. Поэтому всё, что
- * собирают кейсы tests/Cases/BuilderTest, отдаётся Redocly — в двух форматах,
- * потому что YAML пишет свой энкодер и его ошибки в JSON не видны.
+ * The read → write round trip proves the document was not lost, but not that it is
+ * valid: the package could read and write in the same wrong way. So everything the
+ * tests/Cases/BuilderTest cases build is handed to Redocly — in both formats, because
+ * YAML is written by an encoder of our own and its mistakes are invisible in JSON.
  *
- * Проверяются только структурные правила (`struct`): стилевые советы вроде
- * «добавьте лицензию» к валидности не относятся.
+ * Only the structural rules (`struct`) are checked: stylistic advice such as "add a
+ * licence" has nothing to do with validity.
  *
- * KNOWN_DEFECTS — места, где валидатор расходится со спецификацией, а не пакет.
- * Каждое проверено по тексту OpenAPI и оставлено с объяснением, потому что
- * проверка, падающая на чужих ошибках, хуже отсутствующей.
+ * KNOWN_DEFECTS are the places where the validator, not the package, departs from the
+ * specification. Every one of them was checked against the text of OpenAPI and left with
+ * an explanation, because a check that fails on somebody else's mistakes is worse than no
+ * check at all.
  *
- * Нужен Node.js; сам Redocly скачивается через npx при первом запуске.
+ * Node.js is required; Redocly itself is downloaded through npx on the first run.
  */
 
 use EugeneErg\OpenApi\Builder;
@@ -58,15 +59,21 @@ foreach ((array) glob(__DIR__ . '/../tests/Cases/BuilderTest/Objects/*.php') as 
     /** @var array<string, Openapi> $documents */
     $builder = new Builder(...$documents);
 
-    // оба формата: YAML пишется своим энкодером, и его ошибки JSON не покажет
-    foreach ($builder->encode() as $name => $content) {
-        file_put_contents(sprintf('%s/%s--%s.json', $directory, $case, basename($name, '.json')), $content);
-        ++$written;
-    }
+    // both formats: YAML is written by an encoder of our own, and JSON will not show its
+    // mistakes; and both forms: the verbose one writes out the defaults, and getting
+    // those wrong is just as easy
+    foreach ([false, true] as $verbose) {
+        $suffix = $verbose ? '--verbose' : '';
 
-    foreach ($builder->encode('', new YamlEncoder()) as $name => $content) {
-        file_put_contents(sprintf('%s/%s--%s.yaml', $directory, $case, basename($name, '.json')), $content);
-        ++$written;
+        foreach ($builder->encode('', null, $verbose) as $name => $content) {
+            file_put_contents(sprintf('%s/%s--%s%s.json', $directory, $case, basename($name, '.json'), $suffix), $content);
+            ++$written;
+        }
+
+        foreach ($builder->encode('', new YamlEncoder(), $verbose) as $name => $content) {
+            file_put_contents(sprintf('%s/%s--%s%s.yaml', $directory, $case, basename($name, '.json'), $suffix), $content);
+            ++$written;
+        }
     }
 }
 
@@ -79,10 +86,11 @@ $command = sprintf(
 );
 
 /**
- * Расхождения валидатора со спецификацией: подстрока сообщения => почему это не наша ошибка.
+ * Where the validator departs from the specification: a substring of the message => why
+ * this is not our mistake.
  */
 const KNOWN_DEFECTS = [
-    // JSON Schema 2020-12 объявляет $vocabulary объектом «URI => bool», Redocly ждёт строку
+    // JSON Schema 2020-12 declares $vocabulary an object of URI => bool; Redocly expects a string
     'at #/components/schemas/Node/$vocabulary' => '$vocabulary is an object in JSON Schema 2020-12',
 ];
 
@@ -126,7 +134,7 @@ if ($status !== 0) {
     exit(1);
 }
 
-// в отчёте Redocly перечисляет каждый файл — оставляем итог
+// in its report Redocly lists every file — only the total is kept
 foreach ($output as $line) {
     if (str_contains($line, 'valid') || str_contains($line, 'error')) {
         echo $line, "\n";

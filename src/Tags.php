@@ -21,10 +21,7 @@ final readonly class Tags
     }
 
     /**
-     * @return array<int, stdClass>
-     */
-    /**
-     * Объявление тегов на верхнем уровне документа.
+     * The declaration of the tags at the top level of the document.
      *
      * @return list<stdClass>
      */
@@ -40,7 +37,8 @@ final readonly class Tags
     }
 
     /**
-     * Ссылка на теги из операции: спецификация требует здесь список имён.
+     * A reference to the tags from an operation: the specification asks for a list of
+     * names here.
      *
      * @return list<string>
      */

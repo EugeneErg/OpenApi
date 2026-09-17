@@ -10,13 +10,13 @@ use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 use EugeneErg\OpenApi\Paths;
 
-// Всё, что здесь собрано, спецификация разрешает, а пакет когда-то запрещал.
-// Нашлось при чтении настоящих спецификаций из репозитория OAI.
+// Everything gathered here the specification allows and the package once forbade.
+// Found while reading real specifications from the OAI repository.
 
-// format — открытое значение, а не только известный enum
+// format is an open value rather than the known enum alone
 $uriRef = new Schemas\String\Schema(format: 'uriref');
 
-// схема описывает форму, не объявляя type
+// the schema describes a shape without declaring type
 $subscription = new Schemas\Object\Schema(
     properties: new Schemas\Object\Properties(
         subscriptionId: new Schemas\Object\Property(schema: new Schemas\String\Schema(), required: true),
@@ -25,13 +25,13 @@ $subscription = new Schemas\Object\Schema(
     declareType: false,
 );
 
-// проверка живёт и без объявленного типа: значению другого типа она не помеха
+// a check lives without a declared type as well: it does not stand in the way of a value of another type
 $longEnough = new Schemas\String\Schema(minLength: 3, declareType: false);
 $even = new Schemas\Number\Schema(multipleOf: 2, declareType: false);
-// в 3.0 items обязателен только при объявленном type: array
+// in 3.0 items is required only when type: array is declared
 $unique = new Schemas\Array\Schema(uniqueItems: true, declareType: false);
 
-// пример-значение содержит вложенный список объектов
+// the example value holds a nested list of objects
 $versions = new Schemas\Object\Value(new Schemas\Object\OpenapiObject(
     versions: new Schemas\Untyped\Values(
         new Schemas\Object\OpenapiObject(id: 'v2.0', status: 'CURRENT'),
@@ -60,7 +60,7 @@ $openapi = new Openapi(
                             'application/json' => new RequestBodies\Content(schema: $subscription),
                         ]),
                     ),
-                    // media type без схемы: спецификация её не требует
+                    // a media type without a schema: the specification does not require one
                     x200: new Responses\Response(
                         description: 'versions',
                         content: new RequestBodies\Contents(...[

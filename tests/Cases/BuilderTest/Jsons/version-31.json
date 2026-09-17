@@ -24,7 +24,7 @@
                         "string",
                         "null"
                     ],
-                    "description": "Может отсутствовать."
+                    "description": "May be absent."
                 },
                 "Rating": {
                     "type": "number",

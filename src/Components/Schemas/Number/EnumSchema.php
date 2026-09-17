@@ -5,24 +5,21 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Number;
 
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractEnumSchema;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
-use EugeneErg\OpenApi\Process;
-use EugeneErg\OpenApi\Serialization\Structure;
-use stdClass;
 
 use function is_float;
 use function is_int;
 use function sprintf;
 
 /**
- * Перечисление чисел. См. AbstractEnumSchema — почему здесь нет границ, multipleOf и example.
+ * An enumeration of numbers. AbstractEnumSchema says why the bounds, multipleOf and
+ * example are absent here.
  */
 final readonly class EnumSchema extends AbstractEnumSchema
 {
@@ -37,12 +34,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
         ?Xml $xml = null,
         ?Value $default = null,
         Format|string|null $format = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?Extensions $extensions = null,
     ) {
         parent::__construct(
@@ -57,21 +49,9 @@ final readonly class EnumSchema extends AbstractEnumSchema
             externalDocs: $externalDocs,
             xml: $xml,
             default: $default,
-            comment: $comment,
-            defs: $defs,
-            id: $id,
-            anchor: $anchor,
-            dynamicAnchor: $dynamicAnchor,
-            vocabulary: $vocabulary,
+            resource: $resource,
             extensions: $extensions,
         );
-    }
-
-    public function toObject(Process $process): stdClass
-    {
-        $result = Structure::vars(parent::toObject($process));
-
-        return (object) $this->extensions->appendTo($result);
     }
 
     protected function assertValue(AbstractValues|bool|float|int|string $value): void

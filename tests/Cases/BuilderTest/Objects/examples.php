@@ -23,8 +23,8 @@ $external = new Example(
     description: 'Stored outside the document.',
 );
 
-// «active» встречается и как значение примера, и как член enum, и как default.
-// Ссылкой должен стать только пример, остальные два — обычные строки.
+// "active" occurs as the value of an example, as a member of an enum and as a default.
+// Only the example should become a reference; the other two are ordinary strings.
 $status = new Schemas\String\EnumSchema(
     enums: new Schemas\String\Strings('active', 'archived'),
 );

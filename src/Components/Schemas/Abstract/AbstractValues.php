@@ -11,7 +11,7 @@ use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
- * JSON-значение-контейнер: объект (OpenapiObject) или список (все остальные).
+ * A JSON value that holds others: an object (OpenapiObject) or a list (everything else).
  */
 abstract readonly class AbstractValues
 {
@@ -29,7 +29,7 @@ abstract readonly class AbstractValues
     }
 
     /**
-     * Объект — из карты с любыми именами, включая '7' и '-1'; список — из списка.
+     * An object comes from a map with any names, '7' and '-1' included; a list from a list.
      *
      * @param array<array-key, mixed> $items
      */

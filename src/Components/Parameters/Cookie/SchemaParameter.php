@@ -23,11 +23,21 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
         bool $deprecated = false,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct(In::Cookie, $schema, $explode ?? true, $description, $required, $deprecated, $example, $examples, $extensions);
+        parent::__construct(
+            in: In::Cookie,
+            schema: $schema,
+            explode: $explode ?? true,
+            description: $description,
+            required: $required,
+            deprecated: $deprecated,
+            example: $example,
+            examples: $examples,
+            extensions: $extensions,
+        );
     }
 
     /**
-     * Стиль cookie — form, а при нём спецификация задаёт explode = true.
+     * A cookie's style is form, and with it the specification sets explode = true.
      *
      * @return array<string, bool>
      */

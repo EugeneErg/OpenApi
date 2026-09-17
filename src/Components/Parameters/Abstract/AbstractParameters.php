@@ -5,11 +5,8 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Parameters\Abstract;
 
 use EugeneErg\OpenApi\Components\Parameters\In;
-use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Reference;
-use EugeneErg\OpenApi\Serialization\Structure;
 use EugeneErg\OpenApi\Support\NamedItems;
-use stdClass;
 
 use function is_int;
 
@@ -21,9 +18,9 @@ abstract readonly class AbstractParameters
     public array $items;
 
     /**
-     * Параметры без имени. Так можно передать только параметр, зарегистрированный
-     * в components.parameters: имя у него берётся из регистрации, а на месте
-     * использования окажется $ref. Незарегистрированный отклонит сборка.
+     * The parameters passed without a name. Only a parameter registered in
+     * components.parameters can be passed that way: its name comes from the registration,
+     * and a $ref stands where it is used. The build rejects an unregistered one.
      *
      * @var list<AbstractParameter|Reference>
      */
@@ -47,25 +44,8 @@ abstract readonly class AbstractParameters
     }
 
     /**
-     * Раздел спецификации, к которому относится контейнер. Благодаря этому
-     * Parameters не нуждается в таблице соответствия «имя свойства => in».
+     * The section of the specification the container belongs to. Thanks to it Parameters
+     * needs no table mapping a property name to an `in` value.
      */
     abstract public function in(): In;
-
-    /**
-     * @return array<int, stdClass>
-     */
-    public function toArray(Process $process): array
-    {
-        $result = [];
-
-        foreach ($this->items as $name => $parameter) {
-            // у ссылки имя берётся из объявления компонента и рядом с $ref не пишется
-            $result[] = $parameter instanceof Reference
-                ? $parameter->toObject($process)
-                : (object) array_merge(Structure::vars($parameter->toObject($process)), ['name' => (string) $name]);
-        }
-
-        return $result;
-    }
 }

@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi;
 
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Serialization\EncoderInterface;
 use EugeneErg\OpenApi\Serialization\JsonEncoder;
 use RuntimeException;
@@ -15,10 +16,10 @@ use function is_string;
 use function sprintf;
 
 /**
- * Собирает один или несколько документов OpenAPI.
+ * Builds one or several OpenAPI documents.
  *
- * Разрешением ссылок занимается Process: Builder только хранит документы и знает,
- * под каким именем файла каждый из них будет сохранён.
+ * Process is what resolves the references: Builder only keeps the documents and knows
+ * the file name each of them will be saved under.
  */
 final readonly class Builder
 {
@@ -26,12 +27,12 @@ final readonly class Builder
     public array $openapi;
 
     /**
-     * Ключи — имена файлов, именно они попадают в кросс-файловые $ref:
+     * The keys are file names, and they are what cross-file $refs carry:
      *
      *     new Builder(...['openapi.json' => $openapi]);
      *
-     * Позиционные аргументы дали бы числовые ключи и, как следствие,
-     * невалидные ссылки вида `0#/components/schemas/User`.
+     * Positional arguments would give numeric keys and, as a consequence, invalid
+     * references of the form `0#/components/schemas/User`.
      */
     public function __construct(Openapi ...$openapi)
     {
@@ -50,30 +51,34 @@ final readonly class Builder
     /**
      * @return array<string, stdClass>
      */
-    public function prepareToSave(string $path = ''): array
+    public function prepareToSave(string $path = '', bool $verbose = false): array
     {
         $path = rtrim($path, '/');
         $result = [];
 
         foreach ($this->openapi as $fileName => $value) {
-            $result[$path === '' ? $fileName : $path . '/' . $fileName]
-                = $value->toObject(new Process($this, $value));
+            // the file name is the first step of the place of failure: with several
+            // documents there is no telling which of them is at fault without it
+            $result[$path === '' ? $fileName : $path . '/' . $fileName] = Place::in(
+                fn (): stdClass => $value->toObject(new Process($this, $value, $verbose)),
+                $fileName,
+            );
         }
 
         return $result;
     }
 
     /**
-     * Сериализует документы, не записывая их.
+     * Serialises the documents without writing them.
      *
-     * @return array<string, string> карта «путь к файлу => его содержимое»
+     * @return array<string, string> a map of file path => its contents
      */
-    public function encode(string $path = '', ?EncoderInterface $encoder = null): array
+    public function encode(string $path = '', ?EncoderInterface $encoder = null, bool $verbose = false): array
     {
         $encoder ??= new JsonEncoder();
         $result = [];
 
-        foreach ($this->prepareToSave($path) as $fileName => $document) {
+        foreach ($this->prepareToSave($path, $verbose) as $fileName => $document) {
             $result[$fileName] = $encoder->encode($document);
         }
 
@@ -81,13 +86,13 @@ final readonly class Builder
     }
 
     /**
-     * Сериализует документы и пишет их на диск.
+     * Serialises the documents and writes them to disk.
      *
-     * @return array<string, string> карта «путь к файлу => его содержимое»
+     * @return array<string, string> a map of file path => its contents
      */
-    public function save(string $path = '', ?EncoderInterface $encoder = null): array
+    public function save(string $path = '', ?EncoderInterface $encoder = null, bool $verbose = false): array
     {
-        $result = $this->encode($path, $encoder);
+        $result = $this->encode($path, $encoder, $verbose);
 
         foreach ($result as $fileName => $content) {
             $directory = dirname($fileName);

@@ -11,16 +11,15 @@ use EugeneErg\OpenApi\Process;
 use stdClass;
 
 /**
- * Скоуп, названный именем, а не объектом.
+ * A scope named by its name rather than by the object.
  *
- * Спецификация требует от Security Requirement только того, чтобы имя схемы было
- * объявлено в `components.securitySchemes`; сами скоупы объявлять не обязательно.
- * У openIdConnect их и негде объявить — список публикует провайдер по
- * openIdConnectUrl, — а у oauth2 документ может требовать скоуп, которого нет ни
- * в одном flow.
+ * Of a Security Requirement the specification asks only that the scheme's name be
+ * declared in `components.securitySchemes`; the scopes themselves need not be declared.
+ * With openIdConnect there is nowhere to declare them — the provider publishes the list at
+ * openIdConnectUrl — and with oauth2 a document may require a scope that no flow has.
  *
- * Скоуп, объявленный во flow, передаётся объектом `Flows\Scope`: тогда его имя
- * и схема берутся из самого объявления и разойтись не могут.
+ * A scope declared in a flow is passed as a `Flows\Scope` object: then its name and its
+ * scheme come from the declaration itself and cannot drift apart.
  */
 final readonly class ScopeName
 {

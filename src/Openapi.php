@@ -22,6 +22,7 @@ use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\Scope;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Scheme;
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
 use EugeneErg\OpenApi\Exceptions\InvalidPathOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Exceptions\ScopeNotFoundOpenapiException;
 use EugeneErg\OpenApi\Exceptions\SecuritySchemeNotFoundOpenapiException;
 use EugeneErg\OpenApi\Paths\Path;
@@ -95,14 +96,15 @@ final readonly class Openapi
             'info' => $this->info->toObject(),
         ];
 
-        // в 3.1 paths необязательны, если есть webhooks или components;
-        // пустой объект в этом случае ничего не добавляет
+        // in 3.1 paths are optional when webhooks or components are there;
+        // an empty object adds nothing in that case
         if (
             $this->paths->items !== []
             || !$this->version->isV31()
+            || $process->verbose
             || ($this->webhooks->items === [] && $this->components->isEmpty())
         ) {
-            $result['paths'] = $this->paths->toObject($process);
+            $result['paths'] = Place::in(fn (): stdClass => $this->paths->toObject($process), 'paths');
         }
 
         if ($this->jsonSchemaDialect !== null) {
@@ -110,7 +112,7 @@ final readonly class Openapi
         }
 
         if ($this->webhooks->items !== []) {
-            $result['webhooks'] = $this->webhooks->toObject($process);
+            $result['webhooks'] = Place::in(fn (): stdClass => $this->webhooks->toObject($process), 'webhooks');
         }
 
         if ($this->externalDocs !== null) {
@@ -203,8 +205,8 @@ final readonly class Openapi
     }
 
     /**
-     * Имя, под которым параметр объявлен в components. Рядом с `$ref` его не пишут,
-     * но проверка на повторы в списке параметров сравнивает именно имена.
+     * The name a parameter is declared under in components. It is not written beside a
+     * `$ref`, but the check for repeats in a parameter list compares exactly the names.
      */
     public function findParameterName(AbstractSchemaParameter|CustomParameter $value): ?string
     {
@@ -212,8 +214,8 @@ final readonly class Openapi
     }
 
     /**
-     * Security Requirement Object ссылается на securitySchemes того же документа,
-     * поэтому scope ищется только в текущем Openapi, без выхода в соседние файлы.
+     * A Security Requirement Object refers to the securitySchemes of its own document, so
+     * a scope is looked up in the current Openapi alone, without reaching the neighbours.
      */
     public function findScope(Scope $value): stdClass
     {
@@ -250,7 +252,7 @@ final readonly class Openapi
     }
 
     /**
-     * @return null|array{string, Parameter} имя в components и само объявление
+     * @return null|array{string, Parameter} the name in components and the declaration itself
      */
     private function parameterComponent(AbstractSchemaParameter|CustomParameter $value): ?array
     {
@@ -271,12 +273,12 @@ final readonly class Openapi
     }
 
     /**
-     * Адреса всех схем документа относительно `components/schemas`.
+     * The addresses of every schema of the document, relative to `components/schemas`.
      *
-     * Схема из $defs адресуется путём вида `User/$defs/Address`, поэтому ссылку
-     * на неё строит тот же механизм, что и на обычный компонент: пользователь
-     * передаёт объект, а путь считается здесь. Второго, ручного способа
-     * сослаться на схему в пакете нет.
+     * A schema inside $defs is addressed by a path such as `User/$defs/Address`, so a
+     * reference to it is built by the same machinery as one to an ordinary component: the
+     * user passes the object, and the path is worked out here. There is no second, manual
+     * way to refer to a schema in this package.
      *
      * @return array<int, string>
      */
@@ -298,15 +300,15 @@ final readonly class Openapi
             $id = spl_object_id($schema);
 
             if (isset($index[$id])) {
-                // схема уже встречалась: рекурсия по циклу не нужна,
-                // а первый найденный адрес остаётся каноническим
+                // the schema has been seen already: there is no need to recurse around
+                // the cycle, and the first address found stays the canonical one
                 continue;
             }
 
             $index[$id] = $prefix . self::quotePath((string) $name);
 
-            if ($schema->defs !== null) {
-                self::collectSchemas($schema->defs, $index[$id] . '/$defs/', $index);
+            if ($schema->resource !== null && $schema->resource->defs !== null) {
+                self::collectSchemas($schema->resource->defs, $index[$id] . '/$defs/', $index);
             }
         }
     }
@@ -340,11 +342,11 @@ final readonly class Openapi
     }
 
     /**
-     * Каждая подстановка {var} должна иметь path-параметр, и наоборот.
+     * Every {var} in a template must have a path parameter, and the other way round.
      *
-     * Проверяется здесь, а не в Paths: имя параметра берётся из ключа локального
-     * контейнера, но если параметр зарегистрирован в components.parameters —
-     * из поля name этой регистрации.
+     * Checked here rather than in Paths: a parameter's name comes from the key of the
+     * local container, but when the parameter is registered in components.parameters it
+     * comes from the name field of that registration.
      */
     private function assertPathParameters(): void
     {
@@ -357,7 +359,7 @@ final readonly class Openapi
         foreach ($this->paths->items as $template => $path) {
             $template = (string) $template;
 
-            // ссылка на Path Item проверяется там, где объявлен сам Path Item
+            // a reference to a Path Item is checked where the Path Item itself is declared
             if ($path instanceof Reference) {
                 $path = $path->target;
 
@@ -369,8 +371,8 @@ final readonly class Openapi
             $expected = Paths::templateVariables($template);
             $shared = self::namesOf($path->parameters, $names);
 
-            // Пустой Path Item (например, скрытый ACL) по спецификации может не объявлять
-            // параметры шаблона, но объявленные всё равно обязаны в нём встречаться.
+            // By the specification an empty Path Item (a hidden ACL, say) need not declare
+            // the template's parameters, but the ones declared must still occur in it.
             if ($path->operations === []) {
                 self::assertMatches($template, null, $expected, $shared, requireAll: false);
 

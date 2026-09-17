@@ -46,6 +46,7 @@ $onUserCreated = new Paths\Operation(
     responses: new Responses(x200: new Responses\Response(description: 'ok')),
     id: 'onUserCreated',
 );
+$content = (string) file_get_contents('openapi.json');
 $properties = new Schemas\Object\Properties();
 $responses = new Responses(x200: new Responses\Response(description: 'ok'));
 $upload = new RequestBodies\RequestBody(content: RequestBodies\Contents::fromArray([

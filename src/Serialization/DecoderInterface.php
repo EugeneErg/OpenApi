@@ -7,16 +7,16 @@ namespace EugeneErg\OpenApi\Serialization;
 use stdClass;
 
 /**
- * Разбирает текст файла в структуру, с которой работает Reader.
+ * Parses the text of a file into the structure Reader works with.
  *
- * Обратная сторона EncoderInterface. Отдельный интерфейс нужен по той же причине:
- * чтобы можно было подставить свою реализацию — например поверх symfony/yaml.
+ * The other side of EncoderInterface. A separate interface is there for the same reason:
+ * so that an implementation of one's own can be put in its place — over symfony/yaml, say.
  */
 interface DecoderInterface
 {
     /**
-     * Карты должны возвращаться как stdClass, а не как ассоциативные массивы:
-     * пустая карта и пустой список в JSON различимы, и это различие значимо.
+     * Maps have to come back as stdClass rather than as associative arrays: in JSON an
+     * empty map and an empty list are distinguishable, and the difference matters.
      */
     public function decode(string $content): stdClass;
 }

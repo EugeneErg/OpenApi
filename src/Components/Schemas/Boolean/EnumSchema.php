@@ -5,19 +5,18 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Boolean;
 
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractEnumSchema;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Values;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 
 /**
- * Единственное допустимое логическое значение: `const: true` в 3.1, `enum: [true]` в 3.0.
+ * The only admissible boolean value: `const: true` in 3.1, `enum: [true]` in 3.0.
  *
- * Перечень из обоих значений ничего не ограничивает — это просто Boolean\Schema,
- * поэтому второго способа его записать нет.
+ * A list of both values restricts nothing — that is simply Boolean\Schema — so there is
+ * no second way to write it.
  */
 final readonly class EnumSchema extends AbstractEnumSchema
 {
@@ -32,12 +31,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
         ?ExternalDocs $externalDocs = null,
         ?Xml $xml = null,
         ?Value $default = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?Extensions $extensions = null,
     ) {
         parent::__construct(
@@ -52,12 +46,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
             externalDocs: $externalDocs,
             xml: $xml,
             default: $default,
-            comment: $comment,
-            defs: $defs,
-            id: $id,
-            anchor: $anchor,
-            dynamicAnchor: $dynamicAnchor,
-            vocabulary: $vocabulary,
+            resource: $resource,
             extensions: $extensions,
         );
     }

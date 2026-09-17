@@ -9,14 +9,15 @@ use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 
 /**
- * Тело обёрнуто в замыкание: require выполняет файл в области видимости вызывающего,
- * а отложенные ссылки связываются через use (&$var) и подхватили бы чужие переменные.
+ * The body is wrapped in a closure: require runs the file in the caller's scope, and the
+ * deferred references are bound through use (&$var), which would pick up somebody else's
+ * variables.
  *
  * @return array<string, Openapi>
  */
 return (static function (): array {
-    // Схема ссылается на саму себя: объект нельзя передать в собственный конструктор,
-    // поэтому ссылка откладывается замыканием по ссылке.
+    // The schema refers to itself: an object cannot be passed to its own constructor, so
+    // the reference is deferred by a closure that binds by reference.
     $node = new Schemas\Object\Schema(
         properties: new Schemas\Object\Properties(
             value: new Schemas\Object\Property(schema: new Schemas\String\Schema(), required: true),
@@ -30,7 +31,7 @@ return (static function (): array {
         ),
     );
 
-    // Взаимная рекурсия между двумя схемами.
+    // Mutual recursion between two schemas.
     $folder = new Schemas\Object\Schema(
         properties: new Schemas\Object\Properties(
             files: new Schemas\Object\Property(

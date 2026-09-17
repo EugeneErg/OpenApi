@@ -9,7 +9,7 @@ use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
- * dependentRequired: если присутствует свойство-ключ, то обязательны перечисленные свойства.
+ * dependentRequired: when the key property is present, the listed properties are required.
  */
 final readonly class DependentRequired
 {

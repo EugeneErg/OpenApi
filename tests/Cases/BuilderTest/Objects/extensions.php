@@ -12,8 +12,8 @@ use EugeneErg\OpenApi\Openapi;
 use EugeneErg\OpenApi\Paths;
 use EugeneErg\OpenApi\Servers;
 
-// Имя пишется без префикса: x- добавляется при сборке.
-// Значение — любое значение JSON, объекты и списки через OpenapiObject и OpenapiArray.
+// The name is written without the prefix: x- is added during the build.
+// A value is any JSON value; objects and lists go through OpenapiObject and OpenapiArray.
 $pii = new Extensions(...['twilio' => new Schemas\Object\OpenapiObject(
     pii: new Schemas\Object\OpenapiObject(handling: 'standard', deleteSla: 30),
 )]);

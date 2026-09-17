@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Paths;
 
 use EugeneErg\OpenApi\Components\Parameters\Parameters;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Servers;
@@ -63,7 +64,7 @@ final readonly class Path
         }
 
         foreach ($this->operations as $name => $method) {
-            $result[$name] = $method->toObject($process);
+            $result[$name] = Place::in(static fn (): stdClass => $method->toObject($process), $name);
         }
 
         if ($this->servers->items !== []) {

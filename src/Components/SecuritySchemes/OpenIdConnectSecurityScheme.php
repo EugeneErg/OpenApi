@@ -14,7 +14,11 @@ final readonly class OpenIdConnectSecurityScheme extends AbstractSecurityScheme
         ?string $description = null,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct('openIdConnect', $description, $extensions);
+        parent::__construct(
+            type: 'openIdConnect',
+            description: $description,
+            extensions: $extensions,
+        );
     }
 
     public function toObject(): stdClass

@@ -8,9 +8,9 @@ use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
- * $vocabulary: карта «URI словаря => обязателен ли он».
+ * $vocabulary: a map of vocabulary URI => whether it is required.
  *
- * URI нельзя передать именованным аргументом, поэтому используется распаковка:
+ * A URI cannot be passed as a named argument, so unpacking is used instead:
  * `new Vocabularies(...['https://json-schema.org/draft/2020-12/vocab/core' => true])`.
  */
 final readonly class Vocabularies

@@ -52,8 +52,8 @@ final readonly class Parameters
     {
         $result = [];
 
-        // «A unique parameter is defined by a combination of a name and location»:
-        // повтор в одном списке — испорченный документ, и ссылкой он не спрячется
+        // "A unique parameter is defined by a combination of a name and location":
+        // a repeat in one list is a broken document, and a reference does not hide it
         $seen = [];
 
         foreach ($this->items as $parameter) {
@@ -61,7 +61,7 @@ final readonly class Parameters
 
             foreach ($parameter->items as $name => $item) {
                 if ($item instanceof Reference) {
-                    // у ссылки имя берётся из объявления компонента
+                    // a reference takes its name from the component's declaration
                     $result[] = $item->toObject($process);
                     self::assertUnique($seen, $in, $this->declaredName($process, $in, $item) ?? (string) $name);
 
@@ -101,8 +101,8 @@ final readonly class Parameters
     }
 
     /**
-     * Имя параметра, объявленное в components: для ссылки и для параметра,
-     * переданного без имени, другого источника имени нет.
+     * The parameter's name as components declares it: for a reference, and for a
+     * parameter passed without a name, there is no other source of a name.
      */
     private function declaredName(Process $process, In $in, AbstractParameter|Reference $item): ?string
     {

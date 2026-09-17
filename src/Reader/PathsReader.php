@@ -27,7 +27,7 @@ use EugeneErg\OpenApi\Servers;
 use EugeneErg\OpenApi\Tags;
 
 /**
- * Разбор paths, webhooks и callbacks.
+ * Reads paths, webhooks and callbacks.
  */
 final readonly class PathsReader
 {
@@ -49,7 +49,7 @@ final readonly class PathsReader
     }
 
     /**
-     * Callback Object: в отличие от webhooks и components.pathItems, он расширяем.
+     * A Callback Object, unlike webhooks and components.pathItems, is extensible.
      */
     public function callback(Node $node): PathItems
     {
@@ -146,8 +146,8 @@ final readonly class PathsReader
     }
 
     /**
-     * Security Requirement Object: имя схемы плюс список скоупов. Объекты Scope
-     * берутся из самой схемы, чтобы ссылка снова была по идентичности.
+     * A Security Requirement Object: the name of a scheme plus a list of scopes. The Scope
+     * objects come from the scheme itself, so the reference is by identity again.
      */
     public function rootSecurity(Node $node): ?Securities
     {
@@ -174,9 +174,9 @@ final readonly class PathsReader
     }
 
     /**
-     * В документе теги операции — это имена, а в пакете — те же объекты Tag,
-     * что объявлены на верхнем уровне. Незаявленный тег создаётся на месте:
-     * спецификация допускает и это.
+     * In the document an operation's tags are names; here they are the same Tag objects
+     * that the top level declares. A tag nobody declared is created on the spot: the
+     * specification allows that too.
      */
     private function operationTags(Node $node): ?Tags
     {
@@ -191,8 +191,8 @@ final readonly class PathsReader
 
     private function securities(Node $node): ?Securities
     {
-        // отсутствие поля и пустой список различаются: `security: []` на операции
-        // снимает авторизацию, заданную на уровне документа
+        // an absent field and an empty list differ: `security: []` on an operation
+        // removes the authorisation the document level requires
         if ($node->isMissing()) {
             return null;
         }
@@ -218,7 +218,7 @@ final readonly class PathsReader
                 }
             }
 
-            // пустое требование `{}` значимо: оно разрешает анонимный доступ
+            // an empty requirement `{}` means something: it allows anonymous access
             $items[] = new Securities\SecuritySchemes(...$scopes);
         }
 
@@ -238,7 +238,7 @@ final readonly class PathsReader
             || $scheme instanceof HttpSecurityScheme
             || $scheme instanceof MutualTlsSecurityScheme
         ) {
-            // 3.1 разрешает перечислять роли для любых схем; для 3.0 это отклонит сборка
+            // 3.1 allows listing roles for any scheme; for 3.0 the build rejects it
             return new Role($scheme, $name);
         }
 
@@ -252,7 +252,7 @@ final readonly class PathsReader
             }
         }
 
-        // объявлять скоуп во flow спецификация не требует, поэтому такой документ законен
+        // the specification does not require a scope to be declared in a flow, so such a document is legal
         return new ScopeName($scheme, $name);
     }
 

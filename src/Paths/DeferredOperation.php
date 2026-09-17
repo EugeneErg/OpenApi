@@ -7,12 +7,12 @@ namespace EugeneErg\OpenApi\Paths;
 use Closure;
 
 /**
- * Отложенная ссылка на операцию.
+ * A deferred reference to an operation.
  *
- * Link указывает на операцию объектом, а не именем, поэтому операция, которая
- * ссылается на саму себя — обычная пагинация, «следующая страница», — иначе
- * не описывалась бы: объект нельзя передать в собственный конструктор.
- * Ссылка откладывается замыканием, как и у рекурсивных схем:
+ * A Link points at an operation by the object rather than by a name, so an operation that
+ * refers to itself — ordinary pagination, the "next page" — could not be described at
+ * all otherwise: an object cannot be passed to its own constructor. The reference is
+ * deferred by a closure, as with recursive schemas:
  *
  *     $listUsers = new Operation(
  *         responses: new Responses(x200: new Responses\Response(
@@ -40,7 +40,7 @@ final readonly class DeferredOperation
     }
 
     /**
-     * Операция, на которую указывает ссылка.
+     * The operation the reference points at.
      */
     public function resolve(): Operation
     {

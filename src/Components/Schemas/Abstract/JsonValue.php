@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
 use EugeneErg\OpenApi\Components\Schemas\Object\OpenapiObject;
+use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 use function is_array;
@@ -14,23 +15,34 @@ use function is_int;
 use function is_string;
 
 /**
- * Равенство и вид значений по правилам JSON Schema.
+ * Equality and kind of values by the rules of JSON Schema.
  *
- * `1` и `1.0` — одно число, порядок ключей объекта не важен, а пустой объект
- * и пустой список различаются. Строковое представление нужно, чтобы искать
- * значение в наборе за O(1).
+ * `1` and `1.0` are one number, the order of an object's keys does not matter, and an
+ * empty object differs from an empty list. The string form is there to look a value up in
+ * a set in O(1).
  *
  * @internal
  */
 final class JsonValue
 {
+    /**
+     * The members of a value: the elements of a list, the properties of an object. Needed
+     * where a value and a schema are read by the same code.
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function members(mixed $value): array
+    {
+        return $value instanceof stdClass ? Structure::vars($value) : (array) $value;
+    }
+
     public static function key(mixed $value): string
     {
         return json_encode(self::tagged($value), JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
     }
 
     /**
-     * Вид значения в терминах JSON: integer считается частным случаем number.
+     * The kind of a value in JSON terms: integer counts as a special case of number.
      */
     public static function kind(mixed $value): string
     {
@@ -45,7 +57,7 @@ final class JsonValue
     }
 
     /**
-     * Представимо ли число как integer: JSON не различает 2 и 2.0.
+     * Whether a number is representable as an integer: JSON does not tell 2 from 2.0.
      */
     public static function isInteger(mixed $value): bool
     {

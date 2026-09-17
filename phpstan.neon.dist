@@ -5,20 +5,20 @@ parameters:
         - tests
     excludePaths:
         analyse:
-            # это тестовые данные, а не код: они намеренно собирают объекты
-            # через промежуточные переменные и union-типы
+            # these are test data rather than code: they deliberately build objects
+            # through intermediate variables and union types
             - tests/Cases/*
             - tests/Fixtures/*
 
-    # Всё, что PHPStan умеет проверять сверх максимального уровня.
+    # Everything PHPStan can check beyond its maximum level.
     checkBenevolentUnionTypes: true
     checkUninitializedProperties: true
     checkMissingCallableSignature: true
     checkTooWideReturnTypesInProtectedAndPublicMethods: true
-    # Выключено осознанно: опция помечает последнюю ветку исчерпывающего match
-    # по enum как «всегда истинную». Но именно исчерпывающий match — то, что нужно:
-    # заменив последнюю ветку на default, мы потеряли бы проверку полноты,
-    # и новый вариант enum молча попал бы не туда.
+    # Off deliberately: the option marks the last arm of an exhaustive match over an
+    # enum as "always true". But an exhaustive match is exactly what is wanted here:
+    # replacing the last arm with a default would lose the completeness check, and a new
+    # case of the enum would quietly end up in the wrong place.
     reportAlwaysTrueInLastCondition: false
     reportPossiblyNonexistentGeneralArrayOffset: true
     reportPossiblyNonexistentConstantArrayOffset: true

@@ -1,7 +1,7 @@
 {
   "name": "eugene-erg/open-api",
   "type": "library",
-  "description": "Object-oriented builder for OpenAPI 3.0 specifications, with automatic $ref deduplication.",
+  "description": "Object-oriented builder and reader for OpenAPI 3.0 and 3.1 specifications, with automatic $ref deduplication.",
   "keywords": [
     "openapi",
     "swagger",
@@ -71,6 +71,6 @@
   "minimum-stability": "stable",
   "prefer-stable": true,
   "suggest": {
-    "ext-yaml": "Для чтения YAML-спецификаций через Serialization\\YamlDecoder. На запись YAML не требуется."
+    "ext-yaml": "To read YAML specifications through Serialization\\YamlDecoder. Not required for writing YAML."
   }
 }

@@ -8,8 +8,8 @@ use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 
 /**
- * У каждого документа своя секция components.schemas. Ни одна из них не должна
- * превратиться в $ref на соседний файл: одинаковых объектов здесь нет.
+ * Every document has a components.schemas section of its own. None of them should turn
+ * into a $ref to a neighbouring file: there are no equal objects here.
  */
 $first = new Openapi(
     info: new Info(title: 'First', version: '1.0.0'),

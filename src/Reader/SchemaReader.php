@@ -4,55 +4,37 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Reader;
 
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractEnumSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\JsonValue;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
-use EugeneErg\OpenApi\Components\Schemas\Array\Arrays;
-use EugeneErg\OpenApi\Components\Schemas\Array\EnumSchema as ArrayEnumSchema;
-use EugeneErg\OpenApi\Components\Schemas\Array\OpenapiArray;
 use EugeneErg\OpenApi\Components\Schemas\Array\Schema as ArraySchema;
 use EugeneErg\OpenApi\Components\Schemas\Array\Value as ArrayValue;
-use EugeneErg\OpenApi\Components\Schemas\Boolean\EnumSchema as BooleanEnumSchema;
 use EugeneErg\OpenApi\Components\Schemas\Boolean\Schema as BooleanSchema;
 use EugeneErg\OpenApi\Components\Schemas\Boolean\Value as BooleanValue;
-use EugeneErg\OpenApi\Components\Schemas\Integer\EnumSchema as IntegerEnumSchema;
-use EugeneErg\OpenApi\Components\Schemas\Integer\Integers;
 use EugeneErg\OpenApi\Components\Schemas\Integer\Schema as IntegerSchema;
 use EugeneErg\OpenApi\Components\Schemas\Integer\Value as IntegerValue;
 use EugeneErg\OpenApi\Components\Schemas\Null\Schema as NullSchema;
-use EugeneErg\OpenApi\Components\Schemas\Number\EnumSchema as NumberEnumSchema;
-use EugeneErg\OpenApi\Components\Schemas\Number\Numbers;
 use EugeneErg\OpenApi\Components\Schemas\Number\Schema as NumberSchema;
 use EugeneErg\OpenApi\Components\Schemas\Number\Value as NumberValue;
 use EugeneErg\OpenApi\Components\Schemas\Object\DependentRequired;
-use EugeneErg\OpenApi\Components\Schemas\Object\EnumSchema as ObjectEnumSchema;
-use EugeneErg\OpenApi\Components\Schemas\Object\Objects;
-use EugeneErg\OpenApi\Components\Schemas\Object\OpenapiObject;
 use EugeneErg\OpenApi\Components\Schemas\Object\PatternProperties;
 use EugeneErg\OpenApi\Components\Schemas\Object\Properties;
 use EugeneErg\OpenApi\Components\Schemas\Object\Property;
 use EugeneErg\OpenApi\Components\Schemas\Object\Schema as ObjectSchema;
 use EugeneErg\OpenApi\Components\Schemas\Object\Value as ObjectValue;
-use EugeneErg\OpenApi\Components\Schemas\String\EnumSchema as StringEnumSchema;
 use EugeneErg\OpenApi\Components\Schemas\String\Schema as StringSchema;
 use EugeneErg\OpenApi\Components\Schemas\String\Strings;
 use EugeneErg\OpenApi\Components\Schemas\String\Value as StringValue;
-use EugeneErg\OpenApi\Components\Schemas\Untyped\EnumSchema as UntypedEnumSchema;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schema as UntypedSchema;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas as UntypedSchemas;
-use EugeneErg\OpenApi\Components\Schemas\Untyped\Value as UntypedValue;
-use EugeneErg\OpenApi\Components\Schemas\Untyped\Values;
-use EugeneErg\OpenApi\Exceptions\InvalidDocumentOpenapiException;
-use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
-use EugeneErg\OpenApi\Serialization\Structure;
 use stdClass;
 
 use function array_key_exists;
@@ -60,65 +42,49 @@ use function count;
 use function in_array;
 use function is_array;
 use function is_bool;
-use function is_float;
-use function is_int;
-use function is_scalar;
 use function is_string;
 use function sprintf;
 
 /**
- * Разбор Schema Object.
+ * Reads a Schema Object: picks the branch by type and reads the keywords of that branch.
  *
- * Модель пакета типоцентрична, поэтому ветка выбирается по `type`. Отсутствие типа
- * или тип-массив из 3.1 читаются в Untyped\Schema, `["string", "null"]` —
- * в строковую схему с nullable.
+ * The model here is type-centric, so the branch follows `type`. An absent type, or the
+ * array form of 3.1, is read into Untyped\Schema; `["string", "null"]` into a string
+ * schema with nullable.
+ *
+ * Three parts that are read by other rules live beside it: `ValueReader` for values
+ * (`default`, `example`, the members of an enum), `EnumReader` for enums, and `Keywords`
+ * for which kind of value a keyword applies to.
  */
 final readonly class SchemaReader
 {
-    private const array ENUM_KEPT = [
-        'enum', 'const', 'type', 'nullable', 'example', 'examples', 'default',
-        'title', 'description', 'readOnly', 'writeOnly', 'deprecated', 'externalDocs', 'xml',
-        '$comment', '$defs', '$id', '$anchor', '$dynamicAnchor', '$vocabulary', '$schema',
-    ];
-
-    /**
-     * Keyword → вид значений, к которому он применим (только проверяемые простые слова).
-     */
-    private const array KEYWORD_KINDS = [
-        'minLength' => 'string', 'maxLength' => 'string', 'pattern' => 'string',
-        'minimum' => 'number', 'maximum' => 'number', 'multipleOf' => 'number',
-        'exclusiveMinimum' => 'number', 'exclusiveMaximum' => 'number',
-        'minItems' => 'array', 'maxItems' => 'array', 'uniqueItems' => 'array',
-        'minProperties' => 'object', 'maxProperties' => 'object', 'required' => 'object',
-    ];
-
-    private const array APPLICATORS = [
-        'allOf', 'anyOf', 'oneOf', 'not', 'if', 'then', 'else', 'discriminator', '$ref', '$dynamicRef',
-        'properties', 'additionalProperties', 'patternProperties', 'propertyNames',
-        'dependentRequired', 'dependentSchemas', 'unevaluatedProperties',
-        'items', 'prefixItems', 'contains', 'minContains', 'maxContains', 'unevaluatedItems',
-        'contentMediaType', 'contentEncoding', 'contentSchema',
-    ];
-
-    /**
-     * Слова, привязанные к типу, но не проверяющие значение поштучно.
-     */
-    private const array TYPE_KEYWORDS = [
-        'format' => null, 'items' => 'array', 'prefixItems' => 'array', 'contains' => 'array',
-        'minContains' => 'array', 'maxContains' => 'array', 'unevaluatedItems' => 'array',
-        'properties' => 'object', 'patternProperties' => 'object', 'propertyNames' => 'object',
-        'additionalProperties' => 'object', 'dependentRequired' => 'object', 'dependentSchemas' => 'object',
-        'unevaluatedProperties' => 'object',
-        'contentEncoding' => 'string', 'contentMediaType' => 'string', 'contentSchema' => 'string',
-    ];
+    private ValueReader $values;
+    private EnumReader $enums;
 
     public function __construct(private Registry $registry)
     {
+        $this->values = new ValueReader();
+        $this->enums = new EnumReader($this, $this->values);
     }
 
     /**
-     * Схема по узлу. Если узел объявлен в реестре, возвращается общий экземпляр:
-     * иначе схема внутри $defs строилась бы дважды и ссылка на неё не нашла бы цель.
+     * Values — `default`, `example`, `examples` — are read by ValueReader; callers outside
+     * (an Example Object, the parameters) ask through the schema.
+     */
+    public function readValue(Node $node, ?string $type = null): ?AbstractValue
+    {
+        return $this->values->readValue($node, $type);
+    }
+
+    public function readValues(Node $node): AbstractValues
+    {
+        return $this->values->readValues($node);
+    }
+
+    /**
+     * The schema of a node. If the registry declares that node, the shared instance is
+     * returned: otherwise a schema inside $defs would be built twice and a reference to it
+     * would not find its target.
      */
     public function read(Node $node): AbstractSchema
     {
@@ -132,14 +98,14 @@ final readonly class SchemaReader
     }
 
     /**
-     * Компонент-схема. Если это лишь ссылка на другую схему (псевдоним), он всё равно
-     * должен остаться отдельным объектом, иначе два имени сольются в одно.
+     * A component schema. Even when it is nothing but a reference to another schema — an
+     * alias — it has to stay a separate object, or the two names merge into one.
      */
     public function readComponentSchema(Node $node): AbstractSchema
     {
         $schema = $this->readSchema($node);
 
-        if ($node->has('$ref') && array_keys(self::members($node->value)) === ['$ref']) {
+        if ($node->has('$ref') && array_keys(JsonValue::members($node->value)) === ['$ref']) {
             return new UntypedSchema(allOf: new UntypedSchemas($schema));
         }
 
@@ -153,20 +119,24 @@ final readonly class SchemaReader
                 $this->registry->pointerOf($node->get('$ref')->string(), $node),
             );
             $siblings = array_filter(
-                array_keys(self::members($node->value)),
+                array_keys(JsonValue::members($node->value)),
                 static fn (int|string $keyword): bool => $keyword !== '$ref' && !str_starts_with((string) $keyword, 'x-'),
             );
 
-            // в 3.0 соседи $ref ничего не значат
+            // in 3.0 the siblings of a $ref mean nothing
             if ($siblings === [] || !$this->registry->isV31()) {
+                // read and dropped: in 3.0 this is a Reference Object, whose other fields
+                // do not apply, and in 3.1 they "SHALL be ignored"
+                $node->dropped(...array_map(strval(...), array_keys(JsonValue::members($node->value))));
+
                 return $target;
             }
 
-            // в 3.1 $ref — одно из ключевых слов; та же схема без него — это allOf со ссылкой
+            // in 3.1 $ref is one of the keywords; the same schema without it is an allOf with the reference
             $rest = new stdClass();
             $rest->allOf = [(object) ['$ref' => $node->get('$ref')->string()]];
 
-            foreach (self::members($node->value) as $keyword => $argument) {
+            foreach (JsonValue::members($node->value) as $keyword => $argument) {
                 if ($keyword === 'allOf') {
                     $rest->allOf = [...$rest->allOf, ...(array) $argument];
                 } elseif ($keyword !== '$ref') {
@@ -174,15 +144,15 @@ final readonly class SchemaReader
                 }
             }
 
-            return $this->readSchema(new Node($rest, $node->path));
+            return $this->readSchema($node->rewritten($rest));
         }
 
         [$declared, $nullableFlag] = $this->readType($node);
         $types = array_values(array_filter($declared, static fn (string $item): bool => $item !== 'null'));
         $nullable = $nullableFlag || $types !== $declared;
 
-        // Пакет описывает схемы по типу, поэтому объединение нескольких типов
-        // и схема одного лишь null разбираются отдельно.
+        // Schemas here are described per type, so a union of several types and a schema
+        // of nothing but null are read separately.
         if ($declared !== [] && $types === []) {
             return new NullSchema(...$this->common($node, false));
         }
@@ -195,15 +165,15 @@ final readonly class SchemaReader
         $common = $this->common($node, $nullable);
 
         if ($node->has('enum') || $node->has('const')) {
-            // JSON Schema разрешает пустой перечень: ему не подходит ничего,
-            // и равнозначная запись этого — `not: {}`
+            // JSON Schema allows an empty list: nothing fits it, and the equivalent
+            // spelling of that is `not: {}`
             return $node->get('enum')->isPresent() && $node->get('enum')->list() === []
-                ? $this->readNothing($node)
-                : $this->readEnum($node, $type, $nullable, $common);
+                ? $this->enums->readNothing($node)
+                : $this->enums->readEnum($node, $type, $nullable, $common);
         }
 
-        // type может отсутствовать, а проверки — быть: тогда выбираем ветку
-        // по ключевым словам и не объявляем type в выводе
+        // the type may be absent while the assertions are there: then the branch follows
+        // the keywords and no type is declared on the way out
         $declareType = $type !== null;
 
         if ($type === null) {
@@ -216,6 +186,10 @@ final readonly class SchemaReader
             $type = $shapes[0] ?? null;
         }
 
+        // a keyword about values of another type means nothing to this schema: it is read
+        // and dropped, and strict reading has nothing to complain about
+        $node->dropped(...self::inapplicable($type));
+
         return match ($type) {
             'string' => new StringSchema(...[...$common, ...$this->stringOnly($node), 'declareType' => $declareType]),
             'integer' => new IntegerSchema(...[...$common, ...$this->integerOnly($node), 'declareType' => $declareType]),
@@ -225,95 +199,28 @@ final readonly class SchemaReader
             'object' => new ObjectSchema(...[...$common, ...$this->objectOnly($node), 'declareType' => $declareType]),
             default => new UntypedSchema(...[
                 ...$common,
-                'default' => $this->untypedValue($node->get('default')),
-                'example' => $this->untypedValue($node->get('example')),
+                'default' => $this->values->untypedValue($node->get('default')),
+                'example' => $this->values->untypedValue($node->get('example')),
             ]),
         };
     }
 
     /**
-     * Значение в типизированной схеме должно быть того же типа, поэтому класс
-     * обёртки выбирается по type схемы.
-     */
-    public function readValue(Node $node, ?string $type = null): ?AbstractValue
-    {
-        if (!$node->isPresent()) {
-            return null;
-        }
-
-        // null — тоже значение: пример пустого ответа или default nullable-поля
-        return match ($type) {
-            'string' => $this->stringValue($node),
-            'integer' => $this->integerValue($node),
-            'number' => $this->numberValue($node),
-            'boolean' => $this->booleanValue($node),
-            'array' => $this->arrayValue($node),
-            'object' => $this->objectValue($node),
-            default => $this->untypedValue($node),
-        };
-    }
-
-    public function readValues(Node $node): AbstractValues
-    {
-        if (is_array($node->value)) {
-            return new OpenapiArray(...array_map($this->nativeOf(...), $node->list()));
-        }
-
-        $items = [];
-
-        foreach ($node->map() as $key => $item) {
-            $items[$key] = $this->nativeOf($item);
-        }
-
-        return OpenapiObject::fromArray($items);
-    }
-
-    /**
-     * Пример, который не подходит под тип схемы, ни на что не влияет: он лишь
-     * иллюстрирует, и такой иллюстрации нет места в документе. Узел без значения
-     * означает «примера нет».
-     */
-    private function example(Node $schema, string $type): Node
-    {
-        $example = $schema->get('example');
-
-        if (!$example->isPresent() || $example->value === null) {
-            return $example;
-        }
-
-        $value = $example->value;
-        $fits = match ($type) {
-            'boolean' => is_bool($value),
-            'string' => is_string($value),
-            'integer' => is_int($value),
-            'number' => is_int($value) || is_float($value),
-            'array' => is_array($value),
-            default => $value instanceof stdClass || $value === [],
-        };
-
-        return $fits ? $example : new Node(null, $example->path, present: false);
-    }
-
-    private function untypedValue(Node $node): ?UntypedValue
-    {
-        return $node->isPresent() ? new UntypedValue($this->nativeOf($node)) : null;
-    }
-
-    /**
-     * Ветки для схемы без type: их задают слова, применимые к значениям одного типа.
+     * The branches of a schema without a type: the keywords that apply to values of one
+     * kind decide them.
      *
-     * `{"minLength": 3}` — это «строка длиннее двух», а значение любого другого типа
-     * такой схеме подходит: проверка строки к нему не применяется. Поэтому тип здесь
-     * не объявляется, а слово всё равно должно попасть в документ.
+     * `{"minLength": 3}` says "a string longer than two", and a value of any other type
+     * fits such a schema: an assertion about strings does not apply to it. So no type is
+     * declared here, and the keyword still has to reach the document.
      *
-     * @return list<string> в постоянном порядке, чтобы вывод не зависел от порядка слов
+     * @return list<string> in a fixed order, so the output does not depend on the order of the keywords
      */
     private static function inferShapes(Node $node): array
     {
         $shapes = [];
 
-        foreach (array_keys(self::members($node->value)) as $keyword) {
-            $shape = self::KEYWORD_KINDS[$keyword] ?? self::TYPE_KEYWORDS[$keyword] ?? null;
+        foreach (array_keys(JsonValue::members($node->value)) as $keyword) {
+            $shape = Keywords::kindOf($keyword);
 
             if ($shape !== null && !in_array($shape, $shapes, true)) {
                 $shapes[] = $shape;
@@ -327,9 +234,31 @@ final readonly class SchemaReader
     }
 
     /**
-     * Схема без type, в которой есть слова про значения разных типов:
-     * `{"minLength": 3, "minItems": 1}` — это `allOf` из проверки строк и проверки
-     * массивов. Одним классом это не записать: каждый описывает значения своего типа.
+     * The keywords that apply to values of another kind. A schema without a type has
+     * none of those: a value of any type fits it.
+     *
+     * @return list<string>
+     */
+    private static function inapplicable(?string $type): array
+    {
+        if ($type === null) {
+            return [];
+        }
+
+        $kind = $type === 'integer' ? 'number' : $type;
+
+        return array_values(array_filter(
+            array_keys([...Keywords::KINDS, ...Keywords::TYPED]),
+            static fn (string $keyword): bool => ($kinds = Keywords::kindOf($keyword)) !== null
+                && $kinds !== $kind,
+        ));
+    }
+
+    /**
+     * A schema without a type that holds keywords about values of different kinds:
+     * `{"minLength": 3, "minItems": 1}` is an `allOf` of an assertion about strings and an
+     * assertion about arrays. One class cannot spell that: each describes values of its
+     * own type.
      *
      * @param list<string> $shapes
      */
@@ -338,8 +267,8 @@ final readonly class SchemaReader
         $branches = [];
         $shared = new stdClass();
 
-        foreach (self::members($node->value) as $keyword => $argument) {
-            if ((self::KEYWORD_KINDS[$keyword] ?? self::TYPE_KEYWORDS[$keyword] ?? null) === null) {
+        foreach (JsonValue::members($node->value) as $keyword => $argument) {
+            if (Keywords::kindOf($keyword) === null) {
                 $shared->{$keyword} = $argument;
             }
         }
@@ -347,44 +276,26 @@ final readonly class SchemaReader
         foreach ($shapes as $shape) {
             $branch = new stdClass();
 
-            foreach (self::members($node->value) as $keyword => $argument) {
-                if ((self::KEYWORD_KINDS[$keyword] ?? self::TYPE_KEYWORDS[$keyword] ?? null) === $shape) {
+            foreach (JsonValue::members($node->value) as $keyword => $argument) {
+                if (Keywords::kindOf($keyword) === $shape) {
                     $branch->{$keyword} = $argument;
                 }
             }
 
-            $branches[] = $this->readSchema(new Node($branch, $node->path));
+            $branches[] = $this->readSchema($node->rewritten($branch));
         }
 
-        if (self::members($shared) !== []) {
-            array_unshift($branches, $this->readSchema(new Node($shared, $node->path)));
+        if (JsonValue::members($shared) !== []) {
+            array_unshift($branches, $this->readSchema($node->rewritten($shared)));
         }
 
         return new UntypedSchema(allOf: new UntypedSchemas(...$branches));
     }
 
     /**
-     * Схема, которой не подходит ни одно значение: остальные слова плюс `not: {}`.
-     */
-    private function readNothing(Node $node): AbstractSchema
-    {
-        $rest = new stdClass();
-
-        foreach (self::members($node->value) as $keyword => $argument) {
-            if ($keyword !== 'enum') {
-                $rest->{$keyword} = $argument;
-            }
-        }
-
-        $rest->not = new stdClass();
-
-        return $this->readSchema(new Node($rest, $node->path));
-    }
-
-    /**
-     * Объединение типов: `{"type": ["string", "integer"], "maxLength": 5}` — это
-     * `anyOf` из схемы строки с maxLength и схемы целого. Слова, применимые к одному
-     * из перечисленных типов, уходят в его ветку, остальное остаётся общим.
+     * A union of types: `{"type": ["string", "integer"], "maxLength": 5}` is an `anyOf` of
+     * a string schema with maxLength and an integer schema. A keyword that applies to one
+     * of the listed types goes into its branch; the rest stays shared.
      *
      * @param list<string> $types
      */
@@ -397,7 +308,7 @@ final readonly class SchemaReader
         $branches = [];
         $shared = new stdClass();
 
-        foreach (self::members($node->value) as $keyword => $argument) {
+        foreach (JsonValue::members($node->value) as $keyword => $argument) {
             $keyword = (string) $keyword;
 
             if ($keyword !== 'type' && $keyword !== 'nullable' && self::branchOf($keyword, $types) === null) {
@@ -409,7 +320,7 @@ final readonly class SchemaReader
             $branch = new stdClass();
             $branch->type = $type;
 
-            foreach (self::members($node->value) as $keyword => $argument) {
+            foreach (JsonValue::members($node->value) as $keyword => $argument) {
                 if (self::branchOf((string) $keyword, $types) === $type) {
                     $branch->{$keyword} = $argument;
                 }
@@ -417,32 +328,32 @@ final readonly class SchemaReader
 
             $branches[] = $type === 'null'
                 ? new NullSchema()
-                : $this->readSchema(new Node($branch, $node->path . '/type/' . $type));
+                : $this->readSchema($node->rewritten($branch, $node->path . '/type/' . $type));
         }
 
         $union = count($branches) === 1
             ? $branches[0]
             : new UntypedSchema(anyOf: new UntypedSchemas(...$branches));
 
-        return self::members($shared) === []
+        return JsonValue::members($shared) === []
             ? $union
-            : new UntypedSchema(allOf: new UntypedSchemas($this->readSchema(new Node($shared, $node->path)), $union));
+            : new UntypedSchema(allOf: new UntypedSchemas($this->readSchema($node->rewritten($shared)), $union));
     }
 
     /**
-     * Тип, к значениям которого применимо ключевое слово, если он один из перечисленных.
+     * The type whose values a keyword applies to, if it is one of those listed.
      *
      * @param list<string> $types
      */
     private static function branchOf(string $keyword, array $types): ?string
     {
-        $kind = self::KEYWORD_KINDS[$keyword] ?? self::TYPE_KEYWORDS[$keyword] ?? null;
+        $kind = Keywords::kindOf($keyword);
 
         if ($kind === null) {
             return null;
         }
 
-        // integer — частный случай number, поэтому число ищется среди обоих
+        // integer is a special case of number, so a numeric keyword looks for both
         foreach ($kind === 'number' ? ['number', 'integer'] : [$kind] as $candidate) {
             if (in_array($candidate, $types, true)) {
                 return $candidate;
@@ -453,12 +364,12 @@ final readonly class SchemaReader
     }
 
     /**
-     * Объявленные типы и флаг `nullable`.
+     * The declared types and the `nullable` flag.
      *
-     * В 3.1 `type` может быть массивом, и `null` в нём — способ выразить nullable;
-     * `type: "null"` без других типов означает, что допустим только null.
+     * In 3.1 `type` may be an array, and a `null` in it is how nullable is expressed;
+     * `type: "null"` with no other type means null is the only value allowed.
      *
-     * @return array{list<string>, bool} объявленные типы как есть; флаг nullable
+     * @return array{list<string>, bool} the declared types as they are; the nullable flag
      */
     private function readType(Node $node): array
     {
@@ -475,10 +386,10 @@ final readonly class SchemaReader
     }
 
     /**
-     * Поля, общие для всех схем.
+     * The fields every schema shares.
      *
-     * Форма массива описана точно, иначе распаковка в конструктор непроверяема:
-     * PHPStan увидел бы mixed на каждом параметре.
+     * The shape of the array is spelled out, or unpacking it into a constructor could not
+     * be checked: PHPStan would see mixed in every parameter.
      *
      * @return array{
      *     title: ?string,
@@ -494,13 +405,7 @@ final readonly class SchemaReader
      *     not: ?AbstractSchema,
      *     discriminator: ?Discriminator,
      *     examples: ?AbstractValues,
-     *     comment: ?string,
-     *     defs: ?UntypedSchemas,
-     *     id: ?string,
-     *     anchor: ?string,
-     *     dynamicAnchor: ?string,
-     *     dynamicRef: ?AbstractSchema,
-     *     vocabulary: ?Vocabularies,
+     *     resource: ?resource,
      *     if: ?AbstractSchema,
      *     then: ?AbstractSchema,
      *     else: ?AbstractSchema,
@@ -524,18 +429,12 @@ final readonly class SchemaReader
             'not' => $node->has('not') ? $this->read($node->get('not')) : null,
             'discriminator' => $this->readDiscriminator($node->get('discriminator')),
             'examples' => $node->has('examples') ? $this->readValues($node->get('examples')) : null,
-            'comment' => $node->get('$comment')->stringOrNull(),
-            'defs' => $this->readSchemas($node->get('$defs')),
-            'id' => $node->get('$id')->stringOrNull(),
-            'anchor' => $node->get('$anchor')->stringOrNull(),
-            'dynamicAnchor' => $node->get('$dynamicAnchor')->stringOrNull(),
-            'dynamicRef' => $this->readDynamicRef($node),
-            'vocabulary' => $this->readVocabulary($node->get('$vocabulary')),
+            'resource' => $this->readResource($node),
             'if' => $node->has('if') ? $this->read($node->get('if')) : null,
             'then' => $node->has('then') ? $this->read($node->get('then')) : null,
             'else' => $node->has('else') ? $this->read($node->get('else')) : null,
             'extensions' => $node->extensions(),
-            // JSON Schema разрешает format у значения любого типа
+            // JSON Schema allows format on a value of any type
             'format' => $node->get('format')->stringOrNull(),
         ];
     }
@@ -546,487 +445,9 @@ final readonly class SchemaReader
     private function booleanOnly(Node $node): array
     {
         return [
-            'default' => $this->booleanValue($node->get('default')),
-            'example' => $this->booleanValue($this->example($node, 'boolean')),
+            'default' => $this->values->booleanValue($node->get('default')),
+            'example' => $this->values->booleanValue($this->values->example($node, 'boolean')),
         ];
-    }
-
-    private function booleanValue(Node $node): ?BooleanValue
-    {
-        return $node->isPresent() ? new BooleanValue($node->value === null ? null : $node->bool()) : null;
-    }
-
-    private function integerValue(Node $node): ?IntegerValue
-    {
-        return $node->isPresent() ? new IntegerValue($node->value === null ? null : $node->int()) : null;
-    }
-
-    private function numberValue(Node $node): ?NumberValue
-    {
-        return $node->isPresent() ? new NumberValue($node->value === null ? null : $node->floatOrNull()) : null;
-    }
-
-    private function arrayValue(Node $node): ?ArrayValue
-    {
-        if (!$node->isPresent()) {
-            return null;
-        }
-
-        if ($node->value === null) {
-            return new ArrayValue(null);
-        }
-
-        $values = $this->readValues($node);
-
-        return new ArrayValue($values instanceof OpenapiArray ? $values : throw $node->unexpected('a list'));
-    }
-
-    private function objectValue(Node $node): ?ObjectValue
-    {
-        if (!$node->isPresent()) {
-            return null;
-        }
-
-        if ($node->value === null) {
-            return new ObjectValue(null);
-        }
-
-        $values = $this->readValues($node);
-
-        return new ObjectValue($values instanceof OpenapiObject ? $values : throw $node->unexpected('a mapping'));
-    }
-
-    /**
-     * Перечисление (`enum` и/или `const`).
-     *
-     * У схемы-перечисления остаются только аннотации (см. AbstractEnumSchema), поэтому
-     * остальные ключевые слова разбираются так:
-     * - `example`/`examples` и слова, неприменимые к типу значений, ничего не меняют — отбрасываются;
-     * - простые проверки (длина, pattern, границы, required…) проверяются на каждом значении:
-     *   если все значения проходят, слово ничего не меняет и отбрасывается, иначе документ
-     *   противоречив — часть значений недостижима;
-     * - всё, что так не проверить (композиция, properties, items…), сохраняется без потерь
-     *   эквивалентной записью `allOf: [остальная схема, перечисление]`.
-     *
-     * `nullable: true` без null в перечне по букве 3.0.3 ничего не разрешает, но так пишут
-     * постоянно и имеют в виду именно nullable. Читаем по намерению: при записи null
-     * окажется и во флаге, и в перечне, и документ станет однозначным для любого инструмента.
-     *
-     * @param array{
-     *     title: ?string,
-     *     description: ?string,
-     *     nullable: bool,
-     *     access: ?Access,
-     *     deprecated: bool,
-     *     externalDocs: ?ExternalDocs,
-     *     xml: ?Xml,
-     *     anyOf: ?UntypedSchemas,
-     *     allOf: ?UntypedSchemas,
-     *     oneOf: ?UntypedSchemas,
-     *     not: ?AbstractSchema,
-     *     discriminator: ?Discriminator,
-     *     examples: ?AbstractValues,
-     *     comment: ?string,
-     *     defs: ?UntypedSchemas,
-     *     id: ?string,
-     *     anchor: ?string,
-     *     dynamicAnchor: ?string,
-     *     dynamicRef: ?AbstractSchema,
-     *     vocabulary: ?Vocabularies,
-     *     if: ?AbstractSchema,
-     *     then: ?AbstractSchema,
-     *     else: ?AbstractSchema,
-     *     extensions: ?Extensions,
-     *     format: ?string
-     * } $common
-     */
-    private function readEnum(Node $node, ?string $type, bool $nullable, array $common): AbstractSchema
-    {
-        $values = $this->enumValues($node);
-        $withNull = array_filter($values, static fn (Node $value): bool => $value->value === null) !== [];
-        $values = array_values(array_filter($values, static fn (Node $value): bool => $value->value !== null));
-
-        if ($withNull && $type !== null && !$nullable) {
-            throw self::contradiction($node, sprintf('null is listed in enum, but type "%s" does not allow it', $type));
-        }
-
-        $nullable = $nullable || $withNull;
-        $type = $this->enumType($node, $type, $values);
-        $split = [];
-
-        foreach (self::members($node->value) as $keyword => $unused) {
-            $keyword = (string) $keyword;
-
-            if (!in_array($keyword, self::ENUM_KEPT, true) && !$this->assertionHolds($node, $keyword, $type, $values)) {
-                $split[] = $keyword;
-            }
-        }
-
-        if ($split !== []) {
-            return $this->splitEnum($node, $type, $nullable, $values);
-        }
-
-        $annotations = [
-            'title' => $common['title'],
-            'description' => $common['description'],
-            'nullable' => $nullable,
-            'access' => $common['access'],
-            'deprecated' => $common['deprecated'],
-            'externalDocs' => $common['externalDocs'],
-            'xml' => $common['xml'],
-            'comment' => $common['comment'],
-            'defs' => $common['defs'],
-            'id' => $common['id'],
-            'anchor' => $common['anchor'],
-            'dynamicAnchor' => $common['dynamicAnchor'],
-            'vocabulary' => $common['vocabulary'],
-            'extensions' => $common['extensions'],
-            'format' => $common['format'],
-        ];
-
-        return $this->buildEnum($node, $type, $values, $annotations);
-    }
-
-    /**
-     * @return list<Node> значения перечня без повторов; `const` вместе с `enum` — их пересечение
-     */
-    private function enumValues(Node $node): array
-    {
-        $result = [];
-
-        foreach ($node->has('enum') ? $node->get('enum')->list() : [$node->get('const')] as $value) {
-            $result[JsonValue::key($value->value)] ??= $value;
-        }
-
-        if ($node->has('const') && $node->has('enum')) {
-            $const = $node->get('const');
-
-            if (!isset($result[JsonValue::key($const->value)])) {
-                throw self::contradiction($node, 'const is not one of the enum values');
-            }
-
-            return [$const];
-        }
-
-        if ($result === []) {
-            throw $node->get('enum')->unexpected('a non-empty enum');
-        }
-
-        return array_values($result);
-    }
-
-    /**
-     * @param list<Node> $values
-     */
-    private function enumType(Node $node, ?string $type, array $values): ?string
-    {
-        if ($type !== null) {
-            foreach ($values as $value) {
-                $fits = $type === 'integer'
-                    ? JsonValue::isInteger($value->value)
-                    : JsonValue::kind($value->value) === $type;
-
-                if (!$fits) {
-                    throw self::contradiction($value, sprintf('the value is not of type "%s"', $type));
-                }
-            }
-
-            return $type;
-        }
-
-        $kinds = array_unique(array_map(static fn (Node $value): string => JsonValue::kind($value->value), $values));
-
-        if (count($kinds) !== 1) {
-            return null;
-        }
-
-        $kind = $kinds[array_key_first($kinds)];
-        $integers = array_filter($values, static fn (Node $value): bool => JsonValue::isInteger($value->value));
-
-        return $kind === 'number' && count($integers) === count($values) ? 'integer' : $kind;
-    }
-
-    /**
-     * true — слово не меняет множество значений и может быть отброшено.
-     *
-     * @param list<Node> $values
-     */
-    private function assertionHolds(Node $node, string $keyword, ?string $type, array $values): bool
-    {
-        if (str_starts_with($keyword, 'x-')) {
-            return true;
-        }
-
-        $applies = self::KEYWORD_KINDS[$keyword] ?? null;
-
-        // неизвестное слово: пакет его не моделирует и в обычных схемах
-        if ($applies === null) {
-            return !in_array($keyword, self::APPLICATORS, true);
-        }
-
-        $argument = $node->get($keyword);
-
-        foreach ($values as $value) {
-            $kind = JsonValue::kind($value->value);
-
-            // слово действует только на значения своего вида
-            if ($kind !== $applies) {
-                continue;
-            }
-
-            $holds = $this->holds($keyword, $argument, $value->value, $node);
-
-            if ($holds === null) {
-                return false;
-            }
-
-            if (!$holds) {
-                throw self::contradiction(
-                    $value,
-                    sprintf('the value is excluded by "%s", so it can never be valid', $keyword),
-                );
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * @return null|bool null — проверить нельзя
-     */
-    private function holds(string $keyword, Node $argument, mixed $value, Node $schema): ?bool
-    {
-        $string = is_string($value) ? $value : '';
-        $number = is_int($value) || is_float($value) ? (float) $value : 0.0;
-
-        switch ($keyword) {
-            case 'minLength':
-                return mb_strlen($string) >= $argument->int();
-
-            case 'maxLength':
-                return mb_strlen($string) <= $argument->int();
-
-            case 'pattern':
-                set_error_handler(static fn (): bool => true);
-
-                try {
-                    $matched = preg_match("\x01" . $argument->string() . "\x01u", $string);
-                } finally {
-                    restore_error_handler();
-                }
-
-                return $matched === false ? null : $matched === 1;
-
-            case 'minimum':
-            case 'maximum':
-                $bound = $argument->floatOrNull() ?? throw $argument->unexpected('a number');
-                $exclusive = $schema->get('exclusive' . ucfirst($keyword))->value === true;
-
-                return $keyword === 'minimum'
-                    ? ($exclusive ? $number > $bound : $number >= $bound)
-                    : ($exclusive ? $number < $bound : $number <= $bound);
-
-            case 'exclusiveMinimum':
-            case 'exclusiveMaximum':
-                if (is_bool($argument->value)) {
-                    return true;
-                }
-
-                $bound = $argument->floatOrNull() ?? throw $argument->unexpected('a number or a boolean');
-
-                return $keyword === 'exclusiveMinimum' ? $number > $bound : $number < $bound;
-
-            case 'multipleOf':
-                $step = $argument->floatOrNull() ?? throw $argument->unexpected('a number');
-                $ratio = $number / $step;
-
-                return abs($ratio - round($ratio)) < 1e-9;
-
-            case 'minItems':
-                return count(self::members($value)) >= $argument->int();
-
-            case 'maxItems':
-                return count(self::members($value)) <= $argument->int();
-
-            case 'uniqueItems':
-                if ($argument->value !== true) {
-                    return true;
-                }
-
-                $keys = array_map(JsonValue::key(...), self::members($value));
-
-                return count($keys) === count(array_unique($keys));
-
-            case 'minProperties':
-                return count(self::members($value)) >= $argument->int();
-
-            case 'maxProperties':
-                return count(self::members($value)) <= $argument->int();
-
-            case 'required':
-                return array_diff($argument->strings(), array_map('strval', array_keys(self::members($value)))) === [];
-        }
-
-        return null;
-    }
-
-    /**
-     * Эквивалентная запись без потерь: остальная схема и перечисление через allOf.
-     *
-     * @param list<Node> $values
-     */
-    private function splitEnum(Node $node, ?string $type, bool $nullable, array $values): AbstractSchema
-    {
-        $rest = new stdClass();
-
-        foreach (self::members($node->value) as $keyword => $argument) {
-            if ($keyword !== 'enum' && $keyword !== 'const') {
-                $rest->{$keyword} = $argument;
-            }
-        }
-
-        return new UntypedSchema(allOf: new UntypedSchemas(
-            $this->readSchema(new Node($rest, $node->path)),
-            $this->buildEnum($node, $type, $values, [
-                'title' => null,
-                'description' => null,
-                'nullable' => $nullable,
-                'access' => null,
-                'deprecated' => false,
-                'externalDocs' => null,
-                'xml' => null,
-                'comment' => null,
-                'defs' => null,
-                'id' => null,
-                'anchor' => null,
-                'dynamicAnchor' => null,
-                'vocabulary' => null,
-                'extensions' => null,
-                'format' => null,
-            ], withDefault: false),
-        ));
-    }
-
-    /**
-     * @param list<Node> $values
-     * @param array{
-     *     title: ?string,
-     *     description: ?string,
-     *     nullable: bool,
-     *     access: ?Access,
-     *     deprecated: bool,
-     *     externalDocs: ?ExternalDocs,
-     *     xml: ?Xml,
-     *     comment: ?string,
-     *     defs: ?UntypedSchemas,
-     *     id: ?string,
-     *     anchor: ?string,
-     *     dynamicAnchor: ?string,
-     *     vocabulary: ?Vocabularies,
-     *     extensions: ?Extensions,
-     *     format: ?string
-     * } $annotations
-     */
-    private function buildEnum(Node $node, ?string $type, array $values, array $annotations, bool $withDefault = true): AbstractSchema
-    {
-        $default = $withDefault ? $node->get('default') : new Node(null, $node->path, present: false);
-
-        try {
-            switch ($type) {
-                case 'string':
-                    $strings = new Strings(...array_map(static fn (Node $value): string => $value->string(), $values));
-
-                    return new StringEnumSchema(
-                        ...$annotations,
-                        enums: $strings,
-                        default: $this->stringValue($default),
-                        contentEncoding: $node->get('contentEncoding')->stringOrNull(),
-                        contentMediaType: $node->get('contentMediaType')->stringOrNull(),
-                        contentSchema: $node->has('contentSchema') ? $this->read($node->get('contentSchema')) : null,
-                    );
-
-                case 'integer':
-                    $integers = new Integers(...array_map(self::integer(...), $values));
-
-                    return new IntegerEnumSchema(
-                        ...$annotations,
-                        enums: $integers,
-                        default: $this->integerValue($default),
-                    );
-
-                case 'number':
-                    $numbers = new Numbers(...array_map(self::number(...), $values));
-
-                    return new NumberEnumSchema(
-                        ...$annotations,
-                        enums: $numbers,
-                        default: $this->numberValue($default),
-                    );
-
-                case 'boolean':
-                    $booleanDefault = $this->booleanValue($default);
-
-                    // перечень из обоих значений ничего не ограничивает
-                    return count($values) === 2
-                        ? new BooleanSchema(...$annotations, default: $booleanDefault)
-                        : new BooleanEnumSchema(...$annotations, value: $values[0]->bool(), default: $booleanDefault);
-
-                case 'array':
-                    $arrays = new Arrays(...array_map($this->listOf(...), $values));
-
-                    return new ArrayEnumSchema(...$annotations, enums: $arrays, default: $this->arrayValue($default));
-
-                case 'object':
-                    $objects = new Objects(...array_map($this->mapOf(...), $values));
-
-                    return new ObjectEnumSchema(...$annotations, enums: $objects, default: $this->objectValue($default));
-
-                default:
-                    $mixed = new Values(...array_map($this->nativeOf(...), $values));
-                    $mixedDefault = $this->untypedValue($default);
-
-                    return new UntypedEnumSchema(...$annotations, enums: $mixed, default: $mixedDefault);
-            }
-        } catch (InvalidSchemaOpenapiException $exception) {
-            throw self::contradiction($node, lcfirst(rtrim($exception->getMessage(), '.')));
-        }
-    }
-
-    private function listOf(Node $node): OpenapiArray
-    {
-        $values = $this->readValues($node);
-
-        return $values instanceof OpenapiArray ? $values : throw $node->unexpected('a list');
-    }
-
-    private function mapOf(Node $node): OpenapiObject
-    {
-        $values = $this->readValues($node);
-
-        return $values instanceof OpenapiObject ? $values : throw $node->unexpected('a mapping');
-    }
-
-    /**
-     * @return array<array-key, mixed>
-     */
-    private static function members(mixed $value): array
-    {
-        return $value instanceof stdClass ? Structure::vars($value) : (array) $value;
-    }
-
-    private static function integer(Node $node): int
-    {
-        return is_int($node->value) ? $node->value : (int) ($node->floatOrNull() ?? throw $node->unexpected('an integer'));
-    }
-
-    private static function number(Node $node): float|int
-    {
-        return $node->numberOrNull() ?? throw $node->unexpected('a number');
-    }
-
-    private static function contradiction(Node $node, string $reason): InvalidDocumentOpenapiException
-    {
-        return new InvalidDocumentOpenapiException(sprintf('%s: %s.', $node->path, $reason));
     }
 
     /**
@@ -1064,18 +485,13 @@ final readonly class SchemaReader
             'contentEncoding' => $node->get('contentEncoding')->stringOrNull(),
             'contentMediaType' => $node->get('contentMediaType')->stringOrNull(),
             'contentSchema' => $node->has('contentSchema') ? $this->read($node->get('contentSchema')) : null,
-            'default' => $this->stringValue($node->get('default')),
-            'example' => $this->stringValue($this->example($node, 'string')),
+            'default' => $this->values->stringValue($node->get('default')),
+            'example' => $this->values->stringValue($this->values->example($node, 'string')),
         ];
     }
 
-    private function stringValue(Node $node): ?StringValue
-    {
-        return $node->isPresent() ? new StringValue($node->value === null ? null : $node->string()) : null;
-    }
-
     /**
-     * 3.0 ставит булев флаг рядом с minimum, 3.1 — само число вместо него.
+     * 3.0 puts a boolean flag beside minimum; 3.1 puts the number itself in its place.
      *
      * @return array{
      *     minimum: null|float|int,
@@ -1134,8 +550,8 @@ final readonly class SchemaReader
             'multipleOf' => $node->get('multipleOf')->numberOrNull(),
             'exclusiveMinimum' => $range['exclusiveMinimum'],
             'exclusiveMaximum' => $range['exclusiveMaximum'],
-            'default' => $this->integerValue($node->get('default')),
-            'example' => $this->integerValue($this->example($node, 'integer')),
+            'default' => $this->values->integerValue($node->get('default')),
+            'example' => $this->values->integerValue($this->values->example($node, 'integer')),
         ];
     }
 
@@ -1160,8 +576,8 @@ final readonly class SchemaReader
             'multipleOf' => $node->get('multipleOf')->numberOrNull(),
             'exclusiveMinimum' => $range['exclusiveMinimum'],
             'exclusiveMaximum' => $range['exclusiveMaximum'],
-            'default' => $this->numberValue($node->get('default')),
-            'example' => $this->numberValue($this->example($node, 'number')),
+            'default' => $this->values->numberValue($node->get('default')),
+            'example' => $this->values->numberValue($this->values->example($node, 'number')),
         ];
     }
 
@@ -1192,8 +608,8 @@ final readonly class SchemaReader
             'minContains' => $node->get('minContains')->intOrNull(),
             'maxContains' => $node->get('maxContains')->intOrNull(),
             'unevaluatedItems' => $this->readSchemaOrBool($node->get('unevaluatedItems')),
-            'default' => $this->arrayValue($node->get('default')),
-            'example' => $this->arrayValue($this->example($node, 'array')),
+            'default' => $this->values->arrayValue($node->get('default')),
+            'example' => $this->values->arrayValue($this->values->example($node, 'array')),
         ];
     }
 
@@ -1225,7 +641,7 @@ final readonly class SchemaReader
             );
         }
 
-        // обязательные имена без описания в properties; повторы ничего не меняют
+        // required names with no description in properties; repetitions change nothing
         $undeclared = array_values(array_unique(array_filter(
             $required,
             static fn (string $name): bool => !array_key_exists($name, $properties),
@@ -1248,15 +664,15 @@ final readonly class SchemaReader
             'required' => $undeclared === [] ? null : new Strings(...$undeclared),
             'minProperties' => $this->nonNegative($node->get('minProperties')) ?? 0,
             'maxProperties' => $this->nonNegative($node->get('maxProperties')),
-            // по умолчанию дополнительные свойства разрешены, и параметр не nullable
+            // additional properties are allowed by default, and the parameter is not nullable
             'additionalProperties' => $this->readSchemaOrBool($node->get('additionalProperties')) ?? true,
             'patternProperties' => $patternProperties === [] ? null : PatternProperties::fromArray($patternProperties),
             'propertyNames' => $node->has('propertyNames') ? $this->read($node->get('propertyNames')) : null,
             'dependentRequired' => $dependentRequired === [] ? null : DependentRequired::fromArray($dependentRequired),
             'dependentSchemas' => $this->readSchemas($node->get('dependentSchemas')),
             'unevaluatedProperties' => $this->readSchemaOrBool($node->get('unevaluatedProperties')),
-            'default' => $this->objectValue($node->get('default')),
-            'example' => $this->objectValue($this->example($node, 'object')),
+            'default' => $this->values->objectValue($node->get('default')),
+            'example' => $this->values->objectValue($this->values->example($node, 'object')),
         ];
     }
 
@@ -1309,6 +725,26 @@ final readonly class SchemaReader
         }
 
         throw $node->get('$dynamicRef')->unexpected(sprintf('a schema declaring $dynamicAnchor "%s"', $anchor));
+    }
+
+    /**
+     * The schema as a resource: the core vocabulary is read together because it is
+     * declared together. An empty resource means there is none.
+     */
+    private function readResource(Node $node): ?Resource
+    {
+        $resource = new Resource(
+            id: $node->get('$id')->stringOrNull(),
+            schema: $node->get('$schema')->stringOrNull(),
+            vocabulary: $this->readVocabulary($node->get('$vocabulary')),
+            anchor: $node->get('$anchor')->stringOrNull(),
+            dynamicAnchor: $node->get('$dynamicAnchor')->stringOrNull(),
+            dynamicRef: $this->readDynamicRef($node),
+            defs: $this->readSchemas($node->get('$defs')),
+            comment: $node->get('$comment')->stringOrNull(),
+        );
+
+        return $resource->isEmpty() ? null : $resource;
     }
 
     private function readVocabulary(Node $node): ?Vocabularies
@@ -1378,18 +814,5 @@ final readonly class SchemaReader
             wrapped: $node->get('wrapped')->boolOr(false),
             extensions: $node->extensions(),
         );
-    }
-
-    private function nativeOf(Node $node): AbstractValues|bool|float|int|string|null
-    {
-        $value = $node->value;
-
-        if (is_array($value) || $value instanceof stdClass) {
-            return $this->readValues($node);
-        }
-
-        return is_scalar($value) || $value === null
-            ? $value
-            : throw $node->unexpected('a scalar or a structure');
     }
 }

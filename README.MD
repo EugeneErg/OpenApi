@@ -1,37 +1,40 @@
 # eugene-erg/open-api
 
-Объектный конструктор спецификаций **OpenAPI 3.0 и 3.1** для PHP 8.3+.
+An object-oriented builder of **OpenAPI 3.0 and 3.1** specifications for PHP 8.3+.
 
-Схемы, параметры, ответы и security-схемы описываются обычными PHP-объектами. Если один и тот же
-объект используется в `components` и где-то ещё, при сборке он автоматически превращается в `$ref` —
-вручную ссылки писать не нужно. Дедупликация работает и между несколькими файлами спецификации.
+Schemas, parameters, responses and security schemes are described by ordinary PHP objects. When one
+and the same object is used in `components` and somewhere else as well, the build turns it into a
+`$ref` by itself — there are no references to write by hand. The deduplication works across several
+files of a specification too.
 
-## Возможности
+## What it can do
 
-- **Типобезопасность.** Всё, что можно выразить типом или enum, выражено типом или enum.
-- **Автоматические `$ref`.** Сравнение идёт по идентичности объекта, а не по значению: один и тот же
-  `$userSchema` в десяти местах даст десять ссылок на одну схему.
-- **Мультифайловые спецификации.** `components.yaml` + `paths.yaml` со ссылками вида
+- **Type safety.** Whatever can be expressed by a type or an enum is expressed by a type or an enum.
+- **Automatic `$ref`s.** Objects are compared by identity rather than by value: the same
+  `$userSchema` in ten places gives ten references to one schema.
+- **Multi-file specifications.** `components.yaml` + `paths.yaml`, with references such as
   `components.yaml#/components/schemas/User`.
-- **Полные security-схемы**: `apiKey`, `http basic`, `http bearer`, `oauth2` (все четыре flow),
+- **Every security scheme**: `apiKey`, `http basic`, `http bearer`, `oauth2` (all four flows),
   `openIdConnect`.
-- **Два диалекта.** 3.0 и 3.1 различаются записью `nullable` и исключающих границ — пакет
-  выбирает нужную форму сам, объекты схем при этом одни и те же.
-- **Именованные аргументы как ключи.** `new Schemas(User: $user)` вместо массивов со строками.
-- **`format` у любого типа.** JSON Schema объявляет его необязательной аннотацией, поэтому
-  `format: uri-map` у объекта сохраняется; у строк и чисел есть enum известных значений.
-- **JSON и YAML** на выходе, без внешних зависимостей.
-- **Расширения `x-*`** у всех объектов, где их допускает спецификация.
-- **Чтение готовых спецификаций** обратно в объекты, со ссылками на те же экземпляры.
-- **Невалидную спеку собрать нельзя**: часть ошибок ловит PHPStan, остальные — конструкторы.
+- **Two dialects.** 3.0 and 3.1 differ in how `nullable` and the exclusive bounds are written — the
+  package picks the right form itself, and the schema objects stay the same.
+- **Named arguments as keys.** `new Schemas(User: $user)` instead of arrays of strings.
+- **`format` on any type.** JSON Schema declares it an optional annotation, so `format: uri-map` on
+  an object is kept; strings and numbers have an enum of the known values.
+- **JSON and YAML** on the way out, with no external dependencies.
+- **`x-*` extensions** on every object where the specification admits them.
+- **Reading finished specifications** back into objects, with the references pointing at the same
+  instances.
+- **An invalid specification cannot be built**: PHPStan catches some of the mistakes, the
+  constructors the rest.
 
-## Установка
+## Installation
 
 ```bash
 composer require eugene-erg/open-api
 ```
 
-## Быстрый старт
+## Quick start
 
 ```php
 <?php
@@ -73,7 +76,7 @@ $openapi = new Openapi(
                     x200: new Responses\Response(
                         description: 'A list of users',
                         content: new RequestBodies\Contents(...[
-                            // $user уже лежит в components, поэтому здесь будет $ref
+                            // $user already lies in components, so a $ref stands here
                             'application/json' => new RequestBodies\Content(
                                 schema: new Schemas\Array\Schema(items: $user),
                             ),
@@ -86,71 +89,115 @@ $openapi = new Openapi(
     ]),
 );
 
-// Ключ массива — имя файла. Именно оно попадает в кросс-файловые $ref.
+// The array key is the file name. It is what cross-file $refs carry.
 $builder = new Builder(...['openapi.json' => $openapi]);
 
-// Вариант 1: получить stdClass и распорядиться им самому
+// Option 1: get the stdClass and do as you please with it
 $documents = $builder->prepareToSave();           // ['openapi.json' => stdClass]
 
-// Вариант 2: сразу записать на диск
+// Option 2: write it to disk straight away
 $builder->save(__DIR__ . '/public/docs');         // public/docs/openapi.json
 
-// Вариант 3: только сериализовать, без записи
+// Option 3: serialise only, without writing
 $contents = $builder->encode();                   // ['openapi.json' => '{ ... }']
 ```
 
-Для YAML имя файла задаётся тем же ключом, а формат — энкодером:
+For YAML the file name comes from the same key, and the format from the encoder:
 
 ```php
 (new Builder(...['openapi.yaml' => $openapi]))->save(__DIR__ . '/public/docs', new YamlEncoder());
 ```
 
-> **Имя файла обязательно передавать ключом.** `new Builder($openapi)` даст числовой ключ `0`
-> и, как следствие, невалидные ссылки вида `0#/components/schemas/User`. Конструктор такой вызов
-> отклонит с `InvalidArgumentException`.
+> **The file name has to be passed as a key.** `new Builder($openapi)` gives the numeric key `0`
+> and, as a consequence, invalid references of the form `0#/components/schemas/User`. The
+> constructor rejects such a call with an `InvalidArgumentException`.
 
-## Формат вывода
+## The output format
 
-`Builder` умеет и JSON, и YAML. Обе реализации живут в пакете, внешних зависимостей нет:
+`Builder` can do both JSON and YAML. Both implementations live in the package; there are no
+external dependencies:
 
 ```php
 use EugeneErg\OpenApi\Serialization\JsonEncoder;
 use EugeneErg\OpenApi\Serialization\YamlEncoder;
 
-$builder->save('docs');                      // JSON по умолчанию
+$builder->save('docs');                      // JSON by default
 $builder->save('docs', new YamlEncoder());   // YAML
-$builder->save('docs', new JsonEncoder(JSON_UNESCAPED_SLASHES)); // свои флаги
+$builder->save('docs', new JsonEncoder(JSON_UNESCAPED_SLASHES)); // flags of your own
 ```
 
-Имя файла берётся из ключа, переданного в `Builder`, — энкодер его не меняет,
-так что расширение выбираете вы: `new Builder(...['openapi.yaml' => $openapi])`.
-Если в проекте уже есть `symfony/yaml` и хочется использовать её, достаточно
-реализовать `Serialization\EncoderInterface`.
+The file name is taken from the key passed to `Builder` — the encoder does not change it, so the
+extension is your choice: `new Builder(...['openapi.yaml' => $openapi])`. If the project already
+has `symfony/yaml` and you would rather use it, implementing `Serialization\EncoderInterface` is
+enough.
 
-Кавычки в YAML ставятся консервативно: лишняя кавычка допустима, потерянный тип — нет.
-Код ответа `"200"` останется строкой, `3.0.3` — тоже, а описания на любом языке
-печатаются без кавычек.
+Quotes in YAML are put conservatively: a superfluous quote is acceptable, a lost type is not. The
+response code `"200"` stays a string, so does `3.0.3`, and descriptions in any language are printed
+unquoted.
 
-## Что проверяется при сборке
+### Brief and verbose
 
-Часть ошибок ловится статически: неотрицательные границы объявлены как `int<0, max>`,
-так что `minLength: -5` PHPStan не пропустит. Остальное проверяется в конструкторах:
+By default the printing is brief: a value that equals its default is not printed — `required: false`
+on a parameter or `uniqueItems: false` on an array add nothing. The verbose form writes them out:
 
-- путь не начинается со слэша, либо `{id}` встречается в шаблоне дважды
-- в шаблоне есть `{id}`, но нет соответствующего path-параметра — или наоборот
-- операция без единого ответа (в 3.0 `responses` обязательны, в 3.1 их можно не указывать)
-- противоречивые перечисления — см. «Перечисления»
-- нижняя граница больше верхней, `multipleOf` не положительный
-- `discriminator` без `oneOf` / `anyOf` / `allOf`
-- одновременно заданные `value` и `externalValue`, `example` и `examples`
+```php
+$builder->prepareToSave(verbose: true);
+$builder->encode(verbose: true);
+$builder->save('docs', new YamlEncoder(), verbose: true);
+```
 
-Того, что выражается типами, в API просто нет: у path-параметра отсутствуют
-`allowEmptyValue` и `allowReserved` (они только для query), а `required` у него
-всегда `true`.
+It is the same specification, and that is how it is checked: every test document is built verbosely,
+read back and built briefly — and the result has to match the brief form from the start. The
+third-party validator is run over both variants.
 
-## Перечисления
+Where a default is not merely a default, the verbose form stays silent:
 
-Закрытый набор значений описывается отдельной схемой — `EnumSchema` своего типа:
+- `encoding` in 3.1 — an explicit `style`, `explode` or `allowReserved` changes how multipart is
+  handled there, so "writing out the default" would mean changing the meaning;
+- `exclusiveMinimum` and `exclusiveMaximum` — in 3.0 those are flags beside a bound, and without
+  the bound a flag is inadmissible; in 3.1 they are the bound itself, and there is nothing to write
+  out in it;
+- `nullable` in 3.1 — it does not exist there at all, `null` is added as a second type.
+
+## What the build checks
+
+Some of the mistakes are caught statically: the non-negative bounds are declared as `int<0, max>`,
+so PHPStan will not let `minLength: -5` through. The rest is checked in the constructors:
+
+- a path that does not start with a slash, or `{id}` occurring twice in a template
+- a template that has `{id}` but no matching path parameter — or the other way round
+- an operation without a single response (in 3.0 `responses` are required, in 3.1 they may be left out)
+- contradictory enumerations — see "Enumerations"
+- a lower bound above the upper one, a `multipleOf` that is not positive
+- a `discriminator` without `oneOf` / `anyOf` / `allOf`
+- `value` and `externalValue`, or `example` and `examples`, given at once
+
+Whatever the types express is simply absent from the API: a path parameter has no `allowEmptyValue`
+and no `allowReserved` (those are for query only), and its `required` is always `true`.
+
+### And where exactly
+
+What refuses is always the deepest object: it knows what it is missing but not where it lies — and
+the call stack shows the insides of the package rather than the document. So the place is gathered on
+the way up: every container adds one step of its own.
+
+```
+openapi.json/paths/~1users~1{id}/get/responses/200/content/application~1json/schema:
+An array schema must declare "items" in OpenAPI 3.0; it is optional only since 3.1.
+```
+
+The pointer is written as the reader writes it — by RFC 6901 — so the path template `/users/{id}`
+looks like `~1users~1{id}` inside it. The first step is the file name: with several documents there
+is no telling which of them is at fault without it. The place is separately available as
+`$exception->place()` on any exception of the package.
+
+An object that refused inside its constructor (inverted bounds, a `then` without an `if`) does not
+lie in any document yet — there `place()` returns `null`, and the call stack shows the place: that
+is a line of your code rather than a line of the specification.
+
+## Enumerations
+
+A closed set of values is described by a schema of its own — the `EnumSchema` of its type:
 
 ```php
 $status = new Schemas\String\EnumSchema(
@@ -164,28 +211,29 @@ $deleted = new Schemas\Boolean\EnumSchema(true);
 $size = new Schemas\Untyped\EnumSchema(new Schemas\Untyped\Values('auto', 0));
 ```
 
-Почему не параметр `enum` у обычной схемы. Когда значения перечислены, любое проверяющее
-ключевое слово (`minLength`, `pattern`, `minimum`, `items`, `properties`, `allOf`, `not`…)
-либо выполняется для всех значений и ничего не меняет, либо отсекает часть из них — и тогда
-это ошибка. Третьего не бывает. Поэтому у `EnumSchema` таких параметров нет: бесполезное
-написать нельзя, полезного не теряется. Остались аннотации — `title`, `description`,
-`readOnly`/`writeOnly`, `deprecated`, `xml`, `format`, `default` и идентификаторы 3.1.
-`example` убран по той же причине: у перечисления он ничего не добавляет.
+Why not an `enum` parameter on an ordinary schema. Once the values are listed, any keyword that
+checks something (`minLength`, `pattern`, `minimum`, `items`, `properties`, `allOf`, `not`…) either
+holds for every value and changes nothing, or cuts some of them off — and then it is a mistake.
+There is no third case. So `EnumSchema` has no such parameters: the useless cannot be written, and
+nothing useful is lost. What is left are the annotations — `title`, `description`,
+`readOnly`/`writeOnly`, `deprecated`, `xml`, `format`, `default` and the 3.1 identifiers. `example`
+is gone for the same reason: on an enumeration it adds nothing.
 
-Что пакет делает сам:
+What the package does by itself:
 
-- **`const`.** Одно значение в 3.1 печатается как `const`, в 3.0 — как `enum` из одного
-  элемента. Отдельного параметра `const` нет: это то же перечисление.
-- **`nullable`.** `null` добавляется и во флаг (тип), и в сам перечень: по 3.0.3 без этого
-  null недопустим. Писать `null` в значения не нужно — это ошибка.
-- **Проверки.** Отклоняются пустой перечень, повторы (`1` и `1.0` — одно значение, порядок
-  ключей объекта не важен), `default` вне перечня, значения, не подходящие под известный
-  `format` (`date`, `date-time`, `email`, `uuid`, `ipv4`, `ipv6`, `byte`, `int32`, `float`).
-- **Тип.** Для значений одного типа есть только типизированная схема; `Untyped\EnumSchema`
-  принимает лишь смешанные наборы. `Boolean\EnumSchema` принимает одно значение: перечень
-  из `true` и `false` ничего не ограничивает.
+- **`const`.** A single value is printed as `const` in 3.1 and as a one-element `enum` in 3.0. There
+  is no separate `const` parameter: it is the same enumeration.
+- **`nullable`.** `null` is added both to the flag (the type) and to the list itself: by 3.0.3 null
+  is inadmissible without that. Writing `null` among the values is not needed — it is an error.
+- **The checks.** An empty list is rejected, and so are repeats (`1` and `1.0` are one value, and the
+  order of an object's keys does not matter), a `default` outside the list, and values that do not
+  fit a known `format` (`date`, `date-time`, `email`, `uuid`, `ipv4`, `ipv6`, `byte`, `int32`,
+  `float`).
+- **The type.** For values of one type there is only the typed schema; `Untyped\EnumSchema` accepts
+  mixed sets alone. `Boolean\EnumSchema` accepts a single value: a list of `true` and `false`
+  restricts nothing.
 
-Если перечисление всё же нужно сочетать с композицией, это эквивалентно `allOf`:
+When an enumeration does have to be combined with a composition, that is equivalent to an `allOf`:
 
 ```php
 $deletedDog = new Schemas\Untyped\Schema(allOf: new Schemas\Untyped\Schemas(
@@ -196,17 +244,17 @@ $deletedDog = new Schemas\Untyped\Schema(allOf: new Schemas\Untyped\Schemas(
 ));
 ```
 
-При чтении готового документа перечисление разбирается по смыслу. `example` и слова,
-неприменимые к типу, отбрасываются. Простые проверки (`maxLength`, `pattern`, границы,
-`required`…) применяются к каждому значению: если все проходят, слово отбрасывается,
-если нет — документ отклоняется, потому что часть значений недостижима. Всё прочее
-сохраняется без потерь через `allOf`. `nullable: true` без `null` в перечне читается
-как nullable — так его и пишут на практике.
+Reading a finished document, an enumeration is taken apart by its meaning. `example` and the
+keywords that do not apply to the type are dropped. The simple checks (`maxLength`, `pattern`, the
+bounds, `required`…) are applied to every value: when all of them pass, the keyword is dropped; when
+they do not, the document is rejected, because some of the values are unreachable. Everything else is
+kept without a loss, through `allOf`. A `nullable: true` without a `null` in the list is read as
+nullable — which is how it is written in practice.
 
-## Расширения
+## Extensions
 
-Поля `x-*` есть почти у каждого объекта спецификации. Префикс добавляется всегда,
-поэтому имя пишется без него:
+Almost every object of the specification has `x-*` fields. The prefix is always added, so the name is
+written without it:
 
 ```php
 use EugeneErg\OpenApi\Extensions;
@@ -214,10 +262,9 @@ use EugeneErg\OpenApi\Extensions;
 new Schemas\String\Schema(extensions: new Extensions(internal: true));
 ```
 
-Даёт `{"type": "string", "x-internal": true}`. Имя с дефисом именованным аргументом
-не записать, поэтому оно передаётся распаковкой. Смешивать нельзя: PHP запрещает
-распаковку после именованных аргументов, так что либо всё именованными аргументами,
-либо всё распаковкой:
+That gives `{"type": "string", "x-internal": true}`. A name with a hyphen cannot be written as a
+named argument, so it is passed by unpacking. The two cannot be mixed: PHP forbids unpacking after
+named arguments, so it is either all named arguments or all unpacking:
 
 ```php
 new Extensions(...[
@@ -226,19 +273,19 @@ new Extensions(...[
 ]);
 ```
 
-- Правило одно и без исключений, поэтому у каждого поля документа ровно одна запись:
-  `x-legacy` даёт `x-x-legacy`, которое спецификация разрешает (от имени она требует
-  только того, чтобы оно начиналось с `x-`). Обратная сторона: префикс никогда не пишут
-  руками — написанный, он удвоится.
-- Префиксы `x-oai-` и `x-oas-` спецификация 3.1 оставила за OpenAPI Initiative. Пакет их
-  принимает — документ с ними законен, — но своё расширение так называть не стоит.
-- Значение — любое значение JSON; объекты и списки задаются теми же
-  `OpenapiObject` и `OpenapiArray`, что и примеры.
-- Имена вида `7` передаются через `Extensions::fromArray()`, как и в остальных картах.
+- The rule is one and has no exceptions, so every field of the document has exactly one spelling:
+  `x-legacy` gives `x-x-legacy`, which the specification allows (of the name it asks only that it
+  start with `x-`). The other side of it: the prefix is never written by hand — written, it doubles.
+- The 3.1 specification reserved the `x-oai-` and `x-oas-` prefixes for the OpenAPI Initiative. The
+  package accepts them — a document with them is legal — but an extension of your own is better named
+  otherwise.
+- A value is any JSON value; objects and lists are given by the same `OpenapiObject` and
+  `OpenapiArray` as the examples.
+- Names such as `7` are passed through `Extensions::fromArray()`, as in every other map.
 
-Расширения есть и у трёх объектов, которые выглядят как обычные карты: Paths Object,
-Responses Object операции и Callback Object. Им расширения передаются вторым
-аргументом `fromArray()`:
+Three objects that look like ordinary maps have extensions as well: the Paths Object, an operation's
+Responses Object and the Callback Object. Their extensions are passed as the second argument of
+`fromArray()`:
 
 ```php
 Paths::fromArray(
@@ -247,34 +294,34 @@ Paths::fromArray(
 );
 ```
 
-А вот `webhooks` и разделы `components` спецификация объявляет как `Map[string, …]`:
-расширения там принадлежат не карте, а самому объекту (`Openapi` и `Components`),
-и попытка задать их отклоняется. Имя `x-…` в такой карте — имя компонента, а не
-расширение: в `components.headers` у GitHub так назван заголовок
-`x-common-marker-version`, и он читается именно как компонент.
+`webhooks` and the sections of `components`, on the other hand, the specification declares as
+`Map[string, …]`: extensions there belong not to the map but to the object itself (`Openapi` and
+`Components`), and an attempt to set them is rejected. An `x-…` name in such a map is the name of a
+component rather than an extension: in GitHub's `components.headers` that is the name of the
+`x-common-marker-version` header, and it is read as exactly that — a component.
 
-## Коды ответов
+## Response codes
 
-Именованный аргумент в PHP не может начинаться с цифры, поэтому HTTP-коды пишутся с префиксом `x`,
-который снимается при сборке:
+A named argument in PHP cannot start with a digit, so the HTTP codes are written with an `x` prefix,
+which the build takes off:
 
 ```php
 new Responses(
     x200: new Responses\Response(description: 'OK'),
     x404: new Responses\Response(description: 'Not found'),
-    x4XX: new Responses\Response(description: 'Client error'),  // wildcard тоже работает
+    x4XX: new Responses\Response(description: 'Client error'),  // a wildcard works too
     default: $generalError,
 );
 ```
 
-У операции ключ ответа обязан быть кодом или `default`: `new Responses(ok: …)` не соберётся.
+On an operation a response key has to be a code or `default`: `new Responses(ok: …)` will not build.
 
-## Имена: '7', '-1' и fromArray()
+## The names '7', '-1' and fromArray()
 
-Карты (`Properties`, `Examples`, `Contents`, `Schemas` и остальные) принимают имена именованными
-аргументами или распаковкой массива. У распаковки одна ловушка PHP: ключ `'7'` или `'-1'`
-хранится как целое число и превращается в позиционный аргумент — имя пропало бы молча.
-Поэтому элемент карты без имени — ошибка, а для любых имён есть `fromArray()`:
+The maps (`Properties`, `Examples`, `Contents`, `Schemas` and the rest) take names as named arguments
+or by unpacking an array. Unpacking has one PHP trap: the key `'7'` or `'-1'` is stored as an integer
+and turns into a positional argument — the name would quietly be gone. So an item of a map without a
+name is an error, and `fromArray()` is there for any names at all:
 
 ```php
 $reactions = Schemas\Object\Properties::fromArray([
@@ -284,35 +331,34 @@ $reactions = Schemas\Object\Properties::fromArray([
 $example = Schemas\Object\OpenapiObject::fromArray(['0' => 'first', '1' => 'second']);
 ```
 
-Списки (`Strings`, `Tags`, `Servers`, `allOf`…) наоборот отклоняют имена — при записи они
-пропали бы. `Schemas` служит и тем и другим: `components.schemas`, `mapping` и `$defs` требуют
-имён, `allOf`, `anyOf`, `oneOf` и `prefixItems` — их отсутствия.
+The lists (`Strings`, `Tags`, `Servers`, `allOf`…) reject names instead — they would be gone when
+written. `Schemas` serves both: `components.schemas`, `mapping` and `$defs` require names, while
+`allOf`, `anyOf`, `oneOf` and `prefixItems` require their absence.
 
-Единственное место, где элемент карты можно передать без имени, — параметры операции:
-параметр, зарегистрированный в `components.parameters`, берёт имя из регистрации и
-выводится как `$ref`. Незарегистрированный безымянный параметр сборка отклонит.
+The one place where an item of a map may be passed without a name is an operation's parameters: a
+parameter registered in `components.parameters` takes its name from the registration and is printed
+as a `$ref`. An unregistered nameless parameter the build rejects.
 
-## Обязательные поля вне properties
+## Required fields outside properties
 
-Описанное свойство делается обязательным флагом `Property(required: true)`. Имена, которые
-в `properties` не описаны — их форму задают `additionalProperties`, `patternProperties`
-или композиция, — перечисляются в `required` самой схемы:
+A described property is made required by the `Property(required: true)` flag. The names that
+`properties` does not describe — their shape comes from `additionalProperties`, `patternProperties`
+or a composition — are listed in the schema's own `required`:
 
 ```php
-// «нужно ровно одно из двух полей»
+// "exactly one of the two fields is needed"
 $target = new Schemas\Untyped\Schema(oneOf: new Schemas\Untyped\Schemas(
     new Schemas\Object\Schema(declareType: false, required: new Strings('id')),
     new Schemas\Object\Schema(declareType: false, required: new Strings('owner', 'repo')),
 ));
 ```
 
-Имя из `properties` здесь отклоняется (для него есть флаг), как и имя, которое при
-`additionalProperties: false` не подходит ни под один `patternProperties`: такой объект
-невозможен.
+A name out of `properties` is rejected here (the flag is there for it), and so is a name that, with
+`additionalProperties: false`, matches no `patternProperties`: such an object is impossible.
 
-## Несколько файлов
+## Several files
 
-Возвращайте из сборки несколько документов — ссылки между ними расставятся сами:
+Return several documents from the build — the references between them fall into place by themselves:
 
 ```php
 $components = new Openapi(info: $info, components: new Components(schemas: $schemas));
@@ -324,7 +370,7 @@ $paths = new Openapi(info: $info, paths: $paths);
 ]))->prepareToSave();
 ```
 
-В `paths.yaml` ссылки получат вид `components.yaml#/components/schemas/User`.
+In `paths.yaml` the references take the form `components.yaml#/components/schemas/User`.
 
 ## Security
 
@@ -344,7 +390,7 @@ $oauth = new Oauth2Security\Scheme(
         new AuthorizationCodeFlow(
             authorizationUrl: 'https://example.com/oauth/authorize',
             tokenUrl: 'https://example.com/oauth/token',
-            // имена скоупов с двоеточием нельзя передать именованным аргументом
+            // scope names with a colon cannot be passed as named arguments
             scopes: new Scopes(...[
                 'read:pets' => $readPets,
                 'write:pets' => $writePets,
@@ -358,47 +404,47 @@ $openapi = new Openapi(
     components: new Components(
         securitySchemes: new SecuritySchemes(petstoreAuth: $oauth),
     ),
-    // объект Scope сам найдёт свою схему и своё имя
+    // the Scope object finds its own scheme and its own name
     security: new Securities(new Securities\SecuritySchemes($readPets)),
 );
 ```
 
-Даёт `security: [{ "petstoreAuth": ["read:pets"] }]`.
+That gives `security: [{ "petstoreAuth": ["read:pets"] }]`.
 
-Остальные схемы:
+The other schemes:
 
 ```php
 new SecuritySchemes\ApiKeySecurity\Scheme(name: 'X-Api-Key', in: SecuritySchemes\ApiKeySecurity\In::Header);
 new SecuritySchemes\BasicHttpSecurityScheme();
 new SecuritySchemes\BearerHttpSecurityScheme(format: 'JWT');
-new SecuritySchemes\HttpSecurityScheme('Digest');   // любая HTTP-схема IANA, кроме basic и bearer
+new SecuritySchemes\HttpSecurityScheme('Digest');   // any IANA HTTP scheme except basic and bearer
 new SecuritySchemes\OpenIdConnectSecurityScheme(openIdConnectUrl: 'https://example.com/.well-known/openid-configuration');
 ```
 
-Скоупы oauth2 объявлены в самой схеме, поэтому передаётся объект `Scope`: его имя и схема
-берутся из объявления и разойтись не могут. Объявлять скоуп спецификация не требует —
-у openIdConnect список публикует провайдер, а oauth2-документ может требовать скоуп,
-которого нет ни в одном flow. Такой скоуп называется именем: `Securities\ScopeName`.
-Остальные схемы в 3.1 могут требовать роли — `Securities\Role`; в 3.0 у них список
-обязан быть пуст, и сборка это проверит.
+The oauth2 scopes are declared in the scheme itself, so a `Scope` object is what is passed: its name
+and its scheme come from the declaration and cannot drift apart. The specification does not require a
+scope to be declared — with openIdConnect the provider publishes the list, and an oauth2 document may
+require a scope that no flow has. Such a scope is named by its name: `Securities\ScopeName`. The
+other schemes may require roles in 3.1 — `Securities\Role`; in 3.0 their list has to be empty, and
+the build checks that.
 
 ```php
 $bearer = new SecuritySchemes\BearerHttpSecurityScheme();
 $oidc = new SecuritySchemes\OpenIdConnectSecurityScheme('https://example.com/.well-known/openid-configuration');
 
 new Securities(
-    new Securities\SecuritySchemes(new Securities\Role($bearer, 'admin')),     // только 3.1
+    new Securities\SecuritySchemes(new Securities\Role($bearer, 'admin')),     // 3.1 only
     new Securities\SecuritySchemes(new Securities\ScopeName($oidc, 'openid')),
-    new Securities\SecuritySchemes(),   // {} — разрешён анонимный доступ
+    new Securities\SecuritySchemes(),   // {} — anonymous access is allowed
 );
 ```
 
-У операции `security: null` (по умолчанию) означает «как у документа», а `new Securities()` —
-«операция открыта», даже если документ требует авторизацию.
+On an operation `security: null` (the default) means "as the document has it", and
+`new Securities()` means "the operation is open", even when the document requires authorisation.
 
-## Версия документа
+## The document's version
 
-По умолчанию собирается `3.0.3`. Версия задаётся через enum `Version`:
+By default `3.0.3` is built. The version is set through the `Version` enum:
 
 ```php
 use EugeneErg\OpenApi\Version;
@@ -406,7 +452,7 @@ use EugeneErg\OpenApi\Version;
 new Openapi(info: $info, version: Version::V310);
 ```
 
-Одни и те же объекты схем дадут разный вывод:
+One and the same schema objects give a different output:
 
 | | 3.0 | 3.1 |
 |---|---|---|
@@ -414,8 +460,8 @@ new Openapi(info: $info, version: Version::V310);
 | `new Schemas\Number\Schema(minimum: 0, exclusiveMinimum: true)` | `{"minimum": 0, "exclusiveMinimum": true}` | `{"exclusiveMinimum": 0}` |
 | `new Schemas\String\EnumSchema(new Schemas\String\Strings('a'))` | `{"type": "string", "enum": ["a"]}` | `{"type": "string", "const": "a"}` |
 
-`webhooks` существуют только в 3.1 — при попытке задать их для 3.0 конструктор
-бросит `InvalidArgumentException`:
+`webhooks` exist in 3.1 only — an attempt to set them for 3.0 makes the constructor throw an
+`InvalidArgumentException`:
 
 ```php
 new Openapi(
@@ -427,7 +473,7 @@ new Openapi(
 );
 ```
 
-## Серверы
+## Servers
 
 ```php
 use EugeneErg\OpenApi\Components\Schemas\String\Strings;
@@ -444,7 +490,7 @@ new Servers(
 );
 ```
 
-## Полиморфизм
+## Polymorphism
 
 ```php
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
@@ -458,26 +504,27 @@ $pet = new Schemas\Untyped\Schema(
 );
 ```
 
-Схемы из `mapping` должны быть зарегистрированы в `components.schemas`, иначе сборка упадёт с
+The schemas out of `mapping` have to be registered in `components.schemas`, or the build fails with
 `ComponentsNotFoundOpenapiException`.
 
-## Исключения
+## Exceptions
 
-Все исключения пакета реализуют `EugeneErg\OpenApi\Exceptions\OpenapiExceptionInterface`:
+Every exception of the package implements `EugeneErg\OpenApi\Exceptions\OpenapiExceptionInterface`:
 
-| Исключение | Когда |
+| Exception | When |
 |---|---|
-| `ScopeNotFoundOpenapiException` | `Scope` не объявлен ни в одном oauth2-flow документа |
-| `SecuritySchemeNotFoundOpenapiException` | схема не зарегистрирована в `components.securitySchemes` |
-| `OperationNotFoundOpenapiException` | `Link` ссылается на операцию, которой нет в `paths` |
-| `ComponentsNotFoundOpenapiException` | требуется `$ref`, но объект не лежит ни в одном `components` |
-| `InvalidPathOpenapiException` | шаблон пути не согласован с path-параметрами |
-| `InvalidSchemaOpenapiException` | границы или ключевые слова схемы несогласованы |
-| `InvalidArgumentOpenapiException` | остальные нарушения инвариантов спецификации |
+| `ScopeNotFoundOpenapiException` | a `Scope` is declared in no oauth2 flow of the document |
+| `SecuritySchemeNotFoundOpenapiException` | the scheme is not registered in `components.securitySchemes` |
+| `OperationNotFoundOpenapiException` | a `Link` refers to an operation that is not in `paths` |
+| `ComponentsNotFoundOpenapiException` | a `$ref` is needed, but the object lies in no `components` |
+| `InvalidPathOpenapiException` | a path template disagrees with the path parameters |
+| `InvalidSchemaOpenapiException` | a schema's bounds or keywords disagree with each other |
+| `InvalidArgumentOpenapiException` | the remaining violations of the specification's invariants |
 
-## Чтение готовой спецификации
+## Reading a finished specification
 
-Обратная задача: разобрать существующий документ в объекты, поправить и записать обратно.
+The task the other way round: take an existing document apart into objects, change it and write it
+back.
 
 ```php
 use EugeneErg\OpenApi\Reader;
@@ -485,43 +532,69 @@ use EugeneErg\OpenApi\Serialization\YamlDecoder;
 
 $openapi = Reader::read(file_get_contents('openapi.json'));
 
-// несколько файлов — ключами, как и в Builder: ими разрешаются кросс-файловые ссылки
+// several files go in by key, as in Builder: the keys are what resolve the cross-file references
 $documents = Reader::readAll([
     'components.yaml' => file_get_contents('components.yaml'),
     'paths.yaml' => file_get_contents('paths.yaml'),
 ], new YamlDecoder());
 ```
 
-Главное свойство: **одна и та же ссылка даёт один и тот же объект**. Схема, на которую
-`$ref` указывает из трёх мест, будет одним экземпляром — и при обратной записи снова
-станет тремя ссылками, а не тремя копиями. Рекурсивные схемы восстанавливаются настоящим
-циклом через `DeferredSchema`.
+The property that matters most: **one and the same reference gives one and the same object**. A
+schema that a `$ref` points at from three places will be one instance — and writing it back turns
+that into three references again rather than three copies. Recursive schemas are restored as a real
+cycle, through `DeferredSchema`.
 
-Документ читается по смыслу, а не дословно. То, что ни на что не влияет, отбрасывается,
-эквивалентные формы приводятся к одной:
+A document is read by its meaning rather than word for word. Whatever affects nothing is dropped, and
+the equivalent forms are brought to one:
 
-- значения, равные умолчанию, и пустые списки и карты;
-- `example`, не подходящий под тип своей схемы;
-- `encoding` у содержимого, отличного от форм и multipart;
-- соседи `$ref` в 3.0 (там они не действуют). В 3.1 `$ref` — обычное ключевое слово,
-  и `{$ref, description}` читается как `{allOf: [$ref], description}`; схема из одного
-  `allOf` при записи снова становится самим элементом;
-- особенности перечислений — см. «Перечисления».
+- the values that equal their default, and the empty lists and maps;
+- an `example` that does not fit the type of its schema;
+- `encoding` on content other than forms and multipart;
+- the siblings of a `$ref` in 3.0 (they do not apply there). In 3.1 `$ref` is an ordinary keyword, and
+  `{$ref, description}` is read as `{allOf: [$ref], description}`; a schema of a single `allOf`
+  becomes that member itself again when written;
+- what enumerations do — see "Enumerations".
 
-Компонент, который лишь ссылается на другой (`UserBase: {$ref: UserCompact}`), остаётся
-отдельным объектом: ссылки на `UserBase` не уедут на `UserCompact`. `null` в `example`,
-`default` и `value` сохраняется — это значение, а не его отсутствие.
+A component that merely refers to another one (`UserBase: {$ref: UserCompact}`) stays an object of its
+own: the references to `UserBase` will not wander off to `UserCompact`. A `null` in `example`,
+`default` and `value` is kept — that is a value, not the absence of one.
 
-Противоречивый документ отклоняется с указанием места: например, требование
-oauth2-скоупа, не объявленного ни в одном flow схемы.
+A document that contradicts itself is rejected with the place named: a requirement for an oauth2
+scope that no flow of the scheme declares, say.
 
-Разбор JSON встроен. Для YAML нужен `ext-yaml`, либо свой десяток строк поверх
-`DecoderInterface`. `YamlDecoder` читает по базовой схеме YAML 1.2, как требует OpenAPI:
-ext-yaml по умолчанию следует YAML 1.1 и превращает `no` и `on` в логические значения,
-`12:30` и `1,5` — в числа. Ограничение: `1e3` и `0o17` ext-yaml отдаёт строкой ещё до
-разбора, поэтому в числовых ключевых словах их лучше не использовать.
+### Strict reading
 
-Свой декодер поверх другого парсера:
+Everything listed above the package drops **knowing why**. But a document may also carry a field the
+specification does not define at all — and that one cannot be dropped in silence: a document is read
+in order to be changed and written back, and such a field would disappear without a trace. So reading
+is strict by default and names every such place:
+
+```php
+Reader::read($content);                      // names what it did not understand and refuses to read
+Reader::read($content, strict: false);       // reads, dropping what it did not understand
+```
+
+```
+The specification does not define these fields: openapi.json/info/slogan,
+openapi.json/components/securitySchemes/bearer/in. Pass strict: false to read the document without them.
+```
+
+The second place here comes from the real Immich document: NestJS writes `in` and `name` on a scheme
+of type `http`, while the "Applies To" table in the specification declares them for `apiKey` only.
+The document does not break because of it, and `strict: false` reads it whole — but now it is known,
+rather than "somehow gone by itself".
+
+What was read and dropped does not count as misunderstood in strict mode: `uniqueItems` on a string,
+the siblings of a `$ref` in 3.0, `encoding` on JSON, an example beside an enumeration — all of that
+the package took apart and knows that it changes nothing.
+
+Parsing JSON is built in. YAML needs `ext-yaml`, or a dozen lines of your own over
+`DecoderInterface`. `YamlDecoder` reads by the YAML 1.2 core schema, as OpenAPI requires: by default
+ext-yaml follows YAML 1.1 and turns `no` and `on` into booleans, and `12:30` and `1,5` into numbers.
+One limitation: `1e3` and `0o17` ext-yaml hands over as a string before the parsing even starts, so
+they are better avoided in the numeric keywords.
+
+A decoder of your own over another parser:
 
 ```php
 use EugeneErg\OpenApi\Serialization\DecoderInterface;
@@ -537,22 +610,64 @@ final readonly class SymfonyYamlDecoder implements DecoderInterface
 }
 ```
 
-## Как это устроено
+## How it works
 
-`Builder` хранит документы и знает имена их файлов. Всю работу по ссылкам делает `Process` —
-контекст сборки одного документа. Каждый `toObject()` получает `Process` и спрашивает у него:
-«этот объект уже лежит в чьём-нибудь `components`?». Если да, на его месте окажется `$ref` —
-локальный или с именем соседнего файла; если нет, объект развернётся по месту.
-Через `Process` же доступна версия документа, поэтому схемы умеют печататься в обоих диалектах.
+`Builder` keeps the documents and knows their file names. All the work with references is done by
+`Process` — the context in which one document is built. Every `toObject()` is handed a `Process` and
+asks it: is this object already sitting in somebody's `components`? If it is, a `$ref` stands in its
+place — local, or carrying the name of a neighbouring file; if it is not, the object is written out
+where it is used. The document's version is available through `Process` as well, which is how the
+schemas can print themselves in both dialects.
+
+### How to read the class names
+
+Every namespace of a type holds four things, and their endings tell them apart:
+
+| Name | What it is | Example |
+| --- | --- | --- |
+| `Schema`, `EnumSchema` | a schema | `String\Schema`, `String\EnumSchema` |
+| `Schemas` | a set of **schemas** — `allOf`, `$defs`, `components.schemas` | `Untyped\Schemas` |
+| `Value` | one **value**: `default`, `example` | `String\Value('a')` |
+| the plural of the type | a set of **values**: the members of an enumeration | `String\Strings`, `Integer\Integers`, `Object\Objects` |
+
+That is, `Schemas` is about schemas, while `Strings`, `Integers`, `Numbers`, `Objects` and `Arrays`
+are about values. Values of mixed types have no plural of their own, so they are called
+`Untyped\Values`.
+
+`Object\OpenapiObject` and `Array\OpenapiArray` stand apart — they are the JSON literals: the object
+and the list that values and extensions are made of. The prefix is not there out of spite: `Object`
+and `Array` are reserved words in PHP, and a class cannot be named that.
+
+The schema reader has three neighbours to help it: `ValueReader` takes values apart, `EnumReader` the
+enumerations, and `Keywords` knows which type of value a keyword applies to.
 
 ## JSON Schema 2020-12
 
-В 3.1 схема — это полноценная JSON Schema. Поддержан весь словарь: `const`, `if`/`then`/`else`,
-`prefixItems`, `contains`, `patternProperties`, `propertyNames`, `dependentRequired`,
-`dependentSchemas`, `unevaluated*`, `content*`, `$defs`, `$id`, `$anchor`, `$vocabulary`.
+In 3.1 a schema is a full JSON Schema. The whole vocabulary is supported: `const`,
+`if`/`then`/`else`, `prefixItems`, `contains`, `patternProperties`, `propertyNames`,
+`dependentRequired`, `dependentSchemas`, `unevaluated*`, `content*`, `$defs`, `$id`, `$anchor`,
+`$vocabulary`, `$schema`.
 
-Адресация остаётся по объектам — сырые строки ссылок писать не нужно нигде. Схема, лежащая
-в `$defs`, ссылается так же, как обычный компонент:
+### A schema as a resource
+
+The words of the core vocabulary — `$id`, `$schema`, `$vocabulary`, `$anchor`, `$dynamicAnchor`,
+`$dynamicRef`, `$defs`, `$comment` — are passed as one `Resource` object:
+
+```php
+new Schemas\Object\Schema(resource: new Schemas\Abstract\Resource(
+    id: 'https://example.com/schemas/node',
+    schema: 'https://json-schema.org/draft/2020-12/schema',
+));
+```
+
+They are gathered together not because they are rarely needed but because the specification declares
+them together: these are words not about the value but about the schema itself — how to address it
+and by which rules to read it. Hence the shared rules, which `Resource` now checks itself: a dialect
+and a vocabulary are admissible at the root of a resource only, that is, beside an `$id`, and in 3.0
+the whole group is absent.
+
+Addressing stays by objects — raw reference strings are not to be written anywhere. A schema that
+lies in `$defs` is referred to just as an ordinary component is:
 
 ```php
 $street = new Schemas\String\Schema(minLength: 1);
@@ -561,38 +676,37 @@ $user = new Schemas\Object\Schema(
     properties: new Schemas\Object\Properties(
         road: new Schemas\Object\Property(schema: $street),
     ),
-    defs: new Schemas\Untyped\Schemas(Street: $street),
+    resource: new Schemas\Abstract\Resource(defs: new Schemas\Untyped\Schemas(Street: $street)),
 );
 // road => {"$ref": "#/components/schemas/User/$defs/Street"}
 ```
 
-`$dynamicRef` тоже принимает объект, а не строку: сборщик сам возьмёт его `$dynamicAnchor`.
+`$dynamicRef` takes an object as well rather than a string: the builder takes its `$dynamicAnchor`
+itself.
 
 ```php
-$node = new Schemas\Object\Schema(dynamicAnchor: 'node');
-new Schemas\Untyped\Schema(dynamicRef: $node);   // => {"$dynamicRef": "#node"}
+$node = new Schemas\Object\Schema(resource: new Schemas\Abstract\Resource(dynamicAnchor: 'node'));
+new Schemas\Untyped\Schema(resource: new Schemas\Abstract\Resource(dynamicRef: $node));
+// => {"$dynamicRef": "#node"}
 ```
 
-Все эти слова допустимы только в 3.1 — при сборке 3.0 будет исключение с именем ключевого слова.
+## Several types and the null type
 
-## Несколько типов и тип null
-
-В 3.1 `type` может быть массивом. `null` в нём — это `nullable`, он читается как раньше:
+In 3.1 `type` may be an array. A `null` in it is `nullable`, and it is read as before:
 
 ```php
 new Schemas\String\Schema(nullable: true);   // 3.1: {"type": ["string", "null"]}
 ```
 
-Схема, у которой других типов нет вовсе, — это `{"type": "null"}`: допустимо
-единственное значение. Для неё есть своя схема, и в 3.0, где такого типа нет,
-сборка её отклонит:
+A schema that has no other types at all is `{"type": "null"}`: a single value is admissible. It has a
+schema of its own, and in 3.0, where there is no such type, the build rejects it:
 
 ```php
-new Schemas\Null\Schema(description: 'Всегда null.');
+new Schemas\Null\Schema(description: 'Always null.');
 ```
 
-Объединение нескольких типов пакет описывает по типу каждого варианта, поэтому
-`{"type": ["string", "integer"]}` — это `anyOf` из двух схем:
+A union of several types the package describes by the type of every variant, so
+`{"type": ["string", "integer"]}` is an `anyOf` of two schemas:
 
 ```php
 new Schemas\Untyped\Schema(anyOf: new Schemas\Untyped\Schemas(
@@ -601,32 +715,31 @@ new Schemas\Untyped\Schema(anyOf: new Schemas\Untyped\Schemas(
 ));
 ```
 
-Читая компактную запись, пакет раскладывает её так же: слова, применимые к одному
-из перечисленных типов, уходят в его ветку, общие остаются снаружи через `allOf`.
+Reading the compact form, the package lays it out the same way: the keywords that apply to one of the
+listed types go into its branch, and the common ones stay outside, through `allOf`.
 
-### Проверка без объявленного типа
+### A check without a declared type
 
-`{"minLength": 3}` — это не «строка длиннее двух»: значение любого другого типа такой
-схеме подходит, потому что проверка строки к нему не применяется. Поэтому проверку
-можно написать, не объявляя тип, — `declareType: false` у схемы нужного типа:
+`{"minLength": 3}` does not mean "a string longer than two": a value of any other type fits such a
+schema, because a check on strings does not apply to it. So a check may be written without declaring
+a type — `declareType: false` on the schema of the type in question:
 
 ```php
 new Schemas\String\Schema(minLength: 3, declareType: false);   // {"minLength": 3}
 new Schemas\Object\Schema(properties: $properties, declareType: false);
 ```
 
-Обратное следствие: слово о значениях другого типа при объявленном типе не значит
-ничего — `uniqueItems` у строки выполнено всегда, потому что строка не массив. Такое
-слово пакет не печатает (см. «Что проверяется при сборке», третий принцип), а при
-чтении оно отбрасывается: kube-openapi пишет `uniqueItems: true` у каждого
-query-параметра, и в документе Kubernetes таких мест 550.
+The other way round: with a type declared, a keyword about values of another type means nothing —
+`uniqueItems` on a string always holds, because a string is not an array. Such a keyword the package
+does not print (see "What the build checks", the third principle), and reading drops it:
+kube-openapi writes `uniqueItems: true` on every query parameter, and the Kubernetes document has
+550 such places.
 
-## Ссылки на операции и пагинация
+## References to operations, and pagination
 
-`Link` указывает на операцию объектом, а не именем: на несуществующую так не сошлёшься.
-Но операция, которая ссылается на саму себя, — «следующая страница» — в собственный
-конструктор не передаётся, поэтому ссылка откладывается замыканием, как и у рекурсивных
-схем:
+A `Link` points at an operation by the object rather than by a name: an operation that does not exist
+cannot be referred to that way. But an operation that refers to itself — the "next page" — cannot be
+passed to its own constructor, so the reference is deferred by a closure, as with recursive schemas:
 
 ```php
 $listUsers = new Paths\Operation(
@@ -643,124 +756,129 @@ $listUsers = new Paths\Operation(
 );
 ```
 
-Операция с `operationId` выводится по нему, без него — указателем на её место
-в `paths` (`operationRef: "#/paths/~1users/get"`). Если целевой операции нет ни в одном
-переданном `Builder` документе, сборка это отклонит.
+An operation that has an `operationId` is printed by it, and one without by a pointer to its place in
+`paths` (`operationRef: "#/paths/~1users/get"`). When the target operation is in none of the
+documents handed to `Builder`, the build rejects that.
 
-## Ссылки с описанием
+## References with a description of their own
 
-Обычно ссылку делать не нужно: передайте объект, и сборщик сам поставит `$ref`.
-Reference Object нужен только там, где ссылка должна переопределить описание компонента
-(в 3.1 у неё есть свои `summary` и `description`):
+Usually there is no reference to make: pass the object, and the builder puts the `$ref` in itself. A
+Reference Object is needed only where the reference has to override the component's description (in
+3.1 it has a `summary` and a `description` of its own):
 
 ```php
 use EugeneErg\OpenApi\Reference;
 
 new Responses(
-    x404: new Reference($notFound, description: 'Пользователь не найден.'),
-    x500: $notFound,   // без переопределения — просто объект
+    x404: new Reference($notFound, description: 'The user was not found.'),
+    x500: $notFound,   // without an override, just the object
 );
 ```
 
-Даёт `{"$ref": "#/components/responses/NotFound", "description": "..."}` и голый `$ref` соответственно.
-Цель указывается тем же объектом, так что способ сослаться в пакете по-прежнему один.
+That gives `{"$ref": "#/components/responses/NotFound", "description": "..."}` and a bare `$ref`
+respectively. The target is given by the same object, so there is still one way to refer to something
+in this package.
 
-Так же ссылаются тело запроса, параметр и обратный вызов:
+A request body, a parameter and a callback are referred to the same way:
 
 ```php
 new Paths\Operation(
     responses: $responses,
-    requestBody: new Reference($upload, description: 'Пользователь для создания.'),
+    requestBody: new Reference($upload, description: 'The user to create.'),
     callbacks: new Components\Callbacks(onCreated: $onEvent),
     parameters: new Parameters\Parameters(
-        // имя параметра берётся из объявления компонента, поэтому здесь его не передают
-        queries: new Parameters\Query\Queries(new Reference($pageQuery, description: 'Своё описание.')),
+        // the parameter's name comes from the component's declaration, so it is not passed here
+        queries: new Parameters\Query\Queries(new Reference($pageQuery, description: 'A description of its own.')),
     ),
 );
 ```
 
-Список параметров операции проверяется на повторы: спецификация считает параметр
-уникальным по паре «имя + расположение», и второй `page` в query отклоняется —
-даже если первый передан по имени, а второй ссылкой.
+An operation's list of parameters is checked for repeats: the specification counts a parameter unique
+by the pair "name + location", and a second `page` in query is rejected — even when the first is
+passed by name and the second as a reference.
 
-## Ограничения
+## Limitations
 
-- `Security Requirement Object` по спецификации ссылается на схемы того же документа, поэтому
-  скоупы не ищутся в соседних файлах. Это ограничение самой спецификации, не пакета.
-- Проверяются инварианты спецификации, а не смысл документа: пакет поймает `{id}` без параметра
-  или перевёрнутые границы, но не скажет, что схема описывает не то, что отдаёт сервер.
+- By the specification a `Security Requirement Object` refers to the schemes of its own document, so
+  the scopes are not looked up in the neighbouring files. That is a limitation of the specification
+  rather than of the package.
+- The invariants of the specification are checked rather than the meaning of the document: the
+  package will catch an `{id}` without a parameter or inverted bounds, but it will not tell you that
+  a schema describes something other than what the server returns.
 
-## Разработка
+## Development
 
 ```bash
 composer install
-composer check     # php-cs-fixer + phpstan (максимальный уровень) + phpunit
+composer check     # php-cs-fixer + phpstan (the maximum level) + phpunit
 ```
 
-CI прогоняет то же самое на PHP 8.3 и 8.4.
+CI runs the same on PHP 8.3 and 8.4 with `ext-yaml` — plus `composer real-world` and
+`composer validate-output` as a separate job: those reach for the network and for Node.js, and their
+failure should not look like a failure of the tests.
 
-Тесты устроены как пары файлов: `tests/Cases/<Test>/Objects/<name>.php` возвращает объекты,
-`tests/Cases/<Test>/Jsons/<name>.json` — ожидаемый результат. Новые кейсы подхватываются
-автоматически, регистрировать их в тесте не нужно.
+The tests are arranged as pairs of files: `tests/Cases/<Test>/Objects/<name>.php` returns the
+objects, and `tests/Cases/<Test>/Jsons/<name>.json` the expected result. New cases are picked up
+automatically; there is no need to register them in the test.
 
-Отдельно `ReadmeTest` исполняет каждый PHP-пример из этого файла, так что документация
-не может разойтись с кодом незаметно.
+`ReadmeTest` separately executes every PHP example in this file, so the documentation cannot drift
+away from the code unnoticed.
 
-`RealWorldTest` прогоняет полный круг «чтение → запись» на настоящих спецификациях
-(`tests/Cases/RealWorldTest`, источники — в `SOURCES.md`) и сравнивает смысл, а не текст.
-Всё, что считается незначимым различием, перечислено в одном месте —
+`RealWorldTest` runs the full read → write round trip on real specifications
+(`tests/Cases/RealWorldTest`; the sources are in `SOURCES.md`) and compares the meaning rather than
+the text. Everything that counts as an insignificant difference is listed in one place —
 `tests/Support/SemanticDiff.php`.
 
-Крупные публичные спецификации слишком велики для репозитория, их проверяет отдельная команда:
+The large public specifications are too big for the repository, and a separate command checks those:
 
 ```bash
-composer real-world             # пятнадцать документов
-composer real-world -- discord  # выборочно
+composer real-world             # seventeen documents
+composer real-world -- discord  # a selection
 ```
 
-Кроме крупных публичных API (GitHub в 3.0 и 3.1, Stripe, Twilio, Asana, Discord)
-там нарочно собраны документы разных генераторов: FastAPI (Airflow), NestJS (Immich),
-drf-spectacular (authentik), go-swagger (Ory Kratos), kube-openapi (Kubernetes),
-.NET (Sonarr), Go (Hyperledger FireFly), компилятор спецификации Elasticsearch и пример
-Redocly. У каждого свои привычки, и почти каждый принёс по ошибке.
+Besides the large public APIs (GitHub in 3.0 and 3.1, Stripe, Twilio, Asana, Discord) it deliberately
+gathers documents from different generators: FastAPI (Airflow), NestJS (Immich), drf-spectacular
+(authentik), go-swagger (Ory Kratos), kube-openapi (Kubernetes), .NET (Sonarr), Go (Hyperledger
+FireFly), Spring Boot (Camunda 8), openapi-extractor for PHP (Nextcloud), the Elasticsearch
+specification compiler and Redocly's example. Each has habits of its own, and almost every one of
+them brought a bug along.
 
-Два документа из этого списка спецификация не допускает, и пакет их отклоняет:
-у Sonarr путевой параметр, которого нет в шаблоне пути, у Kratos — требование
-безопасности с необъявленной схемой. Прочитать их нельзя (объекты пакета такого
-не выражают), а молча починить значит соврать, поэтому проверяется сам отказ
-и его формулировка: она достанется тому, кто такой документ принесёт.
+Two documents on that list the specification does not admit, and the package rejects them: Sonarr has
+a path parameter that the path template does not carry, Kratos a security requirement with an
+undeclared scheme. They cannot be read (the package's objects do not express such a thing), and
+quietly fixing them would be a lie, so what is checked is the refusal itself and its wording: the
+wording is what whoever brings such a document gets.
 
-Отчёт отдельно считает места, где пакет выбрал равнозначную запись вместо исходной
-(объединение типов — `anyOf`, перечисление рядом с применителем — `allOf`). Повторять
-эту раскладку в проверке нельзя — она сверяла бы код сам с собой, — поэтому там
-сверяется независимое условие: ни одно значение не потерялось.
+The report separately counts the places where the package chose an equivalent form over the original
+(a union of types becomes an `anyOf`, an enumeration beside an applicator becomes an `allOf`).
+Repeating that layout inside the check is out of the question — it would compare the code with itself
+— so an independent condition is checked there: that not a single value was lost.
 
-Круг «чтение → запись» доказывает, что документ не потерялся, но не то, что он валиден:
-пакет мог бы одинаково неверно и читать, и писать. Именно так и жил параметр с `content` —
-тип содержимого печатался полем `mimeType` вместо ключа внутри `content`, и ридер читал
-эту ошибку обратно. Поэтому вывод проверяется сторонним валидатором:
+The read → write round trip proves the document was not lost, but not that it is valid: the package
+could read and write in the same wrong way. That is exactly how a parameter with `content` lived for
+a while — the content type was printed as a `mimeType` field instead of a key inside `content`, and
+the reader read that mistake back. So the output is checked by a third-party validator:
 
 ```bash
-composer validate-output        # нужен Node.js; Redocly скачивается через npx
+composer validate-output        # Node.js is needed; Redocly is downloaded through npx
 ```
 
-Команда собирает каждый кейс `BuilderTest` в JSON **и** в YAML — энкодер YAML свой,
-его ошибки в JSON не видны (так нашлись пустые карты внутри последовательности) — и
-прогоняет структурные правила Redocly. Среди кейсов есть `kitchen-sink-30` и
-`kitchen-sink-31`: по одному документу на версию, где встречается каждый объект
-спецификации.
+The command builds every `BuilderTest` case in JSON **and** in YAML — the YAML encoder is our own,
+and its mistakes are invisible in JSON (that is how the empty maps inside a sequence were found) —
+and runs Redocly's structural rules. Among the cases are `kitchen-sink-30` and `kitchen-sink-31`: one
+document per version, holding every object of the specification.
 
-Места, где расходится сам валидатор, перечислены в `KNOWN_DEFECTS` внутри
-`tools/validate-output.php` — каждое проверено по тексту спецификации:
+The places where the validator itself departs from the specification are listed in `KNOWN_DEFECTS`
+inside `tools/validate-output.php` — every one of them checked against the text of the specification:
 
-- Redocly ждёт от `$vocabulary` строку, а JSON Schema 2020-12 объявляет его объектом
-  «URI => bool».
-- Spectral (`oas3-schema`) несёт схему OAS 3.1.0, в которой нет `$ref` у Path Item
-  (в тексте 3.1.1 он есть) и в Link Object опечатка `body` вместо `server`.
+- Redocly expects a string from `$vocabulary`, while JSON Schema 2020-12 declares it an object of
+  URI => bool.
+- Spectral (`oas3-schema`) carries the OAS 3.1.0 schema, which has no `$ref` on a Path Item (the
+  3.1.1 text does have it) and has a typo in the Link Object, `body` instead of `server`.
 
-Проверка, падающая на чужих ошибках, хуже отсутствующей, поэтому такой список ведётся
-явно и с объяснением, а не глушится целиком.
+A check that fails on somebody else's mistakes is worse than no check at all, so such a list is kept
+explicitly and with an explanation rather than silenced wholesale.
 
-## Лицензия
+## Licence
 
-MIT. См. [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

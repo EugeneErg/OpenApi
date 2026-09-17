@@ -4,7 +4,7 @@
         "info": {
             "title": "Full 3.1 API",
             "version": "1.0.0",
-            "summary": "Короткая сводка, доступная только в 3.1.",
+            "summary": "A short summary, available in 3.1 only.",
             "license": {
                 "name": "MIT",
                 "identifier": "MIT"
@@ -38,13 +38,13 @@
             "securitySchemes": {
                 "mtls": {
                     "type": "mutualTLS",
-                    "description": "Клиентский сертификат."
+                    "description": "A client certificate."
                 }
             },
             "pathItems": {
                 "ping": {
                     "summary": "Health check",
-                    "description": "Отвечает, пока сервис жив.",
+                    "description": "Answers while the service is alive.",
                     "get": {
                         "responses": {
                             "200": {

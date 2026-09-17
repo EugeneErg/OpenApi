@@ -26,19 +26,19 @@ use EugeneErg\OpenApi\Tags;
 use EugeneErg\OpenApi\Version;
 
 /**
- * То же, что kitchen-sink-31, но в 3.0: без словаря JSON Schema 2020-12, типа null,
- * ролей, webhooks, components.pathItems и собственных полей Reference Object.
- * Валидность проверяется внешним валидатором (`composer validate-output`).
+ * The same as kitchen-sink-31 but in 3.0: without the JSON Schema 2020-12 vocabulary,
+ * the null type, roles, webhooks, components.pathItems and the Reference Object's own
+ * fields. Validity is checked by an external validator (`composer validate-output`).
  *
- * Тело обёрнуто в замыкание: require выполняет файл в области видимости вызывающего,
- * а отложенные ссылки связываются через use (&$var).
+ * The body is wrapped in a closure: require runs the file in the caller's scope, and the
+ * deferred references are bound through use (&$var).
  *
  * @return array<string, Openapi>
  */
 return (static function (): array {
     $street = new Schemas\String\Schema(minLength: 1, maxLength: 80, pattern: '^[^\n]+$');
 
-    // словарь 2020-12: $defs, $anchor, $dynamicAnchor и ссылка на него
+    // the 2020-12 vocabulary: $defs, $anchor, $dynamicAnchor and a reference to it
     $node = new Schemas\Object\Schema(
         properties: new Schemas\Object\Properties(
             value: new Schemas\Object\Property(schema: new Schemas\String\Schema(), required: true),
@@ -78,7 +78,7 @@ return (static function (): array {
 
     $attachment = new Schemas\String\Schema(format: Schemas\String\Format::Binary);
 
-    // if / then / else и композиция с дискриминатором
+    // if / then / else and a composition with a discriminator
     $card = new Schemas\Object\Schema(
         properties: new Schemas\Object\Properties(
             kind: new Schemas\Object\Property(
@@ -110,7 +110,7 @@ return (static function (): array {
 
     $flag = new Schemas\Boolean\EnumSchema(true, description: 'Always true.');
 
-    // security: oauth2 со всеми flow, скоупы объектом и именем, роль, mutualTLS
+    // security: oauth2 with every flow, scopes by object and by name, a role, mutualTLS
     $read = new Oauth2Security\Flows\Scope('Read everything');
     $write = new Oauth2Security\Flows\Scope('Write everything');
     $oauth = new Oauth2Security\Scheme(
@@ -158,7 +158,7 @@ return (static function (): array {
         extensions: new Extensions(source: 'docs'),
     );
 
-    // операция ссылается на саму себя: пагинация
+    // the operation refers to itself: pagination
     $listPayments = new Paths\Operation(
         responses: Responses::fromArray(
             [

@@ -33,7 +33,7 @@ abstract readonly class AbstractFlow
     }
 
     /**
-     * Обязательные url конкретного flow в порядке, заданном спецификацией.
+     * The urls a particular flow requires, in the order the specification gives them.
      *
      * @return array<string, string>
      */

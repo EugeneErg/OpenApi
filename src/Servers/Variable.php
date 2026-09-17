@@ -9,7 +9,7 @@ use EugeneErg\OpenApi\Extensions;
 use stdClass;
 
 /**
- * Server Variable Object: подстановка в шаблон url сервера.
+ * Server Variable Object: a substitution in a server's url template.
  */
 final readonly class Variable
 {

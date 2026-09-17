@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Components\RequestBodies;
 
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use stdClass;
@@ -24,11 +25,11 @@ final readonly class RequestBody
     public function toObject(Process $process): stdClass
     {
         $result = [
-            'content' => $this->content->toObject($process),
+            'content' => Place::in(fn (): stdClass => $this->content->toObject($process), 'content'),
         ];
 
-        if ($this->required) {
-            $result['required'] = true;
+        if ($this->required || $process->verbose) {
+            $result['required'] = $this->required;
         }
 
         if ($this->description !== null) {

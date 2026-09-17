@@ -6,6 +6,7 @@ namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
@@ -38,38 +39,26 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
         public ?AbstractValue $example = null,
         public ?Discriminator $discriminator = null,
         ?AbstractValues $examples = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?AbstractSchema $dynamicRef = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         public ?AbstractSchema $if = null,
         public ?AbstractSchema $then = null,
         public ?AbstractSchema $else = null,
         ?Extensions $extensions = null,
     ) {
         parent::__construct(
-            $type,
-            $format,
-            $title,
-            $description,
-            $nullable,
-            $access,
-            $deprecated,
-            $externalDocs,
-            $xml,
-            $default,
-            $examples,
-            $comment,
-            $defs,
-            $id,
-            $anchor,
-            $dynamicAnchor,
-            $dynamicRef,
-            $vocabulary,
-            $extensions,
+            type: $type,
+            format: $format,
+            title: $title,
+            description: $description,
+            nullable: $nullable,
+            access: $access,
+            deprecated: $deprecated,
+            externalDocs: $externalDocs,
+            xml: $xml,
+            default: $default,
+            examples: $examples,
+            resource: $resource,
+            extensions: $extensions,
         );
         $this->anyOf = $anyOf ?? new Schemas();
         $this->allOf = $allOf ?? new Schemas();
@@ -98,20 +87,14 @@ abstract readonly class AbstractConditionSchema extends AbstractSchema
     {
         $result = Structure::vars(parent::toObject($process));
 
-        if ($this->anyOf->items !== []) {
-            $result['anyOf'] = $this->anyOf->toArray($process);
-        }
-
-        if ($this->allOf->items !== []) {
-            $result['allOf'] = $this->allOf->toArray($process);
-        }
-
-        if ($this->oneOf->items !== []) {
-            $result['oneOf'] = $this->oneOf->toArray($process);
+        foreach (['anyOf' => $this->anyOf, 'allOf' => $this->allOf, 'oneOf' => $this->oneOf] as $keyword => $schemas) {
+            if ($schemas->items !== []) {
+                $result[$keyword] = Place::in(static fn (): array => $schemas->toArray($process), $keyword);
+            }
         }
 
         if ($this->not !== null) {
-            $result['not'] = self::nested($this->not, $process);
+            $result['not'] = Place::in(fn (): stdClass => self::nested($this->not, $process), 'not');
         }
 
         foreach (['if' => $this->if, 'then' => $this->then, 'else' => $this->else] as $keyword => $schema) {

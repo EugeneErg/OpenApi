@@ -7,7 +7,7 @@ namespace EugeneErg\OpenApi\Components\SecuritySchemes;
 use EugeneErg\OpenApi\Extensions;
 
 /**
- * Схема mutualTLS, появившаяся в OpenAPI 3.1.
+ * The mutualTLS scheme, which appeared in OpenAPI 3.1.
  */
 final readonly class MutualTlsSecurityScheme extends AbstractSecurityScheme
 {
@@ -15,6 +15,10 @@ final readonly class MutualTlsSecurityScheme extends AbstractSecurityScheme
         ?string $description = null,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct('mutualTLS', $description, $extensions);
+        parent::__construct(
+            type: 'mutualTLS',
+            description: $description,
+            extensions: $extensions,
+        );
     }
 }

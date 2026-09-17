@@ -25,14 +25,24 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
         public Style $style = Style::Simple,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct(Components\Parameters\In::Path, $schema, $explode ?? false, $description, true, $deprecated, $example, $examples, $extensions);
+        parent::__construct(
+            in: Components\Parameters\In::Path,
+            schema: $schema,
+            explode: $explode ?? false,
+            description: $description,
+            required: true,
+            deprecated: $deprecated,
+            example: $example,
+            examples: $examples,
+            extensions: $extensions,
+        );
     }
 
     public function toObject(Process $process): stdClass
     {
         $result = parent::toObject($process);
 
-        if ($this->style !== Style::Simple) {
+        if ($this->style !== Style::Simple || $process->verbose) {
             $result->style = $this->style->value;
         }
 

@@ -15,6 +15,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas;
 use EugeneErg\OpenApi\Components\SecuritySchemes;
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use stdClass;
 
 use function sprintf;
@@ -103,39 +104,75 @@ final readonly class Components
         $result = [];
 
         if ($this->schemas->items !== []) {
-            $result['schemas'] = $process->findSchemas($this->schemas) ?? $this->schemas->sourceToObject($process);
+            $result['schemas'] = Place::in(
+                fn (): stdClass => $process->findSchemas($this->schemas) ?? $this->schemas->sourceToObject($process),
+                'components',
+                'schemas',
+            );
         }
 
         if ($this->responses->items !== []) {
-            $result['responses'] = $process->findResponses($this->responses) ?? $this->responses->sourceToObject($process);
+            $result['responses'] = Place::in(
+                fn (): stdClass => $process->findResponses($this->responses) ?? $this->responses->sourceToObject($process),
+                'components',
+                'responses',
+            );
         }
 
         if ($this->parameters->items !== []) {
-            $result['parameters'] = $process->findParameters($this->parameters) ?? $this->parameters->sourceToObject($process);
+            $result['parameters'] = Place::in(
+                fn (): stdClass => $process->findParameters($this->parameters) ?? $this->parameters->sourceToObject($process),
+                'components',
+                'parameters',
+            );
         }
 
         if ($this->examples->items !== []) {
-            $result['examples'] = $process->findExamples($this->examples) ?? $this->examples->sourceToObject($process);
+            $result['examples'] = Place::in(
+                fn (): stdClass => $process->findExamples($this->examples) ?? $this->examples->sourceToObject($process),
+                'components',
+                'examples',
+            );
         }
 
         if ($this->requestBodies->items !== []) {
-            $result['requestBodies'] = $process->findRequestBodies($this->requestBodies) ?? $this->requestBodies->sourceToObject($process);
+            $result['requestBodies'] = Place::in(
+                fn (): stdClass => $process->findRequestBodies($this->requestBodies) ?? $this->requestBodies->sourceToObject($process),
+                'components',
+                'requestBodies',
+            );
         }
 
         if ($this->headers->items !== []) {
-            $result['headers'] = $process->findHeaders($this->headers) ?? $this->headers->sourceToObject($process);
+            $result['headers'] = Place::in(
+                fn (): stdClass => $process->findHeaders($this->headers) ?? $this->headers->sourceToObject($process),
+                'components',
+                'headers',
+            );
         }
 
         if ($this->securitySchemes->items !== []) {
-            $result['securitySchemes'] = $process->findSecuritySchemes($this->securitySchemes) ?? $this->securitySchemes->sourceToObject();
+            $result['securitySchemes'] = Place::in(
+                fn (): stdClass => $process->findSecuritySchemes($this->securitySchemes) ?? $this->securitySchemes->sourceToObject(),
+                'components',
+                'securitySchemes',
+            );
         }
 
         if ($this->links->items !== []) {
-            $result['links'] = $process->findLinks($this->links) ?? $this->links->sourceToObject($process);
+            $result['links'] = Place::in(
+                fn (): stdClass => $process->findLinks($this->links) ?? $this->links->sourceToObject($process),
+                'components',
+                'links',
+            );
         }
 
         if ($this->callbacks->items !== []) {
-            $result['callbacks'] = $process->findCallbacks($this->callbacks) ?? $this->callbacks->sourceToObject($process);
+            $result['callbacks'] = Place::in(
+                fn (): stdClass => $process->findCallbacks($this->callbacks) ?? $this->callbacks->sourceToObject($process),
+                'components',
+                'callbacks',
+            );
         }
 
         if ($this->pathItems->items !== []) {

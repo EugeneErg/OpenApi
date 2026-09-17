@@ -42,6 +42,7 @@
                 },
                 "Node": {
                     "type": "object",
+                    "$schema": "https://json-schema.org/draft/2020-12/schema",
                     "$id": "https://example.com/schemas/node",
                     "$anchor": "root",
                     "$dynamicAnchor": "node",

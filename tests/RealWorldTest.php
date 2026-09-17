@@ -18,10 +18,10 @@ use function glob;
 use function implode;
 
 /**
- * Настоящие спецификации переживают полный круг «чтение → запись» без потери смысла.
+ * Real specifications survive the full read → write round trip without losing meaning.
  *
- * Откуда файлы — tests/Cases/RealWorldTest/SOURCES.md. Что считается незначимым
- * различием — tests/Support/SemanticDiff.php.
+ * Where the files come from: tests/Cases/RealWorldTest/SOURCES.md. What counts as an
+ * insignificant difference: tests/Support/SemanticDiff.php.
  */
 final class RealWorldTest extends TestCase
 {

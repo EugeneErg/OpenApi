@@ -37,7 +37,7 @@ $upload = new RequestBodies\RequestBody(
     description: 'Component level body.',
 );
 
-// Callback Object — карта runtime-выражений; как компонент он адресуется ссылкой
+// a Callback Object is a map of runtime expressions; as a component it is addressed by a reference
 $onEvent = PathItems::fromArray([
     '{$request.body#/callbackUrl}' => new Paths\Path(
         post: new Paths\Operation(
@@ -57,7 +57,7 @@ $openapi = new Openapi(
         callbacks: new Components\Callbacks(onEvent: $onEvent),
     ),
     paths: new Paths(...[
-        // тот же объект: без Reference — голый $ref, с Reference — с переопределением
+        // the same object: without Reference a bare $ref, with Reference one that overrides
         '/users' => new Paths\Path(
             get: new Paths\Operation(
                 responses: new Responses(
@@ -91,7 +91,7 @@ $openapi = new Openapi(
                 responses: new Responses(x200: new Responses\Response(description: 'Replaced.')),
                 id: 'replaceUser',
                 requestBody: $upload,
-                // имя параметра берётся из объявления компонента, поэтому его здесь не передают
+                // the parameter's name comes from the component's declaration, so it is not passed here
                 parameters: new Components\Parameters\Parameters(
                     queries: new Components\Parameters\Query\Queries(
                         new Reference($pageQuery, description: 'Overridden at use site.'),

@@ -5,12 +5,12 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi;
 
 /**
- * Версия спецификации, по правилам которой собирается документ.
+ * The version of the specification whose rules the document is built by.
  *
- * Различия, которые пакет учитывает:
+ * The differences the package accounts for:
  *  - 3.0: `nullable: true`;  3.1: `type: ["string", "null"]`
- *  - 3.0: `exclusiveMinimum: true` рядом с `minimum`;  3.1: `exclusiveMinimum: <число>`
- *  - `webhooks` существует только в 3.1
+ *  - 3.0: `exclusiveMinimum: true` beside `minimum`;  3.1: `exclusiveMinimum: <number>`
+ *  - `webhooks` exists in 3.1 only
  */
 enum Version: string
 {

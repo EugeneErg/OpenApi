@@ -22,24 +22,44 @@ use function is_string;
 use function sprintf;
 
 /**
- * Узел разобранного документа вместе со своим путём.
+ * A node of the decoded document together with its path.
  *
- * Путь нужен только для сообщений об ошибках: без него «expected a string» посреди
- * чужой спецификации на две тысячи строк бесполезно.
+ * The path is there for the error messages: "expected a string" is useless in the middle
+ * of somebody else's two-thousand-line specification.
  *
- * Здесь же снимается неоднозначность пустых коллекций: через ext-yaml `{}` и `[]`
- * приходят одинаково, а каждый accessor знает, что ожидается в этом месте.
+ * Empty collections are disambiguated here as well: through ext-yaml `{}` and `[]` arrive
+ * as the same value, while every accessor knows which of the two belongs in its place.
  */
 final readonly class Node
 {
     /**
-     * @param bool $present false — ключа в документе нет; null в документе и отсутствие различаются
+     * @param bool $present false when the key is absent; a null in the document and an absent key differ
      */
     public function __construct(
         public mixed $value,
         public string $path = '',
         public bool $present = true,
+        /**
+         * Where to mark what has been read. Without a collector the node marks nothing:
+         * strict reading asks the collector, not the nodes.
+         */
+        private ?Reads $reads = null,
     ) {
+    }
+
+    /**
+     * A node of a rewritten form: the same keywords, laid out differently.
+     *
+     * What is read there counts as read here too, so a rewrite (a union of types, an enum,
+     * the siblings of a `$ref`) does not hide an unknown keyword.
+     */
+    public function rewritten(stdClass $value, ?string $path = null): self
+    {
+        if ($this->reads !== null && $this->value instanceof stdClass) {
+            $this->reads->rewrote($value, $this->value);
+        }
+
+        return new self($value, $path ?? $this->path, reads: $this->reads);
     }
 
     public function has(string $key): bool
@@ -55,12 +75,34 @@ final readonly class Node
 
         /** @var stdClass $value */
         $value = $this->value;
+        $this->reads?->key($value, $key);
 
-        return new self($value->{$key}, $this->child($key));
+        return new self($value->{$key}, $this->child($key), reads: $this->reads);
     }
 
     /**
-     * Ключ есть в документе, даже если его значение null.
+     * The keyword is read and dropped: it changes nothing — `uniqueItems` on a string
+     * always holds, because a string is not an array. Strict reading complains about what
+     * was not read, and this was.
+     */
+    public function dropped(string ...$keys): void
+    {
+        if (!$this->value instanceof stdClass) {
+            return;
+        }
+
+        foreach ($keys as $key) {
+            $this->reads?->key($this->value, $key);
+
+            // dropped whole: the package never looked inside such a value
+            if (property_exists($this->value, $key)) {
+                $this->reads?->whole($this->value->{$key});
+            }
+        }
+    }
+
+    /**
+     * The key is in the document, even if its value is null.
      */
     public function isPresent(): bool
     {
@@ -115,10 +157,10 @@ final readonly class Node
     }
 
     /**
-     * Число как оно записано: целое остаётся целым.
+     * The number as written: an integer stays an integer.
      *
-     * Через float границы вроде `9223372036854775807` не проходят: приведение
-     * туда и обратно ломает значение.
+     * A bound like `9223372036854775807` does not survive a float: a round trip through
+     * one breaks the value.
      */
     public function numberOrNull(): float|int|null
     {
@@ -143,10 +185,10 @@ final readonly class Node
     }
 
     /**
-     * Карта «ключ => узел». Пустой список здесь читается как пустая карта.
+     * A map of key => node. An empty list is read here as an empty map.
      *
-     * Ключ может оказаться int: PHP приводит числовое имя свойства к целому,
-     * и обратно в строку массив его не пустит. Вызывающий код приводит сам.
+     * A key may turn out to be an int: PHP casts a numeric property name to an integer and
+     * an array will not let it back to a string. The caller casts it itself.
      *
      * @return array<int|string, self>
      */
@@ -162,9 +204,10 @@ final readonly class Node
 
         $result = [];
 
-        // PHP отдаёт числовое имя свойства как int: «200» превратилось бы в 200
+        // PHP hands a numeric property name back as an int: "200" would become 200
         foreach (Structure::vars($this->value) as $key => $item) {
-            $result[(string) $key] = new self($item, $this->child((string) $key));
+            $this->reads?->key($this->value, (string) $key);
+            $result[(string) $key] = new self($item, $this->child((string) $key), reads: $this->reads);
         }
 
         return $result;
@@ -179,7 +222,7 @@ final readonly class Node
             return [];
         }
 
-        // пустая карта из ext-yaml неотличима от пустого списка
+        // an empty map from ext-yaml is indistinguishable from an empty list
         if ($this->value instanceof stdClass && Structure::vars($this->value) === []) {
             return [];
         }
@@ -191,7 +234,7 @@ final readonly class Node
         $result = [];
 
         foreach (array_values($this->value) as $index => $item) {
-            $result[] = new self($item, $this->child((string) $index));
+            $result[] = new self($item, $this->child((string) $index), reads: $this->reads);
         }
 
         return $result;
@@ -206,11 +249,11 @@ final readonly class Node
     }
 
     /**
-     * Карта расширяемого объекта: Paths, Responses и Callback Object держат
-     * элементы и расширения вперемешку, и `x-*` здесь не элементы.
+     * The map of an extensible object: Paths, Responses and Callback Object hold their
+     * items and their extensions side by side, and `x-*` are not items there.
      *
-     * У обычной карты такого разделения нет: в components.headers имя
-     * `x-common-marker-version` — это имя компонента, а не расширение.
+     * An ordinary map has no such split: in components.headers the name
+     * `x-common-marker-version` is the name of a component, not an extension.
      *
      * @return array<int|string, self>
      */
@@ -224,7 +267,7 @@ final readonly class Node
     }
 
     /**
-     * Расширения `x-*` этого объекта; префикс снимается — его добавляет Extensions.
+     * The `x-*` extensions of this object; the prefix is stripped — Extensions adds it back.
      */
     public function extensions(): ?Extensions
     {
@@ -238,6 +281,9 @@ final readonly class Node
             $name = (string) $name;
 
             if (str_starts_with($name, 'x-')) {
+                // an extension value is any JSON, and there is nothing to parse in it
+                $this->reads?->key($this->value, $name);
+                $this->reads?->whole($value);
                 $items[substr($name, 2)] = self::native($value, $this->child($name));
             }
         }
@@ -264,9 +310,9 @@ final readonly class Node
     }
 
     /**
-     * Путь дочернего узла — настоящий JSON Pointer (RFC 6901), потому что по нему
-     * реестр ищет объявленные ссылки: шаблон пути `/users` внутри указателя
-     * обязан быть записан как `~1users`, иначе разделитель не отличить от имени.
+     * A child's path is a real JSON Pointer (RFC 6901), because that is what the registry
+     * looks declared references up by: a path template `/users` inside a pointer has to be
+     * written as `~1users`, or the separator cannot be told from the name.
      */
     private function child(string $key): string
     {
@@ -274,7 +320,7 @@ final readonly class Node
     }
 
     /**
-     * Значение расширения — любое значение JSON.
+     * An extension value is any JSON value.
      */
     private static function native(mixed $value, string $path): AbstractValues|bool|float|int|string|null
     {

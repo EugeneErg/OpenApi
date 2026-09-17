@@ -13,9 +13,10 @@ use stdClass;
 /**
  * Example Object.
  *
- * Отдельный объект, а не голое значение: во-первых, спецификация требует именно объект,
- * во-вторых, дедупликация в пакете работает по идентичности, а у скаляров её нет —
- * две одинаковые строки неразличимы, и ссылка уезжала бы не туда.
+ * An object of its own rather than a bare value: first, the specification asks for an
+ * object; second, deduplication in this package works by identity, and scalars have none
+ * — two equal strings are indistinguishable, and a reference would end up in the wrong
+ * place.
  */
 final readonly class Example
 {

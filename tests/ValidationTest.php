@@ -28,9 +28,10 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 
 /**
- * Состояния, которые нельзя выразить типами, но которые обязаны быть недостижимы.
+ * The states the types cannot express but which have to be unreachable all the same.
  *
- * Все они бросают исключения пакета, поэтому ловятся одним OpenapiExceptionInterface.
+ * Every one of them throws an exception of the package, so a single
+ * OpenapiExceptionInterface catches them all.
  */
 final class ValidationTest extends TestCase
 {
@@ -84,7 +85,7 @@ final class ValidationTest extends TestCase
                     new Paths(...['/users' => new Paths\Path(get: new Paths\Operation(
                         responses: new Responses(x200: new Responses\Response(description: 'OK')),
                         parameters: new Parameters\Parameters(
-                            // один и тот же параметр: по имени и без имени, через компонент
+                            // one and the same parameter: by name and without a name, through a component
                             queries: new Parameters\Query\Queries(...[$page, 'page' => $page]),
                         ),
                     ))]),
@@ -356,6 +357,30 @@ final class ValidationTest extends TestCase
             'not registered in paths',
         ];
 
+        yield '$schema without $id' => [
+            // "MAY be present in any Schema Object that is a schema resource root",
+            // and the root of a resource is a schema that has an $id
+            static fn () => new Schemas\Abstract\Resource(schema: 'https://json-schema.org/draft/2020-12/schema'),
+            'only allowed on a schema resource declaring "$id"',
+        ];
+
+        yield '$schema in 3.0' => [
+            static function (): array {
+                $document = new Openapi(
+                    info: self::info(),
+                    components: new Components(schemas: new Schemas\Untyped\Schemas(
+                        Node: new Schemas\Object\Schema(resource: new Schemas\Abstract\Resource(
+                            id: 'https://example.com/node',
+                            schema: 'https://json-schema.org/draft/2020-12/schema',
+                        )),
+                    )),
+                );
+
+                return (new Builder(...['api.json' => $document]))->prepareToSave();
+            },
+            'only available in OpenAPI 3.1',
+        ];
+
         yield 'null type in 3.0' => [
             static function (): array {
                 $document = new Openapi(
@@ -458,8 +483,9 @@ final class ValidationTest extends TestCase
     }
 
     /**
-     * Префикс `x-` добавляется всегда, поэтому у каждого поля документа ровно одна
-     * запись, а `x-x-legacy`, которое спецификация разрешает, пишется как `x-legacy`.
+     * The `x-` prefix is always added, so every field of the document has exactly one
+     * spelling, and `x-x-legacy`, which the specification allows, is written as
+     * `x-legacy`.
      */
     public function testExtensionNamesAlwaysGainThePrefix(): void
     {

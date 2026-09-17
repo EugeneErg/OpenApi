@@ -16,7 +16,11 @@ final readonly class Scheme extends AbstractSecurityScheme
         ?string $description = null,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct('apiKey', $description, $extensions);
+        parent::__construct(
+            type: 'apiKey',
+            description: $description,
+            extensions: $extensions,
+        );
     }
 
     public function toObject(): stdClass

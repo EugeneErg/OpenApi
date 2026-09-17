@@ -10,9 +10,9 @@ use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
 
 /**
- * patternProperties: ключ — регулярное выражение, значение — схема.
+ * patternProperties: the key is a regular expression, the value is a schema.
  *
- * Регулярку нельзя передать именованным аргументом, поэтому используется распаковка:
+ * A regular expression cannot be passed as a named argument, so unpacking is used instead:
  * `new PatternProperties(...['^x-' => $schema])`.
  */
 final readonly class PatternProperties

@@ -13,10 +13,10 @@ use stdClass;
 use function sprintf;
 
 /**
- * Discriminator Object. Применим только вместе с oneOf/anyOf/allOf.
+ * A Discriminator Object. Applicable only together with oneOf, anyOf or allOf.
  *
- * Ключи $mapping — значения свойства-дискриминатора, значения — схемы,
- * которые на этапе сборки превращаются в строковые $ref.
+ * The keys of $mapping are the values of the discriminating property; the values are the
+ * schemas, which become $ref strings when the document is built.
  */
 final readonly class Discriminator
 {
@@ -58,7 +58,7 @@ final readonly class Discriminator
         }
 
         if ($this->extensions->items !== []) {
-            // расширения у Discriminator Object появились только в 3.1
+            // a Discriminator Object gained extensions only in 3.1
             $process->assertV31('Specification extensions on a discriminator');
         }
 

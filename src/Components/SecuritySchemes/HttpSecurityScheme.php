@@ -12,13 +12,13 @@ use function in_array;
 use function sprintf;
 
 /**
- * HTTP-аутентификация по любой схеме из реестра IANA, кроме basic и bearer:
- * Digest, Negotiate, HOBA, Mutual, SCRAM-SHA-256, vapid и т. п.
+ * HTTP authentication by any scheme from the IANA registry except basic and bearer:
+ * Digest, Negotiate, HOBA, Mutual, SCRAM-SHA-256, vapid and so on.
  *
- * Для basic и bearer есть отдельные классы — второй способ записать их
- * не нужен, а bearerFormat бывает только у bearer.
+ * basic and bearer have classes of their own — a second way to write them is not needed,
+ * and bearerFormat belongs to bearer alone.
  *
- * Имя схемы по RFC 7235 регистронезависимо, поэтому пишется как задано.
+ * By RFC 7235 a scheme name is case-insensitive, so it is written as given.
  */
 final readonly class HttpSecurityScheme extends AbstractSecurityScheme
 {
@@ -27,7 +27,7 @@ final readonly class HttpSecurityScheme extends AbstractSecurityScheme
         ?string $description = null,
         ?Extensions $extensions = null,
     ) {
-        // token из RFC 7230: без пробелов и разделителей
+        // a token from RFC 7230: no spaces and no separators
         if (preg_match('{^[!#$%&\'*+.^_`|~0-9A-Za-z-]+$}', $scheme) !== 1) {
             throw new InvalidArgumentOpenapiException(sprintf(
                 'HTTP authentication scheme must be an RFC 7230 token, got "%s".',
@@ -49,7 +49,11 @@ final readonly class HttpSecurityScheme extends AbstractSecurityScheme
             ));
         }
 
-        parent::__construct('http', $description, $extensions);
+        parent::__construct(
+            type: 'http',
+            description: $description,
+            extensions: $extensions,
+        );
     }
 
     public function toObject(): stdClass

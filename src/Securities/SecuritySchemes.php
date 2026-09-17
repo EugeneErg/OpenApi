@@ -12,11 +12,11 @@ use EugeneErg\OpenApi\Support\ListedItems;
 use stdClass;
 
 /**
- * Одно Security Requirement: все перечисленные схемы требуются одновременно.
+ * One Security Requirement: every scheme listed is required at once.
  *
- * Схема без уточнений даёт `{name: []}`, Scope — скоуп oauth2-схемы,
- * ScopeName — скоуп, названный именем, Role — роль любой другой схемы (3.1).
- * Пустой набор даёт `{}`: так спецификация разрешает анонимный доступ.
+ * A scheme with nothing added gives `{name: []}`, a Scope gives a scope of an oauth2
+ * scheme, a ScopeName a scope named by its name, a Role a role of any other scheme (3.1).
+ * An empty set gives `{}`: that is how the specification allows anonymous access.
  */
 final readonly class SecuritySchemes
 {

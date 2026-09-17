@@ -10,7 +10,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Value;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
@@ -20,13 +20,14 @@ use EugeneErg\OpenApi\Process;
 use stdClass;
 
 /**
- * Схема `{"type": "null"}`: допустимо единственное значение — null.
+ * The schema `{"type": "null"}`: null is the only admissible value.
  *
- * Отличается от `nullable`: тот добавляет null к значениям своего типа, а здесь
- * других значений нет вовсе. Тип `null` появился в 3.1 вместе с JSON Schema 2020-12;
- * в 3.0 такого типа нет, и сборка это отклонит.
+ * It differs from `nullable`: that one adds null to the values of its own type, while
+ * here there are no other values at all. The `null` type appeared in 3.1 together with
+ * JSON Schema 2020-12; 3.0 has no such type, and the build rejects it.
  *
- * Проверять в null нечего, поэтому своих ключевых слов у схемы нет — только общие.
+ * There is nothing to check in null, so the schema has no keywords of its own — only the
+ * common ones.
  */
 final readonly class Schema extends AbstractConditionSchema
 {
@@ -47,13 +48,7 @@ final readonly class Schema extends AbstractConditionSchema
         ?Value $example = null,
         ?Discriminator $discriminator = null,
         ?AbstractValues $examples = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?AbstractSchema $dynamicRef = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
@@ -64,34 +59,28 @@ final readonly class Schema extends AbstractConditionSchema
         }
 
         parent::__construct(
-            'null',
-            $format,
-            $title,
-            $description,
-            $nullable,
-            $access,
-            $deprecated,
-            $externalDocs,
-            $xml,
-            $default,
-            $anyOf,
-            $allOf,
-            $oneOf,
-            $not,
-            $example,
-            $discriminator,
-            $examples,
-            $comment,
-            $defs,
-            $id,
-            $anchor,
-            $dynamicAnchor,
-            $dynamicRef,
-            $vocabulary,
-            $if,
-            $then,
-            $else,
-            $extensions,
+            type: 'null',
+            format: $format,
+            title: $title,
+            description: $description,
+            nullable: $nullable,
+            access: $access,
+            deprecated: $deprecated,
+            externalDocs: $externalDocs,
+            xml: $xml,
+            default: $default,
+            anyOf: $anyOf,
+            allOf: $allOf,
+            oneOf: $oneOf,
+            not: $not,
+            example: $example,
+            discriminator: $discriminator,
+            examples: $examples,
+            if: $if,
+            then: $then,
+            else: $else,
+            resource: $resource,
+            extensions: $extensions,
         );
     }
 

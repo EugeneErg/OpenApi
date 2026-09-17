@@ -10,7 +10,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
@@ -40,47 +40,35 @@ final readonly class Schema extends AbstractConditionSchema
         ?Value $example = null,
         ?Discriminator $discriminator = null,
         ?AbstractValues $examples = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?AbstractSchema $dynamicRef = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
         ?Extensions $extensions = null,
     ) {
         parent::__construct(
-            null,
-            $format,
-            $title,
-            $description,
-            $nullable,
-            $access,
-            $deprecated,
-            $externalDocs,
-            $xml,
-            $default,
-            $anyOf,
-            $allOf,
-            $oneOf,
-            $not,
-            $example,
-            $discriminator,
-            $examples,
-            $comment,
-            $defs,
-            $id,
-            $anchor,
-            $dynamicAnchor,
-            $dynamicRef,
-            $vocabulary,
-            $if,
-            $then,
-            $else,
-            $extensions,
+            type: null,
+            format: $format,
+            title: $title,
+            description: $description,
+            nullable: $nullable,
+            access: $access,
+            deprecated: $deprecated,
+            externalDocs: $externalDocs,
+            xml: $xml,
+            default: $default,
+            anyOf: $anyOf,
+            allOf: $allOf,
+            oneOf: $oneOf,
+            not: $not,
+            example: $example,
+            discriminator: $discriminator,
+            examples: $examples,
+            if: $if,
+            then: $then,
+            else: $else,
+            resource: $resource,
+            extensions: $extensions,
         );
     }
 
@@ -88,7 +76,7 @@ final readonly class Schema extends AbstractConditionSchema
     {
         $result = parent::toObject($process);
 
-        // схема из одного allOf с единственным элементом — это сам элемент
+        // a schema that is one allOf with a single member is that member itself
         if (array_keys(Structure::vars($result)) === ['allOf'] && is_array($result->allOf) && count($result->allOf) === 1) {
             foreach ($result->allOf as $single) {
                 if ($single instanceof stdClass) {

@@ -27,33 +27,37 @@ use EugeneErg\OpenApi\Tags;
 use EugeneErg\OpenApi\Version;
 
 /**
- * Всё, что пакет умеет в 3.1, в одном документе: каждый вид схемы, параметра,
- * security-схемы и словарь JSON Schema 2020-12. Валидность проверяется внешним
- * валидатором (`composer validate-output`), содержимое — обычным сравнением.
+ * Everything the package can do in 3.1 in one document: every kind of schema, parameter
+ * and security scheme, plus the JSON Schema 2020-12 vocabulary. Validity is checked by an
+ * external validator (`composer validate-output`), the contents by an ordinary comparison.
  *
- * Тело обёрнуто в замыкание: require выполняет файл в области видимости вызывающего,
- * а отложенные ссылки связываются через use (&$var).
+ * The body is wrapped in a closure: require runs the file in the caller's scope, and the
+ * deferred references are bound through use (&$var).
  *
  * @return array<string, Openapi>
  */
 return (static function (): array {
     $street = new Schemas\String\Schema(minLength: 1, maxLength: 80, pattern: '^[^\n]+$');
 
-    // словарь 2020-12: $defs, $anchor, $dynamicAnchor и ссылка на него
+    // the 2020-12 vocabulary: $defs, $anchor, $dynamicAnchor and a reference to it
     $node = new Schemas\Object\Schema(
         properties: new Schemas\Object\Properties(
             value: new Schemas\Object\Property(schema: new Schemas\String\Schema(), required: true),
         ),
-        anchor: 'node',
-        dynamicAnchor: 'node',
-        defs: new Schemas\Untyped\Schemas(Street: $street),
+        resource: new Schemas\Abstract\Resource(
+            anchor: 'node',
+            dynamicAnchor: 'node',
+            defs: new Schemas\Untyped\Schemas(Street: $street),
+        ),
         unevaluatedProperties: false,
         extensions: new Extensions(internal: true),
     );
 
     $tree = new Schemas\Object\Schema(
         properties: new Schemas\Object\Properties(
-            root: new Schemas\Object\Property(schema: new Schemas\Untyped\Schema(dynamicRef: $node)),
+            root: new Schemas\Object\Property(
+                schema: new Schemas\Untyped\Schema(resource: new Schemas\Abstract\Resource(dynamicRef: $node)),
+            ),
             kind: new Schemas\Object\Property(
                 schema: new Schemas\String\EnumSchema(
                     new Schemas\String\Strings('binary', 'trie'),
@@ -75,8 +79,10 @@ return (static function (): array {
         minProperties: 1,
         maxProperties: 20,
         additionalProperties: new Schemas\Untyped\Schema(),
-        comment: 'Рекурсивное дерево.',
-        id: 'https://example.com/schemas/tree',
+        resource: new Schemas\Abstract\Resource(
+            id: 'https://example.com/schemas/tree',
+            comment: 'A recursive tree.',
+        ),
     );
 
     $measurement = new Schemas\Number\Schema(
@@ -110,7 +116,7 @@ return (static function (): array {
         ),
     );
 
-    // if / then / else и композиция с дискриминатором
+    // if / then / else and a composition with a discriminator
     $card = new Schemas\Object\Schema(
         properties: new Schemas\Object\Properties(
             kind: new Schemas\Object\Property(
@@ -163,7 +169,7 @@ return (static function (): array {
 
     $flag = new Schemas\Boolean\EnumSchema(true, description: 'Always true.');
 
-    // security: oauth2 со всеми flow, скоупы объектом и именем, роль, mutualTLS
+    // security: oauth2 with every flow, scopes by object and by name, a role, mutualTLS
     $read = new Oauth2Security\Flows\Scope('Read everything');
     $write = new Oauth2Security\Flows\Scope('Write everything');
     $oauth = new Oauth2Security\Scheme(
@@ -212,7 +218,7 @@ return (static function (): array {
         extensions: new Extensions(source: 'docs'),
     );
 
-    // операция ссылается на саму себя: пагинация
+    // the operation refers to itself: pagination
     $listPayments = new Paths\Operation(
         responses: Responses::fromArray(
             [

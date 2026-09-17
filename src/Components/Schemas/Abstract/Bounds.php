@@ -9,10 +9,10 @@ use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use function sprintf;
 
 /**
- * Проверки границ, которые нельзя выразить типом.
+ * The bound checks that a type cannot express.
  *
- * Неотрицательность ловится статически через `int<0, max>` в сигнатурах,
- * а вот «нижняя граница не больше верхней» известна только в рантайме.
+ * Non-negativity is caught statically by `int<0, max>` in the signatures, but "the lower
+ * bound is not above the upper one" is known only at run time.
  */
 trait Bounds
 {

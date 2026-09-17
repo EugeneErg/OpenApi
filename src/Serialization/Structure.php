@@ -12,16 +12,16 @@ use function is_object;
 use function sprintf;
 
 /**
- * Приведение результата YAML-парсера к той же форме, что даёт json_decode:
- * карты — stdClass, списки — массивы.
+ * Brings what a YAML parser returns to the same shape json_decode gives: maps as
+ * stdClass, lists as arrays.
  */
 final readonly class Structure
 {
     /**
-     * Поля объекта со строковыми ключами.
+     * An object's fields with string keys.
      *
-     * get_object_vars() отдаёт array<mixed>: числовое имя свойства PHP приводит
-     * к int, поэтому ключи нормализуются явно.
+     * get_object_vars() returns array<mixed>: PHP casts a numeric property name to an
+     * int, so the keys are normalised explicitly.
      *
      * @return array<string, mixed>
      */
@@ -57,8 +57,8 @@ final readonly class Structure
             return $value;
         }
 
-        // Пустая структура неотличима: и `{}`, и `[]` приходят пустым массивом.
-        // Оставляем списком, а Reader принимает обе формы там, где ждёт карту.
+        // An empty structure is indistinguishable: both `{}` and `[]` arrive as an empty
+        // array. It stays a list, and Reader accepts both forms where it expects a map.
         if ($value === [] || array_is_list($value)) {
             return array_map(self::normalize(...), $value);
         }

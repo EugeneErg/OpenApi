@@ -7,10 +7,10 @@ namespace EugeneErg\OpenApi\Serialization;
 use stdClass;
 
 /**
- * Превращает собранный документ в текст файла.
+ * Turns a built document into the text of a file.
  *
- * Отдельный интерфейс нужен, чтобы можно было подставить свою реализацию —
- * например поверх symfony/yaml, если она уже есть в проекте.
+ * A separate interface is there so that an implementation of one's own can be put in its
+ * place — over symfony/yaml, say, when the project already has it.
  */
 interface EncoderInterface
 {

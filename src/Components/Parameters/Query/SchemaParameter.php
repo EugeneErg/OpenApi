@@ -28,22 +28,32 @@ final readonly class SchemaParameter extends AbstractSchemaParameter
         public Style $style = Style::Form,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct(Components\Parameters\In::Query, $schema, $explode ?? $style === Style::Form, $description, $required, $deprecated, $example, $examples, $extensions);
+        parent::__construct(
+            in: Components\Parameters\In::Query,
+            schema: $schema,
+            explode: $explode ?? $style === Style::Form,
+            description: $description,
+            required: $required,
+            deprecated: $deprecated,
+            example: $example,
+            examples: $examples,
+            extensions: $extensions,
+        );
     }
 
     public function toObject(Process $process): stdClass
     {
         $result = parent::toObject($process);
 
-        if ($this->allowEmptyValue) {
+        if ($this->allowEmptyValue || $process->verbose) {
             $result->allowEmptyValue = $this->allowEmptyValue;
         }
 
-        if ($this->allowReserved) {
+        if ($this->allowReserved || $process->verbose) {
             $result->allowReserved = $this->allowReserved;
         }
 
-        if ($this->style !== Style::Form) {
+        if ($this->style !== Style::Form || $process->verbose) {
             $result->style = $this->style->value;
         }
 

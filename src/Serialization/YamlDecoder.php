@@ -13,14 +13,14 @@ use function in_array;
 use function is_scalar;
 
 /**
- * Разбор YAML через расширение ext-yaml.
+ * Parsing YAML through the ext-yaml extension.
  *
- * Собственного парсера в пакете нет намеренно: YAML 1.2 — это якоря, ссылки,
- * блочные скаляры и поточный синтаксис, и неполная реализация молча испортила бы
- * чужой документ вместо того, чтобы отказаться его читать.
+ * The package deliberately has no parser of its own: YAML 1.2 means anchors, aliases,
+ * block scalars and flow syntax, and an incomplete implementation would quietly spoil
+ * somebody else's document instead of refusing to read it.
  *
- * Если ext-yaml недоступен, реализуйте DecoderInterface поверх symfony/yaml —
- * это несколько строк, пример есть в README. Чтение YAML от этого не закрыто.
+ * When ext-yaml is unavailable, implement DecoderInterface over symfony/yaml — it is a
+ * few lines, and README has an example. Reading YAML is not closed off by that.
  */
 final readonly class YamlDecoder implements DecoderInterface
 {
@@ -49,14 +49,14 @@ final readonly class YamlDecoder implements DecoderInterface
     }
 
     /**
-     * Базовая схема YAML 1.2, которой требует OpenAPI.
+     * The YAML 1.2 core schema, which is what OpenAPI requires.
      *
-     * ext-yaml разрешает простые скаляры по правилам YAML 1.1 и молча портит данные:
-     * `521621,621373` становится числом 521621621373, `12:30` — числом 750,
-     * `no`, `on`, `y` — логическими значениями (даже в ключах), `012` — восьмеричным 10,
-     * а при включённом yaml.decode_timestamp даты превращаются в числа. Колбэки
-     * получают исходный текст скаляра, и здесь он разрешается заново по YAML 1.2:
-     * всё, что там не число, не логическое и не null, остаётся строкой.
+     * ext-yaml resolves plain scalars by the YAML 1.1 rules and quietly spoils the data:
+     * `521621,621373` becomes the number 521621621373, `12:30` the number 750, `no`, `on`
+     * and `y` become booleans (in keys as well), `012` becomes octal 10, and with
+     * yaml.decode_timestamp on, dates turn into numbers. The callbacks are handed the
+     * scalar's original text, and here it is resolved anew by YAML 1.2: whatever is not a
+     * number, a boolean or a null there stays a string.
      *
      * @return array<string, callable(mixed, string, int): mixed>
      */
@@ -84,8 +84,8 @@ final readonly class YamlDecoder implements DecoderInterface
     private static function integer(string $value): float|int|string
     {
         if (preg_match('{^[-+]?[0-9]+$}', $value) === 1) {
-            // за пределами int число остаётся числом, как и в JSON
-            // в YAML 1.2 ведущий ноль не делает число восьмеричным
+            // beyond int a number stays a number, as it does in JSON
+            // in YAML 1.2 a leading zero does not make a number octal
             $integer = filter_var(preg_replace('{^([-+]?)0+(?=[0-9])}', '$1', $value), FILTER_VALIDATE_INT);
 
             return $integer === false ? (float) $value : $integer;

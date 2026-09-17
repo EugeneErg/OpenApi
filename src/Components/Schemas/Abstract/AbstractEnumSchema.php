@@ -15,23 +15,23 @@ use function count;
 use function sprintf;
 
 /**
- * Схема с закрытым набором значений: `enum`, а для одного значения — `const`.
+ * A schema with a closed set of values: `enum`, or `const` for a single one.
  *
- * Почему это отдельный вид схемы, а не параметр `enum` у обычной.
- * Когда значения перечислены, любое проверяющее ключевое слово (minLength,
- * pattern, minimum, items, properties, allOf, not…) либо выполняется для всех
- * значений и ничего не меняет, либо отсекает часть из них, и тогда это ошибка.
- * Третьего не бывает, поэтому таких параметров здесь нет вовсе: написать
- * бесполезное нельзя, а полезного не теряется. Остались только аннотации —
- * то, что меняет смысл документа, а не множество допустимых значений.
- * `example` тоже убран: пример для перечисления ничего не добавляет.
+ * Why this is a kind of schema of its own rather than an `enum` parameter on an ordinary
+ * one. Once the values are listed, any asserting keyword (minLength, pattern, minimum,
+ * items, properties, allOf, not and so on) either holds for every value and changes
+ * nothing, or excludes some of them, and then it is a mistake. There is no third case, so
+ * those parameters are absent here altogether: the useless cannot be written and nothing
+ * useful is lost. What is left are the annotations — what changes the meaning of the
+ * document rather than the set of permitted values. `example` is gone for the same
+ * reason: beside a list of values an example adds nothing.
  *
- * Если перечисление всё же нужно сочетать с композицией, это выражается
- * через `allOf` — такая запись эквивалентна.
+ * When an enum really has to be combined with composition, `allOf` expresses it, and that
+ * spelling is equivalent.
  *
- * Как и nullable в целом, форма вывода зависит от версии: одно значение
- * в 3.1 печатается как `const`, в 3.0 — как `enum` из одного элемента;
- * nullable добавляет `null` в сам перечень — иначе по 3.0.3 null недопустим.
+ * As with nullable in general, the output depends on the version: a single value prints
+ * as `const` in 3.1 and as a one-member `enum` in 3.0, and nullable adds `null` to the
+ * list itself — without that, 3.0.3 does not permit null.
  */
 abstract readonly class AbstractEnumSchema extends AbstractSchema
 {
@@ -47,12 +47,7 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
         ?ExternalDocs $externalDocs = null,
         ?Xml $xml = null,
         ?AbstractValue $default = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?Extensions $extensions = null,
     ) {
         if ($enums->items === []) {
@@ -103,16 +98,11 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
             externalDocs: $externalDocs,
             xml: $xml,
             default: $default,
-            comment: $comment,
-            defs: $defs,
-            id: $id,
-            anchor: $anchor,
-            dynamicAnchor: $dynamicAnchor,
-            vocabulary: $vocabulary,
+            resource: $resource,
             extensions: $extensions,
         );
 
-        // после родителя: проверка смотрит на format, а он объявлен там
+        // after the parent: the check looks at format, and format is declared there
         foreach ($enums->items as $value) {
             $this->assertValue($value);
         }
@@ -122,7 +112,7 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
     {
         $result = Structure::vars(parent::toObject($process));
 
-        // у схемы без type флаг nullable в 3.0 не действует: null живёт только в перечне
+        // on a schema without a type the 3.0 nullable flag does not apply: null lives in the list alone
         if ($this->type === null) {
             unset($result['nullable']);
         }
@@ -147,7 +137,7 @@ abstract readonly class AbstractEnumSchema extends AbstractSchema
     }
 
     /**
-     * Проверка значения ограничениями, которые у перечисления остались (например, format).
+     * Checks a value against the constraints an enum keeps, such as format.
      */
     protected function assertValue(AbstractValues|bool|float|int|string $value): void
     {

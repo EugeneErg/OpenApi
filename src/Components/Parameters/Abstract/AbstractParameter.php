@@ -25,18 +25,18 @@ abstract readonly class AbstractParameter
     {
         $result = [];
 
-        // required по умолчанию false, и выводить его незачем;
-        // у path-параметра он всегда true, поэтому там выведется
-        if ($this->required === true) {
-            $result['required'] = true;
+        // required defaults to false, so there is no point in printing it;
+        // on a path parameter it is always true, and there it is printed
+        if ($this->required === true || $process->verbose) {
+            $result['required'] = $this->required === true;
         }
 
         if ($this->description !== null) {
             $result['description'] = $this->description;
         }
 
-        if ($this->deprecated === true) {
-            $result['deprecated'] = true;
+        if ($this->deprecated === true || $process->verbose) {
+            $result['deprecated'] = $this->deprecated === true;
         }
 
         return (object) $this->extensions->appendTo($result);

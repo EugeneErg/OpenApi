@@ -24,8 +24,8 @@ final class BuilderTest extends TestCase
     {
         $results = (object) (new Builder(...$openapi))->prepareToSave();
 
-        // Сравнение по значению, а не по идентичности: ожидаемый результат —
-        // раскодированный JSON, порядок ключей в нём роли не играет.
+        // Compared by value rather than by identity: the expected result is decoded
+        // JSON, and the order of the keys in it does not matter.
         self::assertEquals(json_decode($expected), $results);
     }
 

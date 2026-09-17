@@ -51,7 +51,7 @@
                 },
                 "Extensible": {
                     "type": "object",
-                    "$comment": "Свободные поля разрешены только с префиксом x-.",
+                    "$comment": "Free-form fields are allowed only with the x- prefix.",
                     "properties": {
                         "id": {
                             "type": "string"

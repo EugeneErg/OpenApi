@@ -12,7 +12,7 @@ use EugeneErg\OpenApi\Paths;
 use EugeneErg\OpenApi\Version;
 
 $nickname = new Schemas\String\Schema(
-    description: 'Может отсутствовать.',
+    description: 'May be absent.',
     nullable: true,
 );
 

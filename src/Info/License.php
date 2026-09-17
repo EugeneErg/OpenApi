@@ -12,7 +12,7 @@ final readonly class License
     public Extensions $extensions;
 
     /**
-     * @param null|string $identifier SPDX-идентификатор, доступен начиная с OpenAPI 3.1
+     * @param null|string $identifier an SPDX identifier, available from OpenAPI 3.1 on
      */
     public function __construct(
         public string $name,

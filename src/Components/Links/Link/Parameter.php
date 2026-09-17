@@ -20,10 +20,10 @@ final readonly class Parameter
     }
 
     /**
-     * Произвольное runtime-выражение.
+     * An arbitrary runtime expression.
      *
-     * Именованные конструкторы покрывают привычные формы, но спецификация
-     * разрешает любое выражение, и при чтении готового документа оно приходит строкой.
+     * The named constructors cover the usual forms, but the specification allows any
+     * expression at all, and reading a finished document brings it in as a string.
      */
     public static function expression(string $value): self
     {

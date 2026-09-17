@@ -10,10 +10,10 @@ use EugeneErg\OpenApi\Process;
 use stdClass;
 
 /**
- * Отложенная ссылка на схему.
+ * A deferred reference to a schema.
  *
- * Нужна для рекурсии: объект нельзя передать в собственный конструктор, поэтому
- * схема, ссылающаяся на саму себя, объявляется через замыкание по ссылке:
+ * Needed for recursion: an object cannot be passed to its own constructor, so a schema
+ * that refers to itself is declared through a closure over a reference:
  *
  *     $node = new Schemas\Object\Schema(
  *         properties: new Schemas\Object\Properties(
@@ -25,12 +25,12 @@ use stdClass;
  *         ),
  *     );
  *
- * Цель обязана лежать в components.schemas или в $defs: рекурсивная схема должна
- * быть адресуемой, иначе её разворачивание не имеет конца. Это требование самой
- * спецификации, а не пакета.
+ * The target has to live in components.schemas or in $defs: a recursive schema must be
+ * addressable, or unfolding it never ends. That is the specification's requirement, not
+ * the package's.
  *
- * Связывание идёт через use (&$var), поэтому объявление стоит держать в собственной
- * области видимости: файл, подключённый через require, унаследует переменные вызывающего.
+ * The binding goes through use (&$var), so such a declaration is best kept in a scope of
+ * its own: a file pulled in by require inherits the caller's variables.
  */
 final readonly class DeferredSchema extends AbstractSchema
 {
@@ -48,7 +48,7 @@ final readonly class DeferredSchema extends AbstractSchema
     }
 
     /**
-     * Схема, на которую указывает ссылка. Цепочка отложенных ссылок разворачивается целиком.
+     * The schema the reference points at. A chain of deferred references unfolds whole.
      */
     public function resolve(): AbstractSchema
     {

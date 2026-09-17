@@ -11,26 +11,26 @@ use function sprintf;
 use function strlen;
 
 /**
- * Имена элементов контейнера-карты.
+ * The names of the items of a map container.
  *
- * Контейнеры принимают имена именованными аргументами: `new Properties(id: $id)`
- * или `new Properties(...['created-at' => $at])`. У такой записи одна ловушка PHP:
- * ключ массива '7' или '-1' хранится как целое число, и при распаковке он становится
- * позиционным аргументом — имя теряется, а вместе с именованными PHP падает вовсе.
+ * The containers take names as named arguments: `new Properties(id: $id)` or
+ * `new Properties(...['created-at' => $at])`. That spelling has one PHP trap: an array key
+ * of '7' or '-1' is stored as an integer, and unpacking turns it into a positional
+ * argument — the name is lost, and together with named arguments PHP fails outright.
  *
- * Поэтому позиционный элемент в карте — всегда ошибка, а для произвольных имён
- * есть fromArray(). Он проходит через тот же конструктор, так что все проверки
- * типов и инвариантов действуют и здесь: имена лишь помечаются, чтобы PHP сохранил
- * их строками, а конструктор снимает метку.
+ * So a positional item in a map is always an error, and fromArray() is there for
+ * arbitrary names. It goes through the same constructor, so every check of types and
+ * invariants applies here as well: the names are merely marked so that PHP keeps them as
+ * strings, and the constructor takes the mark off.
  *
- * @internal метка — деталь реализации; публичен только fromArray()
+ * @internal the mark is an implementation detail; only fromArray() is public
  */
 trait NamedItems
 {
     private const string NAME_MARK = "\0eugene-erg/open-api:name:";
 
     /**
-     * Контейнер с любыми именами, включая '7' и '-1'.
+     * A container with any names at all, '7' and '-1' included.
      *
      * @param array<array-key, mixed> $items
      */
@@ -41,7 +41,7 @@ trait NamedItems
     }
 
     /**
-     * Помечает имена, чтобы PHP сохранил их строками при распаковке.
+     * Marks the names so that PHP keeps them as strings through the unpacking.
      *
      * @param array<array-key, mixed> $items
      *
@@ -59,10 +59,10 @@ trait NamedItems
     }
 
     /**
-     * Снимает метки и отклоняет элементы без имени.
+     * Takes the marks off and rejects the items that have no name.
      *
-     * Ключ результата может снова оказаться int ('7' => 7): так PHP хранит такие
-     * имена в любом массиве, поэтому потребители приводят ключ к строке.
+     * A key of the result may turn out to be an int again ('7' => 7): that is how PHP
+     * keeps such names in any array, so the consumers cast the key to a string.
      *
      * @template TItem
      *

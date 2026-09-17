@@ -28,7 +28,12 @@ abstract readonly class AbstractSchemaParameter extends AbstractParameter
         ?Examples $examples = null,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct($description, $required, $deprecated, $extensions);
+        parent::__construct(
+            description: $description,
+            required: $required,
+            deprecated: $deprecated,
+            extensions: $extensions,
+        );
 
         if ($example !== null && $examples !== null && $examples->items !== []) {
             throw new InvalidArgumentOpenapiException(
@@ -46,7 +51,7 @@ abstract readonly class AbstractSchemaParameter extends AbstractParameter
 
         $defaultValues = $this->getDefaultValues();
 
-        if (($defaultValues['explode'] ?? null) !== $this->explode) {
+        if (($defaultValues['explode'] ?? null) !== $this->explode || $process->verbose) {
             $result->explode = $this->explode;
         }
 

@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
 use EugeneErg\OpenApi\Extensions;
+use EugeneErg\OpenApi\Process;
 use stdClass;
 
 final readonly class Xml
@@ -22,7 +23,7 @@ final readonly class Xml
         $this->extensions = $extensions ?? new Extensions();
     }
 
-    public function toObject(): stdClass
+    public function toObject(Process $process): stdClass
     {
         $result = [];
 
@@ -38,11 +39,11 @@ final readonly class Xml
             $result['prefix'] = $this->prefix;
         }
 
-        if ($this->attribute) {
+        if ($this->attribute || $process->verbose) {
             $result['attribute'] = $this->attribute;
         }
 
-        if ($this->wrapped) {
+        if ($this->wrapped || $process->verbose) {
             $result['wrapped'] = $this->wrapped;
         }
 

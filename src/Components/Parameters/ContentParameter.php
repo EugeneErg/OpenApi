@@ -13,7 +13,7 @@ use stdClass;
 final readonly class ContentParameter extends AbstractParameter
 {
     /**
-     * @param string $mimeType медиатип: в документе он становится ключом внутри `content`
+     * @param string $mimeType the media type: in the document it becomes a key inside `content`
      */
     public function __construct(
         public string $mimeType,
@@ -23,7 +23,12 @@ final readonly class ContentParameter extends AbstractParameter
         bool $deprecated = false,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct($description, $required, $deprecated, $extensions);
+        parent::__construct(
+            description: $description,
+            required: $required,
+            deprecated: $deprecated,
+            extensions: $extensions,
+        );
     }
 
     public function toObject(Process $process): stdClass
@@ -36,11 +41,11 @@ final readonly class ContentParameter extends AbstractParameter
             $result['description'] = $this->description;
         }
 
-        if ($this->required) {
+        if ($this->required || $process->verbose) {
             $result['required'] = $this->required;
         }
 
-        if ($this->deprecated) {
+        if ($this->deprecated || $process->verbose) {
             $result['deprecated'] = $this->deprecated;
         }
 

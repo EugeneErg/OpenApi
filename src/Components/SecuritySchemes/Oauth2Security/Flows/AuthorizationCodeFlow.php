@@ -15,7 +15,11 @@ final readonly class AuthorizationCodeFlow extends AbstractFlow
         ?string $refreshUrl = null,
         ?Extensions $extensions = null,
     ) {
-        parent::__construct($scopes, $refreshUrl, $extensions);
+        parent::__construct(
+            scopes: $scopes,
+            refreshUrl: $refreshUrl,
+            extensions: $extensions,
+        );
     }
 
     protected function getUrls(): array

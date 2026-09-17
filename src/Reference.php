@@ -19,12 +19,12 @@ use stdClass;
 use function sprintf;
 
 /**
- * Reference Object с собственными summary и description (OpenAPI 3.1).
+ * A Reference Object with a summary and a description of its own (OpenAPI 3.1).
  *
- * Нужен только там, где ссылка должна переопределить описание компонента.
- * В обычном случае ссылку по-прежнему делать не надо: достаточно передать сам
- * объект, и сборщик подставит $ref. Здесь указывается тот же объект — адресация
- * остаётся единственной и по идентичности.
+ * Needed only where a reference has to override the component's description. In the
+ * ordinary case there is still no reference to make: passing the object itself is enough,
+ * and the builder writes the $ref. Here the same object is passed — addressing stays the
+ * one thing it was, and by identity.
  */
 final readonly class Reference
 {

@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
@@ -21,9 +22,10 @@ abstract readonly class AbstractSchemas
     public array $items;
 
     /**
-     * Контейнер служит и картой (components.schemas, mapping, $defs), и списком
-     * (allOf, anyOf, oneOf, prefixItems). Какой он, решает место использования —
-     * через assertNamed() и assertListed(); здесь фиксируется лишь, как его заполнили.
+     * The container serves both as a map (components.schemas, mapping, $defs) and as a
+     * list (allOf, anyOf, oneOf, prefixItems). Which one it is, the place of use decides
+     * through assertNamed() and assertListed(); what is recorded here is only how it was
+     * filled.
      */
     private bool $listed;
 
@@ -68,8 +70,11 @@ abstract readonly class AbstractSchemas
     {
         $result = [];
 
-        foreach ($this->items as $item) {
-            $result[] = $process->findSchema($item) ?? $item->toObject($process);
+        foreach ($this->items as $index => $item) {
+            $result[] = Place::in(
+                static fn (): stdClass => $process->findSchema($item) ?? $item->toObject($process),
+                $index,
+            );
         }
 
         return $result;
@@ -80,7 +85,10 @@ abstract readonly class AbstractSchemas
         $result = [];
 
         foreach ($this->items as $name => $item) {
-            $result[$name] = $process->findSchema($item) ?? $item->toObject($process);
+            $result[$name] = Place::in(
+                static fn (): stdClass => $process->findSchema($item) ?? $item->toObject($process),
+                $name,
+            );
         }
 
         return (object) $result;
@@ -91,7 +99,7 @@ abstract readonly class AbstractSchemas
         $result = [];
 
         foreach ($this->items as $name => $item) {
-            $result[$name] = $item->toObject($process);
+            $result[$name] = Place::in(static fn (): stdClass => $item->toObject($process), $name);
         }
 
         return (object) $result;

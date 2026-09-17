@@ -3,16 +3,17 @@
 declare(strict_types = 1);
 
 /*
- * Проверка на крупных публичных спецификациях: чтение → запись → смысловое сравнение.
+ * A check on the large public specifications: read → write → compare by meaning.
  *
- *     composer real-world               # все
- *     composer real-world -- stripe     # выборочно
+ *     composer real-world               # every one of them
+ *     composer real-world -- stripe     # a selection
  *
- * Файлы скачиваются один раз в системный временный каталог. Отчёт перечисляет,
- * что документ не удалось прочитать или что в нём потерялось.
+ * The files are downloaded once into the system's temporary directory. The report lists
+ * the documents that could not be read, or what was lost in them.
  */
 
 use EugeneErg\OpenApi\Builder;
+use EugeneErg\OpenApi\Exceptions\InvalidDocumentOpenapiException;
 use EugeneErg\OpenApi\Reader;
 use EugeneErg\OpenApi\Serialization\JsonDecoder;
 use EugeneErg\OpenApi\Serialization\YamlDecoder;
@@ -27,12 +28,12 @@ $specifications = [
     'stripe' => 'https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json',
     'twilio' => 'https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json',
     'asana' => 'https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml',
-    // 3.1: массивы в type, тип null, роли, словарь JSON Schema 2020-12
+    // 3.1: arrays in type, the null type, roles, the JSON Schema 2020-12 vocabulary
     'github-next' => 'https://raw.githubusercontent.com/github/rest-api-description/main/descriptions-next/api.github.com/api.github.com.json',
     'discord' => 'https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json',
     'airflow' => 'https://raw.githubusercontent.com/apache/airflow/main/airflow-core/src/airflow/api_fastapi/core_api/openapi/v2-rest-api-generated.yaml',
     'museum' => 'https://raw.githubusercontent.com/Redocly/museum-openapi-example/main/openapi.yaml',
-    // документы, написанные разными генераторами: у каждого свои привычки
+    // documents written by different generators: each has habits of its own
     'immich' => 'https://raw.githubusercontent.com/immich-app/immich/main/open-api/immich-openapi-specs.json', // NestJS
     'authentik' => 'https://raw.githubusercontent.com/goauthentik/authentik/main/schema.yml', // drf-spectacular
     'kratos' => 'https://raw.githubusercontent.com/ory/kratos/master/spec/api.json', // go-swagger
@@ -40,25 +41,42 @@ $specifications = [
     'sonarr' => 'https://raw.githubusercontent.com/Sonarr/Sonarr/develop/src/Sonarr.Api.V3/openapi.json', // .NET
     'firefly' => 'https://raw.githubusercontent.com/hyperledger/firefly/main/doc-site/docs/swagger/swagger.yaml', // Hyperledger FireFly
     'elasticsearch' => 'https://raw.githubusercontent.com/elastic/elasticsearch-specification/main/output/openapi/elasticsearch-serverless-openapi.json',
+    'camunda' => 'https://raw.githubusercontent.com/camunda/camunda-docs/main/api/camunda/version-8.8/camunda-openapi.yaml', // Java, Spring Boot
+    'nextcloud' => 'https://raw.githubusercontent.com/nextcloud/server/master/core/openapi.json', // PHP, openapi-extractor
 ];
 
 /**
- * Документы, которые спецификация не допускает: имя => [часть сообщения, почему].
+ * The documents the specification does not admit: name => [part of the message, why].
  *
- * Прочитать их нельзя — объекты пакета такого не выражают, — а молча починить
- * значит соврать. Поэтому здесь проверяется отказ и его формулировка: это она
- * достаётся тому, кто такой документ принесёт.
+ * They cannot be read — the package's objects do not express such a thing — and quietly
+ * fixing them would be a lie. So what is checked here is the refusal and its wording:
+ * the wording is what whoever brings such a document gets.
  */
 const KNOWN_INVALID = [
-    // ASP.NET catch-all route: шаблон пути «/», а параметр объявлен путевым
+    // an ASP.NET catch-all route: the path template is "/", and the parameter is declared a path one
     'sonarr' => [
         'declares path parameter "path", which does not appear in the template',
         'a path parameter that the template does not declare',
     ],
-    // «Each name MUST correspond to a security scheme which is declared in components»
+    // "Each name MUST correspond to a security scheme which is declared in components"
     'kratos' => [
         'security scheme "sessionToken" is not declared in components.securitySchemes',
         'a security requirement naming an undeclared scheme',
+    ],
+];
+
+/**
+ * The fields the specification does not define: name => [the place, what it is].
+ *
+ * They do not make a document unreadable — the package simply drops them — but staying
+ * silent about them is not an option, so strict reading names them, and here it is
+ * written down who has them and why.
+ */
+const KNOWN_EXTRA = [
+    // the "Applies To" table in the specification: name and in are declared for apiKey only
+    'immich' => [
+        '/components/securitySchemes/bearer/in',
+        '"in" on an http security scheme',
     ],
 ];
 
@@ -104,8 +122,24 @@ foreach ($specifications as $name => $url) {
     $content = (string) file_get_contents($file);
     $started = microtime(true);
 
+    $extra = null;
+
     try {
-        $built = (new Builder(...['openapi.json' => Reader::read($content, $decoder)]))->prepareToSave();
+        try {
+            // in strict mode: whatever the package did not understand has to be named
+            $document = Reader::read($content, $decoder);
+        } catch (InvalidDocumentOpenapiException $exception) {
+            [$place, $why] = KNOWN_EXTRA[$name] ?? [null, null];
+
+            if ($place === null || !str_contains($exception->getMessage(), $place)) {
+                throw $exception;
+            }
+
+            $extra = $why;
+            $document = Reader::read($content, $decoder, strict: false);
+        }
+
+        $built = (new Builder(...['openapi.json' => $document]))->prepareToSave();
         $diff = new SemanticDiff($decoder->decode($content), json_decode((string) json_encode($built['openapi.json'])));
     } catch (Throwable $exception) {
         [$expected, $why] = KNOWN_INVALID[$name] ?? [null, null];
@@ -130,10 +164,11 @@ foreach ($specifications as $name => $url) {
     }
 
     printf(
-        "%s: %s%s (%.1fs)\n",
+        "%s: %s%s%s (%.1fs)\n",
         $name,
         $diff->differences === [] ? 'OK' : count($diff->differences) . ' differences',
         $diff->rewritten === 0 ? '' : sprintf(', %d rewritten', $diff->rewritten),
+        $extra === null ? '' : sprintf(', carries %s', $extra),
         microtime(true) - $started,
     );
 

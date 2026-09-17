@@ -9,8 +9,8 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 
 /**
- * Кавычки ставятся не по вкусу, а по необходимости: лишние допустимы,
- * потерянный тип — нет. Поэтому правила зафиксированы построчно.
+ * Quotes are put not to taste but out of necessity: superfluous ones are acceptable, a
+ * lost type is not. So the rules are pinned down line by line.
  */
 final class YamlEncoderTest extends TestCase
 {
@@ -117,8 +117,8 @@ final class YamlEncoderTest extends TestCase
     }
 
     /**
-     * Пустая карта и пустой список в последовательности обязаны быть записаны явно:
-     * иначе после дефиса нет значения, и следующая строка прилипает к нему.
+     * An empty map and an empty list inside a sequence have to be written out: otherwise
+     * the dash is left without a value and the next line sticks to it.
      */
     public function testEmptyContainersInsideSequence(): void
     {

@@ -11,11 +11,12 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Bounds;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Components\Schemas\String\Strings;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas as UntypedSchemas;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use EugeneErg\OpenApi\Process;
@@ -66,25 +67,19 @@ final readonly class Schema extends AbstractConditionSchema
         public ?int $maxProperties = null,
         public AbstractSchema|bool $additionalProperties = true,
         ?AbstractValues $examples = null,
-        ?string $comment = null,
+        ?Resource $resource = null,
         /**
-         * Схема может описывать форму, не объявляя type: спецификация это
-         * разрешает, и при чтении чужого документа такой тип терять нельзя.
+         * A schema may describe a shape without declaring type: the specification allows
+         * that, and reading somebody else's document must not lose such a shape.
          */
         bool $declareType = true,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?AbstractSchema $dynamicRef = null,
-        ?Vocabularies $vocabulary = null,
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
         /**
-         * Обязательные имена, не описанные в properties: их форму задают
-         * additionalProperties, patternProperties или композиция. Описанное свойство
-         * делается обязательным через Property(required: true) — второго способа нет.
+         * Required names that properties does not describe: their shape comes from
+         * additionalProperties, patternProperties or a composition. A described property
+         * is made required through Property(required: true) — there is no second way.
          */
         ?Strings $required = null,
         ?Extensions $extensions = null,
@@ -99,34 +94,28 @@ final readonly class Schema extends AbstractConditionSchema
         $this->assertRequired();
 
         parent::__construct(
-            $declareType ? 'object' : null,
-            $format,
-            $title,
-            $description,
-            $nullable,
-            $access,
-            $deprecated,
-            $externalDocs,
-            $xml,
-            $default,
-            $anyOf,
-            $allOf,
-            $oneOf,
-            $not,
-            $example,
-            $discriminator,
-            $examples,
-            $comment,
-            $defs,
-            $id,
-            $anchor,
-            $dynamicAnchor,
-            $dynamicRef,
-            $vocabulary,
-            $if,
-            $then,
-            $else,
-            $extensions,
+            type: $declareType ? 'object' : null,
+            format: $format,
+            title: $title,
+            description: $description,
+            nullable: $nullable,
+            access: $access,
+            deprecated: $deprecated,
+            externalDocs: $externalDocs,
+            xml: $xml,
+            default: $default,
+            anyOf: $anyOf,
+            allOf: $allOf,
+            oneOf: $oneOf,
+            not: $not,
+            example: $example,
+            discriminator: $discriminator,
+            examples: $examples,
+            if: $if,
+            then: $then,
+            else: $else,
+            resource: $resource,
+            extensions: $extensions,
         );
     }
 
@@ -146,7 +135,10 @@ final readonly class Schema extends AbstractConditionSchema
         $result = Structure::vars(parent::toObject($process));
 
         if ($properties !== []) {
-            $result['properties'] = UntypedSchemas::fromArray($properties)->toObject($process);
+            $result['properties'] = Place::in(
+                static fn (): stdClass => UntypedSchemas::fromArray($properties)->toObject($process),
+                'properties',
+            );
         }
 
         $required = [...$required, ...array_map('strval', $this->required->items)];
@@ -155,7 +147,7 @@ final readonly class Schema extends AbstractConditionSchema
             $result['required'] = $required;
         }
 
-        if ($this->minProperties > 0) {
+        if ($this->minProperties > 0 || $process->verbose) {
             $result['minProperties'] = $this->minProperties;
         }
 
@@ -163,7 +155,7 @@ final readonly class Schema extends AbstractConditionSchema
             $result['maxProperties'] = $this->maxProperties;
         }
 
-        if ($this->additionalProperties !== true) {
+        if ($this->additionalProperties !== true || $process->verbose) {
             $result['additionalProperties'] = $this->additionalProperties instanceof AbstractSchema
                 ? ($process->findSchema($this->additionalProperties) ?? $this->additionalProperties->toObject($process))
                 : $this->additionalProperties;
@@ -230,7 +222,7 @@ final readonly class Schema extends AbstractConditionSchema
     }
 
     /**
-     * true, если имя подходит под какой-нибудь patternProperties — или это нельзя проверить.
+     * true when the name matches some patternProperties — or when that cannot be checked.
      */
     private function matchesPattern(string $name): bool
     {

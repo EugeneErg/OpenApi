@@ -23,7 +23,7 @@ final readonly class Examples
     }
 
     /**
-     * Использование по месту: если пример лежит в components, здесь будет $ref.
+     * Use in place: when the example lives in components, a $ref stands here.
      */
     public function toObject(Process $process): stdClass
     {
@@ -39,7 +39,8 @@ final readonly class Examples
     }
 
     /**
-     * Объявление в components: примеры разворачиваются целиком, без ссылок на самих себя.
+     * The declaration in components: the examples are written out in full, without
+     * references to themselves.
      */
     public function sourceToObject(Process $process): stdClass
     {

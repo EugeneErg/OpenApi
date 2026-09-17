@@ -5,15 +5,15 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Array;
 
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractEnumSchema;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 
 /**
- * Перечисление списков. См. AbstractEnumSchema — почему здесь нет items, minItems и example.
+ * An enumeration of lists. AbstractEnumSchema says why items, minItems and example are
+ * absent here.
  */
 final readonly class EnumSchema extends AbstractEnumSchema
 {
@@ -28,12 +28,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
         ?ExternalDocs $externalDocs = null,
         ?Xml $xml = null,
         ?Value $default = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?Extensions $extensions = null,
     ) {
         parent::__construct(
@@ -48,12 +43,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
             externalDocs: $externalDocs,
             xml: $xml,
             default: $default,
-            comment: $comment,
-            defs: $defs,
-            id: $id,
-            anchor: $anchor,
-            dynamicAnchor: $dynamicAnchor,
-            vocabulary: $vocabulary,
+            resource: $resource,
             extensions: $extensions,
         );
     }

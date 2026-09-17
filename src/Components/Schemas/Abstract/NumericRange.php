@@ -7,8 +7,8 @@ namespace EugeneErg\OpenApi\Components\Schemas\Abstract;
 use EugeneErg\OpenApi\Process;
 
 /**
- * Границы числовой схемы. Вынесено отдельно, потому что 3.0 и 3.1 записывают
- * исключающие границы по-разному, а правило одинаково для integer и number.
+ * The bounds of a numeric schema. Kept apart because 3.0 and 3.1 spell the exclusive
+ * bounds differently, while the rule is the same for integer and for number.
  */
 trait NumericRange
 {
@@ -27,8 +27,12 @@ trait NumericRange
             } else {
                 $result['minimum'] = $this->minimum;
 
-                if ($this->exclusiveMinimum) {
-                    $result['exclusiveMinimum'] = true;
+                // By 3.0, "if exclusiveMinimum is present, minimum MUST be present", so
+                // the verbose form spells the flag out only beside a bound. In 3.1 the
+                // keyword is the bound itself, and there is nothing to spell out.
+
+                if ($this->exclusiveMinimum || ($process->verbose && !$isV31)) {
+                    $result['exclusiveMinimum'] = $this->exclusiveMinimum;
                 }
             }
         }
@@ -39,8 +43,8 @@ trait NumericRange
             } else {
                 $result['maximum'] = $this->maximum;
 
-                if ($this->exclusiveMaximum) {
-                    $result['exclusiveMaximum'] = true;
+                if ($this->exclusiveMaximum || ($process->verbose && !$isV31)) {
+                    $result['exclusiveMaximum'] = $this->exclusiveMaximum;
                 }
             }
         }

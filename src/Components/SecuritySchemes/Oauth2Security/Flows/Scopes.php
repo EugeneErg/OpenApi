@@ -20,7 +20,7 @@ final readonly class Scopes
     }
 
     /**
-     * Карта «имя скоупа => описание».
+     * A map of scope name => description.
      */
     public function toObject(): stdClass
     {

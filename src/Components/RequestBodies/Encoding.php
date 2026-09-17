@@ -16,9 +16,9 @@ final readonly class Encoding
     public Headers $headers;
 
     /**
-     * null — не задано. Это не то же самое, что значение по умолчанию: в 3.1 для
-     * multipart явно заданные style, explode или allowReserved отменяют обработку
-     * части по contentType. Поэтому печатается только то, что задано.
+     * null means unset, which is not the same as the default value: in 3.1, for multipart,
+     * an explicitly given style, explode or allowReserved cancels handling the part by its
+     * contentType. So only what was set is printed.
      */
     public function __construct(
         public ?string $contentType = null,

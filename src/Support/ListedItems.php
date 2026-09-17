@@ -10,8 +10,8 @@ use function is_string;
 use function sprintf;
 
 /**
- * Контейнер-список: имена элементов в нём ничего не значат и при записи
- * пропали бы молча, поэтому их передача — ошибка.
+ * A list container: the names of its items mean nothing and would quietly disappear when
+ * written, so passing them is an error.
  *
  * @internal
  */

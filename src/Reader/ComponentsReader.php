@@ -60,7 +60,7 @@ use EugeneErg\OpenApi\Servers\Variables;
 use function sprintf;
 
 /**
- * Разбор секции components, кроме схем: ими занимается SchemaReader.
+ * Reads the components section, except the schemas: those are SchemaReader's job.
  */
 final readonly class ComponentsReader
 {
@@ -109,11 +109,17 @@ final readonly class ComponentsReader
 
     public function content(Node $node, string $mediaType): Content
     {
+        if (!Contents::acceptsEncoding($mediaType)) {
+            // "SHALL only apply ... when the media type is multipart or
+            // application/x-www-form-urlencoded": here the keyword is read and dropped
+            $node->dropped('encoding');
+        }
+
         return new Content(
             schema: $node->has('schema') ? $this->schemas->read($node->get('schema')) : null,
             example: $this->schemas->readValue($node->get('example')),
             examples: $this->examples($node->get('examples')),
-            // у других типов encoding ничего не меняет
+            // for other media types encoding changes nothing
             encoding: Contents::acceptsEncoding($mediaType) ? $this->encodings($node->get('encoding')) : null,
             extensions: $node->extensions(),
         );
@@ -142,8 +148,8 @@ final readonly class ComponentsReader
     }
 
     /**
-     * Тело запроса операции: сам объект либо ссылка на компонент, у которой
-     * в 3.1 может быть своё описание.
+     * An operation's request body: the object itself, or a reference to a component,
+     * which in 3.1 may carry a description of its own.
      */
     public function operationRequestBody(Node $node): Reference|RequestBody
     {
@@ -306,10 +312,10 @@ final readonly class ComponentsReader
     }
 
     /**
-     * Значение в callbacks — сам Callback Object либо ссылка на него.
+     * A value in callbacks is either the Callback Object itself or a reference to it.
      *
-     * Ключи Callback Object — runtime-выражения, поэтому `$ref` здесь нельзя
-     * разбирать как выражение: иначе ссылка стала бы именем обратного вызова.
+     * The keys of a Callback Object are runtime expressions, so `$ref` here must not
+     * be read as one: the reference would become the name of a callback.
      */
     public function callback(Node $node, PathsReader $paths): PathItems
     {
@@ -327,8 +333,8 @@ final readonly class ComponentsReader
     }
 
     /**
-     * Параметры операции: в документе это плоский список, а в пакете —
-     * четыре контейнера по значению `in`.
+     * An operation's parameters: a flat list in the document, four containers here,
+     * one per `in` value.
      */
     public function parameters(Node $node): ?OperationParameters
     {
@@ -340,8 +346,8 @@ final readonly class ComponentsReader
         foreach ($node->list() as $item) {
             [$in, $name, $parameter] = $this->parameter($item);
 
-            // контейнер выбирается по самому параметру, а храниться может ссылка
-            // на него: у ссылки в 3.1 бывает своё описание
+            // the container is chosen by the parameter itself, while what is stored
+            // may be a reference to it: in 3.1 a reference has a description of its own
             $stored = $this->withOverrides($item, $parameter);
 
             if ($parameter instanceof ContentParameter) {
@@ -404,7 +410,7 @@ final readonly class ComponentsReader
             return [
                 $this->inOf($source),
                 $result->name,
-                // CustomParameter — это обёртка «in + content», и снаружи нужен сам параметр
+                // CustomParameter wraps "in + content", and the parameter itself is what callers need
                 $parameter instanceof CustomParameter ? $parameter->contentParameter : $parameter,
             ];
         }
@@ -425,8 +431,17 @@ final readonly class ComponentsReader
             'extensions' => $node->extensions(),
         ];
 
-        // explode не задан — значение по умолчанию зависит от стиля, и его знает сам параметр
+        // explode is not set: its default depends on the style, and the parameter class knows it
         $explode = $node->has('explode') ? $node->get('explode')->bool() : null;
+
+        // "If the parameter location is \"path\" ... its value MUST be true":
+        // for a path parameter the keyword is read only to be checked
+        if ($in === In::Path && $node->get('required')->boolOr(true) === false) {
+            throw new InvalidDocumentOpenapiException(sprintf(
+                '%s: a path parameter is always required, so "required" cannot be false.',
+                $node->path,
+            ));
+        }
 
         return [$in, $name, match ($in) {
             In::Query => new Query\SchemaParameter(
@@ -533,7 +548,7 @@ final readonly class ComponentsReader
                 description: $description,
                 extensions: $node->extensions(),
             ),
-            // имя HTTP-схемы регистронезависимо (RFC 7235): Bearer и bearer — одно и то же
+            // an HTTP scheme name is case-insensitive (RFC 7235): Bearer and bearer are one
             'http' => match (strtolower($scheme = $node->get('scheme')->string())) {
                 'bearer' => new BearerHttpSecurityScheme(
                     $node->get('bearerFormat')->stringOrNull(),
@@ -586,10 +601,10 @@ final readonly class ComponentsReader
     }
 
     /**
-     * Уже построенный компонент для этого узла, если он объявлен в реестре.
+     * The component already built for this node, if the registry declares one.
      *
-     * Без этого объект строился бы дважды: один раз по ссылке, другой по месту, —
-     * и дедупликация при обратной записи не сработала бы.
+     * Without it the object would be built twice — once through the reference, once in
+     * place — and writing the document back would not deduplicate it again.
      */
     private function registered(Node $node): ?object
     {
@@ -599,8 +614,8 @@ final readonly class ComponentsReader
     }
 
     /**
-     * Ссылка с собственными summary/description (3.1) — это Reference Object,
-     * а не просто цель: описание компонента переопределяется в месте использования.
+     * A reference with its own summary or description (3.1) is a Reference Object rather
+     * than just its target: the component's description is overridden at the use site.
      */
     /**
      * @template T of AbstractSchemaParameter|ContentParameter|Example|Link|PathItem|PathItems|RequestBody|Response

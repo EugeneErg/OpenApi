@@ -5,15 +5,15 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\String;
 
 /**
- * Значения format, определённые спецификацией.
+ * The format values the specification defines.
  *
- * Список не исчерпывающий: `format` — открытое значение, и схема принимает
- * произвольную строку. Enum нужен ради подсказок и защиты от опечаток
- * в привычных случаях, а не чтобы запретить остальные.
+ * The list is not exhaustive: `format` is an open value, and a schema accepts an arbitrary
+ * string. The enum is here for the hints and for protection against typos in the usual
+ * cases, not to forbid the rest.
  *
- * Первая группа описана в самой OpenAPI, вторая приходит из словаря форматов
- * JSON Schema и применима в 3.1. Список не закрытый: спецификация разрешает
- * произвольные значения, но эти гарантированно понимают инструменты.
+ * The first group is described in OpenAPI itself, the second comes from the JSON Schema
+ * format vocabulary and applies in 3.1. The list is not closed: the specification allows
+ * arbitrary values, but these are the ones tools are guaranteed to understand.
  */
 enum Format: string
 {

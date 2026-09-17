@@ -7,6 +7,7 @@ namespace Tests;
 use EugeneErg\OpenApi\Builder;
 use EugeneErg\OpenApi\Exceptions\InvalidDocumentOpenapiException;
 use EugeneErg\OpenApi\Openapi;
+use EugeneErg\OpenApi\Reader;
 use EugeneErg\OpenApi\Serialization\JsonDecoder;
 use EugeneErg\OpenApi\Serialization\JsonEncoder;
 use EugeneErg\OpenApi\Serialization\YamlDecoder;
@@ -36,9 +37,9 @@ final class DecoderTest extends TestCase
     }
 
     /**
-     * Через ext-yaml пустая карта и пустой список неразличимы: и `{}`, и `[]`
-     * приходят пустым массивом. Форму восстанавливает Reader, который знает,
-     * что ожидается в каждой позиции, поэтому здесь сравнение с точностью до неё.
+     * Through ext-yaml an empty map and an empty list are indistinguishable: both `{}`
+     * and `[]` arrive as an empty array. Reader restores the shape, because it knows what
+     * is expected in every position, so the comparison here is up to that shape.
      *
      * @dataProvider provideDocumentCases
      *
@@ -103,8 +104,43 @@ final class DecoderTest extends TestCase
     }
 
     /**
-     * OpenAPI требует YAML 1.2: правила YAML 1.1, которыми по умолчанию пользуется
-     * ext-yaml, молча превращают строки в числа и логические значения.
+     * `example: {}` on an object is an empty map, and through ext-yaml it arrives as an
+     * empty array. The schema knows the position, so a map stays a map.
+     *
+     * Found on the Camunda 8 document.
+     */
+    public function testEmptyMappingStaysAMappingWhenReadFromYaml(): void
+    {
+        if (!YamlDecoder::isAvailable()) {
+            self::markTestSkipped('ext-yaml is not installed.');
+        }
+
+        $document = Reader::read(<<<'YAML'
+            openapi: 3.0.3
+            info:
+              title: Links
+              version: '1.0.0'
+            paths: {}
+            components:
+              schemas:
+                Links:
+                  type: object
+                  additionalProperties:
+                    type: string
+                  example: {}
+            YAML, new YamlDecoder());
+
+        $built = (new Builder(...['openapi.yaml' => $document]))->prepareToSave();
+
+        self::assertSame(
+            '{"schemas":{"Links":{"type":"object","example":{},"additionalProperties":{"type":"string"}}}}',
+            json_encode($built['openapi.yaml']->components ?? null),
+        );
+    }
+
+    /**
+     * OpenAPI requires YAML 1.2: the YAML 1.1 rules ext-yaml uses by default quietly turn
+     * strings into numbers and booleans.
      */
     public function testYamlIsReadByCoreSchema(): void
     {

@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\RequestBodies;
 
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Process;
 use EugeneErg\OpenApi\Support\NamedItems;
 use stdClass;
@@ -33,7 +34,7 @@ final readonly class Contents
     }
 
     /**
-     * Encoding Object действует только для этих типов; у остальных он ничего не меняет.
+     * An Encoding Object applies to these media types only; for the rest it changes nothing.
      */
     public static function acceptsEncoding(string $mediaType): bool
     {
@@ -47,7 +48,7 @@ final readonly class Contents
         $result = [];
 
         foreach ($this->items as $name => $item) {
-            $result[$name] = $item->toObject($process);
+            $result[$name] = Place::in(static fn (): stdClass => $item->toObject($process), $name);
         }
 
         return (object) $result;

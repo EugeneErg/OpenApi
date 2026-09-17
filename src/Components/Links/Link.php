@@ -37,7 +37,7 @@ final readonly class Link
         $result = [];
         $operation = $this->operation();
 
-        // операция названа своим operationId, иначе — указателем на место в paths
+        // the operation is named by its operationId, or else by a pointer into paths
         if ($operation->id !== null) {
             $result['operationId'] = $operation->id;
         } else {
@@ -64,7 +64,7 @@ final readonly class Link
     }
 
     /**
-     * Операция, на которую ведёт ссылка: отложенная разворачивается здесь.
+     * The operation the link leads to: a deferred one is resolved here.
      */
     public function operation(): Operation
     {

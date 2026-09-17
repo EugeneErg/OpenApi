@@ -39,7 +39,7 @@ $extensible = new Schemas\Object\Schema(
     properties: new Schemas\Object\Properties(
         id: new Schemas\Object\Property(schema: $string, required: true),
     ),
-    comment: 'Свободные поля разрешены только с префиксом x-.',
+    resource: new Schemas\Abstract\Resource(comment: 'Free-form fields are allowed only with the x- prefix.'),
     patternProperties: new PatternProperties(...['^x-' => $string]),
     propertyNames: new Schemas\String\Schema(pattern: '^[a-z][a-zA-Z0-9-]*$'),
     dependentRequired: new DependentRequired(
@@ -79,7 +79,7 @@ $attachment = new Schemas\String\Schema(
     ),
 );
 
-// examples у обычной схемы; единственное значение перечисления в 3.1 печатается как const
+// examples on an ordinary schema; a single enumeration value is printed as const in 3.1
 $status = new Schemas\String\Schema(
     examples: new Schemas\Untyped\Values('active'),
 );

@@ -17,7 +17,11 @@ final readonly class BasicHttpSecurityScheme extends AbstractSecurityScheme
     ) {
         $this->scheme = 'basic';
 
-        parent::__construct('http', $description, $extensions);
+        parent::__construct(
+            type: 'http',
+            description: $description,
+            extensions: $extensions,
+        );
     }
 
     public function toObject(): stdClass

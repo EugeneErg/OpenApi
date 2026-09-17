@@ -21,12 +21,15 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: json, mbstring
+          # ext-yaml keeps the YAML checks from being skipped: the encoder of our own
+          # and reading by the YAML 1.2 core schema cannot be checked anywhere else
+          extensions: json, mbstring, yaml
           coverage: none
           ini-values: error_reporting=E_ALL, zend.assertions=1
 
-      # composer.lock зафиксирован, поэтому CI ставит ровно те версии,
-      # на которых набор проверялся
+      # the library publishes no composer.lock, so the tools' versions are resolved
+      # anew here — and that is how it is checked that the set is not tied to one
+      # version of them
       - uses: ramsey/composer-install@v3
 
       - name: Coding standards
@@ -37,3 +40,33 @@ jobs:
 
       - name: Tests
         run: vendor/bin/phpunit
+
+  real-world:
+    name: Real-world specifications
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: json, mbstring, yaml
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The read → write → compare round trip on the large public documents.
+      # They are downloaded from GitHub, so the job is separate: the network fails
+      # more often than the code does.
+      - name: Round trip
+        run: composer real-world
+
+      # The output goes through a third-party validator: the round trip also closes
+      # when the package reads and writes in the same wrong way
+      - name: Validate output
+        run: composer validate-output

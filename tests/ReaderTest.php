@@ -19,11 +19,11 @@ use function is_string;
 use function sprintf;
 
 /**
- * Разбор проверяется полным кругом: объект → JSON → объект → JSON.
+ * Reading is checked by a full round trip: object → JSON → object → JSON.
  *
- * Совпадение двух текстов означает и то, что структура восстановлена, и то,
- * что `$ref` снова указывают куда надо: разные экземпляры вместо общего дали бы
- * развёрнутые копии вместо ссылок.
+ * Two texts matching means both that the structure was restored and that the `$ref`s
+ * point where they should again: separate instances instead of one shared would give
+ * written-out copies instead of references.
  */
 final class ReaderTest extends TestCase
 {
@@ -44,8 +44,8 @@ final class ReaderTest extends TestCase
             $documents = self::load($objectPath);
 
             foreach ($documents as $fileName => $document) {
-                // мультифайловые кейсы проверяются отдельно: одиночное чтение
-                // не знает о соседях и не смогло бы разрешить ссылки между файлами
+                // the multi-file cases are checked separately: a single read knows
+                // nothing of the neighbours and could not resolve the references
                 if (count($documents) > 1) {
                     continue;
                 }
@@ -58,8 +58,8 @@ final class ReaderTest extends TestCase
     }
 
     /**
-     * Ссылка из одного файла в другой обязана дать тот же объект, что и объявление:
-     * иначе при обратной записи она развернулась бы копией.
+     * A reference from one file into another has to give the same object as the
+     * declaration: otherwise writing it back would spread it out as a copy.
      */
     public function testCrossFileReferencesShareObjects(): void
     {
@@ -81,6 +81,67 @@ final class ReaderTest extends TestCase
         }
     }
 
+    /**
+     * Three files in a ring: a → b → c → a. The references are resolved by one registry
+     * for every file, so a ring between them is as ordinary a cycle as a recursive schema.
+     */
+    public function testReferencesGoAroundThreeFiles(): void
+    {
+        $document = static fn (string $ref): string => (string) json_encode([
+            'openapi' => '3.0.3',
+            'info' => ['title' => 'Ring', 'version' => '1.0.0'],
+            'paths' => new stdClass(),
+            'components' => ['schemas' => [
+                'Node' => ['type' => 'object', 'properties' => ['next' => ['$ref' => $ref]]],
+            ]],
+        ]);
+
+        $contents = [
+            'a.json' => $document('b.json#/components/schemas/Node'),
+            'b.json' => $document('c.json#/components/schemas/Node'),
+            'c.json' => $document('a.json#/components/schemas/Node'),
+        ];
+
+        $built = (new Builder(...Reader::readAll($contents)))->prepareToSave();
+
+        foreach (['a.json' => 'b.json', 'b.json' => 'c.json', 'c.json' => 'a.json'] as $file => $next) {
+            self::assertStringContainsString(
+                sprintf('"$ref": "%s#/components/schemas/Node"', $next),
+                (new JsonEncoder())->encode($built[$file] ?? new stdClass()),
+            );
+        }
+    }
+
+    /**
+     * The specification allows a reference to anywhere at all, a URL included. The
+     * package reads only the files it was handed, and the refusal says exactly that
+     * rather than "the target was not found".
+     *
+     * @dataProvider provideRejectsReferenceOutsideCases
+     */
+    public function testRejectsReferenceOutside(string $ref): void
+    {
+        $this->expectException(InvalidDocumentOpenapiException::class);
+        $this->expectExceptionMessage('points at a file that was not passed to the reader');
+
+        Reader::read((string) json_encode([
+            'openapi' => '3.0.3',
+            'info' => ['title' => 'Outside', 'version' => '1.0.0'],
+            'paths' => new stdClass(),
+            'components' => ['schemas' => ['User' => ['$ref' => $ref]]],
+        ]));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideRejectsReferenceOutsideCases(): iterable
+    {
+        yield 'by url' => ['https://example.com/schemas.json#/components/schemas/User'];
+
+        yield 'by file name' => ['components.yaml#/components/schemas/User'];
+    }
+
     public function testRecursiveSchemaBecomesACycle(): void
     {
         $document = Reader::read((string) json_encode([
@@ -95,11 +156,108 @@ final class ReaderTest extends TestCase
 
         self::assertArrayHasKey('Node', $document->components->schemas->items);
 
-        // ссылка ведёт на тот же объект, а не на его копию
+        // the reference leads to the same object rather than to a copy of it
         self::assertStringContainsString(
             '"$ref": "#/components/schemas/Node"',
             (new JsonEncoder())->encode(self::build($document)),
         );
+    }
+
+    /**
+     * Strict mode names whatever the package did not understand in the document:
+     * otherwise it would quietly disappear when the document is written back.
+     */
+    public function testStrictModeNamesWhatItDidNotRead(): void
+    {
+        $document = (string) json_encode([
+            'openapi' => '3.0.3',
+            'info' => ['title' => 'x', 'version' => '1', 'slogan' => 'Fast!'],
+            'paths' => new stdClass(),
+            'components' => ['securitySchemes' => ['bearer' => [
+                'type' => 'http',
+                'scheme' => 'bearer',
+                // "Applies To" in the specification: in is declared for apiKey only
+                'in' => 'header',
+            ]]],
+        ]);
+
+        try {
+            Reader::read($document);
+            self::fail('Strict reading was expected to complain.');
+        } catch (InvalidDocumentOpenapiException $exception) {
+            self::assertStringContainsString('openapi.json/info/slogan', $exception->getMessage());
+            self::assertStringContainsString('openapi.json/components/securitySchemes/bearer/in', $exception->getMessage());
+            self::assertStringContainsString('strict: false', $exception->getMessage());
+        }
+
+        // the same without strictness: the fields are dropped, the document is read
+        $built = self::build(Reader::read($document, null, strict: false));
+
+        self::assertEquals(
+            json_decode((string) json_encode(['securitySchemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer']]])),
+            $built->components ?? null,
+        );
+    }
+
+    /**
+     * A keyword that was read and dropped does not count as misunderstood in strict mode:
+     * it changes nothing, and the package knows why.
+     *
+     * @dataProvider provideStrictModeAcceptsDroppedKeywordsCases
+     *
+     * @param array<string, mixed> $document
+     */
+    public function testStrictModeAcceptsDroppedKeywords(array $document): void
+    {
+        Reader::read((string) json_encode($document));
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function provideStrictModeAcceptsDroppedKeywordsCases(): iterable
+    {
+        yield 'an assertion about another type' => [self::documentWithComponents('3.0.3', [
+            'schemas' => ['Name' => ['type' => 'string', 'uniqueItems' => true, 'minItems' => 1]],
+        ])];
+
+        yield 'siblings of $ref in 3.0' => [self::documentWithComponents('3.0.3', [
+            'schemas' => [
+                'User' => ['type' => 'object'],
+                'Author' => ['$ref' => '#/components/schemas/User', 'type' => 'object', 'x-role' => ['of' => 'author']],
+            ],
+        ])];
+
+        yield 'an example beside an enum' => [self::documentWithComponents('3.0.3', [
+            'schemas' => ['Kind' => ['type' => 'string', 'enum' => ['a', 'b'], 'example' => 'a']],
+        ])];
+
+        yield 'encoding on a media type that ignores it' => [self::documentWithComponents('3.1.0', [
+            'requestBodies' => ['Upload' => ['content' => [
+                'application/json' => ['encoding' => ['file' => ['contentType' => 'image/png']]],
+            ]]],
+        ])];
+
+        yield 'an assertion on a schema without a type' => [self::documentWithComponents('3.0.3', [
+            'schemas' => ['Either' => ['minLength' => 3, 'minItems' => 1]],
+        ])];
+    }
+
+    public function testRejectsRequiredFalseOnAPathParameter(): void
+    {
+        $this->expectException(InvalidDocumentOpenapiException::class);
+        $this->expectExceptionMessage('a path parameter is always required');
+
+        Reader::read((string) json_encode([
+            'openapi' => '3.0.3',
+            'info' => ['title' => 'x', 'version' => '1'],
+            'paths' => ['/users/{id}' => ['get' => [
+                'parameters' => [['name' => 'id', 'in' => 'path', 'required' => false, 'schema' => ['type' => 'string']]],
+                'responses' => ['200' => ['description' => 'OK']],
+            ]]],
+        ]));
     }
 
     public function testRejectsUnknownReference(): void
@@ -128,8 +286,8 @@ final class ReaderTest extends TestCase
     }
 
     /**
-     * Перечисление читается по смыслу: то, что ничего не меняет, отбрасывается,
-     * композиция сохраняется эквивалентным allOf.
+     * An enumeration is read by its meaning: whatever changes nothing is dropped, and a
+     * composition is kept as an equivalent allOf.
      *
      * @dataProvider provideEnumIsReadByMeaningCases
      *
@@ -234,9 +392,10 @@ final class ReaderTest extends TestCase
     }
 
     /**
-     * Спецификация требует, чтобы имя схемы было объявлено в components.securitySchemes,
-     * но объявлять сами скоупы не обязывает: у openIdConnect их негде объявить,
-     * а oauth2-документ может требовать скоуп, которого нет ни в одном flow.
+     * The specification requires the scheme's name to be declared in
+     * components.securitySchemes but does not require the scopes themselves to be
+     * declared: with openIdConnect there is nowhere to declare them, and an oauth2
+     * document may require a scope that no flow has.
      *
      * @dataProvider provideScopeNamesNeedNoDeclarationCases
      *
@@ -548,7 +707,7 @@ final class ReaderTest extends TestCase
             ['schemas' => [
                 'Long' => ['minLength' => 3, 'pattern' => '^a'],
                 'Even' => ['multipleOf' => 2],
-                // в 3.0 items обязателен только при объявленном type: array
+                // in 3.0 items is required only when type: array is declared
                 'Set' => ['uniqueItems' => true],
             ]],
             ['schemas' => [
@@ -583,6 +742,21 @@ final class ReaderTest extends TestCase
                 'multipart/form-data' => ['encoding' => ['file' => ['contentType' => 'image/png']]],
                 'application/json' => new stdClass(),
             ]]]],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $components
+     *
+     * @return array<string, mixed>
+     */
+    private static function documentWithComponents(string $version, array $components): array
+    {
+        return [
+            'openapi' => $version,
+            'info' => ['title' => 'Dropped', 'version' => '1.0.0'],
+            'paths' => new stdClass(),
+            'components' => $components,
         ];
     }
 

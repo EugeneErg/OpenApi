@@ -15,7 +15,7 @@ final readonly class OpenapiObject extends AbstractValues
         $result = [];
 
         foreach ($this->items as $name => $item) {
-            // рекурсия по любому контейнеру: вложенный список — это AbstractValues, а не self
+            // recursion over any container: a nested list is an AbstractValues, not a self
             $result[$name] = $item instanceof AbstractValues ? $item->toNative($process) : $item;
         }
 

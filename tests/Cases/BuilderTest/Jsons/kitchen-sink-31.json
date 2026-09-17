@@ -324,7 +324,7 @@
                 },
                 "Tree": {
                     "type": "object",
-                    "$comment": "Рекурсивное дерево.",
+                    "$comment": "A recursive tree.",
                     "$id": "https://example.com/schemas/tree",
                     "properties": {
                         "root": {

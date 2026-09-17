@@ -8,10 +8,10 @@ use EugeneErg\OpenApi\Serialization\YamlDecoder;
 use PHPUnit\Framework\TestCase;
 
 /**
- * README расходится с кодом незаметно, поэтому каждый его PHP-пример исполняется.
+ * README drifts away from the code unnoticed, so every PHP example in it is executed.
  *
- * Самодостаточные примеры запускаются как есть, фрагменты — поверх общего пролога
- * из tests/Fixtures/readme-prelude.php, где заведены переменные, на которые они ссылаются.
+ * The self-contained examples are run as they are, the fragments on top of the shared
+ * prelude from tests/Fixtures/readme-prelude.php, which holds the variables they refer to.
  */
 final class ReadmeTest extends TestCase
 {
@@ -30,7 +30,7 @@ final class ReadmeTest extends TestCase
 
         mkdir($directory, 0o775, true);
 
-        // примеры чтения открывают файлы по именам из README — кладём их рядом
+        // the reading examples open files by the names README gives — put them alongside
         foreach (['openapi.json', 'components.yaml', 'paths.yaml'] as $name) {
             file_put_contents($directory . '/' . $name, self::MINIMAL_DOCUMENT);
         }
@@ -50,7 +50,7 @@ final class ReadmeTest extends TestCase
                 $status,
             );
 
-            self::assertSame(0, $status, "Пример из README не выполнился:\n" . implode("\n", $output));
+            self::assertSame(0, $status, "An example from README failed:\n" . implode("\n", $output));
             self::assertSame([], array_values(array_filter(
                 $output,
                 static fn (string $line): bool => str_contains($line, 'Warning') || str_contains($line, 'Deprecated'),
@@ -77,7 +77,7 @@ final class ReadmeTest extends TestCase
 
         foreach ($matches[1] as $index => $block) {
             if (str_starts_with(ltrim($block), '<?php')) {
-                // require обязан идти после declare(strict_types): это первая инструкция скрипта
+                // require has to come after declare(strict_types): that is a script's first statement
                 $code = str_contains($block, 'declare(strict_types')
                     ? (string) preg_replace(
                         '{(declare\(strict_types[^;]*;)}',

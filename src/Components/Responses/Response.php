@@ -7,6 +7,7 @@ namespace EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Components\Headers;
 use EugeneErg\OpenApi\Components\Links;
 use EugeneErg\OpenApi\Components\RequestBodies\Contents;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use stdClass;
@@ -38,15 +39,15 @@ final readonly class Response
         $result = ['description' => $this->description];
 
         if ($this->headers->items !== []) {
-            $result['headers'] = $this->headers->toObject($process);
+            $result['headers'] = Place::in(fn (): stdClass => $this->headers->toObject($process), 'headers');
         }
 
         if ($this->content->items !== []) {
-            $result['content'] = $this->content->toObject($process);
+            $result['content'] = Place::in(fn (): stdClass => $this->content->toObject($process), 'content');
         }
 
         if ($this->links->items !== []) {
-            $result['links'] = $this->links->toObject($process);
+            $result['links'] = Place::in(fn (): stdClass => $this->links->toObject($process), 'links');
         }
 
         return (object) $this->extensions->appendTo($result);

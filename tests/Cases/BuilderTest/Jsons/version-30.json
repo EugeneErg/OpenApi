@@ -10,7 +10,7 @@
             "schemas": {
                 "Nickname": {
                     "type": "string",
-                    "description": "Может отсутствовать.",
+                    "description": "May be absent.",
                     "nullable": true
                 },
                 "Rating": {

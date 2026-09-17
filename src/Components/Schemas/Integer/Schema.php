@@ -12,7 +12,7 @@ use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Bounds;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Discriminator;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\NumericRange;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
@@ -47,20 +47,14 @@ final readonly class Schema extends AbstractConditionSchema
         Format|string|null $format = null,
         ?Discriminator $discriminator = null,
         ?AbstractValues $examples = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?AbstractSchema $dynamicRef = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?AbstractSchema $if = null,
         ?AbstractSchema $then = null,
         ?AbstractSchema $else = null,
         /**
-         * Слово, проверяющее число, можно написать и не объявляя type: для значения
-         * другого типа оно просто ничего не значит. Спецификация это разрешает,
-         * и при чтении чужого документа такую проверку терять нельзя.
+         * A word that checks a number may be written without declaring type: for a value
+         * of another type it simply means nothing. The specification allows that, and
+         * reading somebody else's document must not lose such a check.
          */
         bool $declareType = true,
         ?Extensions $extensions = null,
@@ -69,34 +63,28 @@ final readonly class Schema extends AbstractConditionSchema
         self::assertPositive('Integer schema multipleOf', $this->multipleOf);
 
         parent::__construct(
-            $declareType ? 'integer' : null,
-            $format instanceof Format ? $format->value : $format,
-            $title,
-            $description,
-            $nullable,
-            $access,
-            $deprecated,
-            $externalDocs,
-            $xml,
-            $default,
-            $anyOf,
-            $allOf,
-            $oneOf,
-            $not,
-            $example,
-            $discriminator,
-            $examples,
-            $comment,
-            $defs,
-            $id,
-            $anchor,
-            $dynamicAnchor,
-            $dynamicRef,
-            $vocabulary,
-            $if,
-            $then,
-            $else,
-            $extensions,
+            type: $declareType ? 'integer' : null,
+            format: $format instanceof Format ? $format->value : $format,
+            title: $title,
+            description: $description,
+            nullable: $nullable,
+            access: $access,
+            deprecated: $deprecated,
+            externalDocs: $externalDocs,
+            xml: $xml,
+            default: $default,
+            anyOf: $anyOf,
+            allOf: $allOf,
+            oneOf: $oneOf,
+            not: $not,
+            example: $example,
+            discriminator: $discriminator,
+            examples: $examples,
+            if: $if,
+            then: $then,
+            else: $else,
+            resource: $resource,
+            extensions: $extensions,
         );
     }
 

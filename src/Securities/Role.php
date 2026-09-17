@@ -14,12 +14,12 @@ use EugeneErg\OpenApi\Process;
 use stdClass;
 
 /**
- * Роль, которую требует операция у схемы без скоупов (OpenAPI 3.1).
+ * A role an operation requires of a scheme that has no scopes (OpenAPI 3.1).
  *
- * Спецификация 3.0 требует, чтобы у схем других типов список был пуст; роли
- * появились в 3.1. У oauth2 и openIdConnect в списке стоят скоупы — для них есть
- * `Flows\Scope` и `ScopeName`, поэтому схемы этих двух типов сюда не передать:
- * тип параметра их не допускает.
+ * The 3.0 specification requires the list to be empty for schemes of other types; roles
+ * appeared in 3.1. For oauth2 and openIdConnect the list holds scopes — `Flows\Scope` and
+ * `ScopeName` are there for those — so schemes of those two types cannot be passed here:
+ * the parameter's type does not admit them.
  */
 final readonly class Role
 {

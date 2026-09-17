@@ -18,7 +18,11 @@ final readonly class BearerHttpSecurityScheme extends AbstractSecurityScheme
     ) {
         $this->scheme = 'bearer';
 
-        parent::__construct('http', $description, $extensions);
+        parent::__construct(
+            type: 'http',
+            description: $description,
+            extensions: $extensions,
+        );
     }
 
     public function toObject(): stdClass

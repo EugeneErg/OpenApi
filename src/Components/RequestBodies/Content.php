@@ -8,6 +8,7 @@ use EugeneErg\OpenApi\Components\Examples;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
+use EugeneErg\OpenApi\Exceptions\Place;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\Process;
 use stdClass;
@@ -42,9 +43,12 @@ final readonly class Content
     {
         $result = [];
 
-        // по спецификации media type может не описывать схему вовсе
+        // by the specification a media type may describe no schema at all
         if ($this->schema !== null) {
-            $result['schema'] = $process->findSchema($this->schema) ?? $this->schema->toObject($process);
+            $result['schema'] = Place::in(
+                fn (): stdClass => $process->findSchema($this->schema) ?? $this->schema->toObject($process),
+                'schema',
+            );
         }
 
         if ($this->example !== null) {

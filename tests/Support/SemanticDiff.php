@@ -18,18 +18,18 @@ use function sprintf;
 use function strlen;
 
 /**
- * Смысловое сравнение исходного документа с тем, что пакет из него собрал.
+ * A comparison by meaning of the original document with what the package built from it.
  *
- * Пакет не обязан воспроизводить текст дословно: значение, которое ни на что
- * не влияет, он вправе опустить или записать другой, эквивалентной формой.
- * Все такие допущения перечислены здесь, в одном месте, — всё прочее считается потерей.
+ * The package is not obliged to reproduce the text word for word: a value that affects
+ * nothing it may omit or write in another, equivalent form. Every such allowance is
+ * listed here, in one place — everything else counts as a loss.
  */
 final class SemanticDiff
 {
     /** @var list<string> */
     public array $differences = [];
 
-    /** Мест, где пакет выбрал равнозначную запись вместо исходной. */
+    /** The number of places where the package chose an equivalent form over the original. */
     public int $rewritten = 0;
 
     private bool $v31;
@@ -42,14 +42,14 @@ final class SemanticDiff
     }
 
     /**
-     * Приводит эквивалентные формы к одной.
+     * Brings the equivalent forms to one.
      */
     private function normalize(mixed $value, string $key = ''): mixed
     {
         if ($value instanceof stdClass) {
             $vars = get_object_vars($value);
 
-            // allOf из единственной схемы — это сама схема
+            // an allOf of a single schema is that schema itself
             $allOf = $vars['allOf'] ?? null;
 
             if (array_keys($vars) === ['allOf'] && is_array($allOf) && count($allOf) === 1) {
@@ -67,13 +67,13 @@ final class SemanticDiff
         }
 
         if (!is_array($value)) {
-            // JSON не различает 1 и 1.0
+            // JSON does not tell 1 from 1.0
             return is_float($value) && floor($value) === $value && abs($value) < PHP_INT_MAX ? (int) $value : $value;
         }
 
         $value = array_map(fn (mixed $item): mixed => $this->normalize($item), $value);
 
-        // порядок не несёт смысла: параметры различаются по in+name, required и enum — множества
+        // the order carries no meaning: parameters differ by in+name, and required and enum are sets
         if ($key === 'parameters' && array_is_list($value)) {
             $map = new stdClass();
 
@@ -88,8 +88,8 @@ final class SemanticDiff
         }
 
         if (($key === 'required' || $key === 'enum') && array_is_list($value)) {
-            // перечень — это набор допустимых значений: JSON Schema лишь советует
-            // ему быть без повторов, а повтор ничего не добавляет
+            // an enumeration is a set of admissible values: JSON Schema merely advises
+            // it to be free of repeats, and a repeat adds nothing
             if ($key === 'enum') {
                 $value = array_values(array_intersect_key(
                     $value,
@@ -104,7 +104,7 @@ final class SemanticDiff
     }
 
     /**
-     * Пакет выбрал равнозначную запись вместо исходной.
+     * The package chose an equivalent form over the original.
      *
      * @param array<array-key, mixed> $left
      * @param array<array-key, mixed> $right
@@ -124,14 +124,14 @@ final class SemanticDiff
             return false;
         }
 
-        // перечисление рядом с применителем раскладывается на allOf
+        // an enumeration beside an applicator is laid out as an allOf
         return $leftAllOf === 0
             || array_key_exists('const', $left)
             || array_key_exists('enum', $left);
     }
 
     /**
-     * Все значения-листья поддерева: имя ключа → набор значений в виде JSON.
+     * Every leaf value of a subtree: the key's name → the set of values as JSON.
      *
      * @return array<string, list<string>>
      */
@@ -165,8 +165,8 @@ final class SemanticDiff
     }
 
     /**
-     * Приводит к одной форме записи, равнозначные по JSON Schema. Пакет выбирает
-     * из них одну, и обе стороны сравнения должны выглядеть одинаково.
+     * Brings the forms that JSON Schema treats as equal to one. The package picks one of
+     * them, and both sides of the comparison have to look alike.
      *
      * @param array<array-key, mixed> $vars
      *
@@ -174,14 +174,14 @@ final class SemanticDiff
      */
     private function sameMeaning(array $vars): array
     {
-        // порядок типов ничего не значит, а массив из одного типа — это сам тип
+        // the order of the types means nothing, and an array of one type is that type
         if (is_array($vars['type'] ?? null)) {
             $types = array_values(array_unique(array_filter($vars['type'], is_string(...))));
             sort($types);
             $vars['type'] = count($types) === 1 ? $types[0] : $types;
         }
 
-        // nullable дописывает null в сам перечень: по 3.0.3 иначе null недопустим
+        // nullable adds null to the enumeration itself: by 3.0.3 null is inadmissible otherwise
         $nullable = ($vars['nullable'] ?? null) === true
             || (is_array($vars['type'] ?? null) && in_array('null', $vars['type'], true));
 
@@ -190,21 +190,21 @@ final class SemanticDiff
             $vars['enum'] = [...$vars['enum'], null];
         }
 
-        // `const: x` — это то же, что `enum: [x]`
+        // `const: x` is the same as `enum: [x]`
         if (!array_key_exists('const', $vars) && ($vars['enum'] ?? null) !== null
             && is_array($vars['enum']) && count($vars['enum']) === 1) {
             $vars['const'] = array_values($vars['enum'])[0];
             unset($vars['enum']);
         }
 
-        // пустому перечню не подходит ничего — как и `not: {}`
+        // nothing matches an empty enumeration — just as with `not: {}`
         if (($vars['enum'] ?? null) === []) {
             unset($vars['enum']);
             $vars['not'] = new stdClass();
         }
 
-        // в 3.1 `$ref` — обычное ключевое слово, и соседи применяются вместе с ним;
-        // в 3.0 они не действуют, и пакет их отбрасывает
+        // in 3.1 `$ref` is an ordinary keyword and its siblings apply along with it;
+        // in 3.0 they do not apply, and the package drops them
         if ($this->v31 && array_key_exists('$ref', $vars) && count($vars) > 1) {
             $ref = new stdClass();
             $ref->{'$ref'} = $vars['$ref'];
@@ -225,7 +225,7 @@ final class SemanticDiff
             return;
         }
 
-        // YAML не отличает пустую карту от пустого списка
+        // YAML does not tell an empty map from an empty list
         if ($original === [] && $built instanceof stdClass && get_object_vars($built) === []) {
             return;
         }
@@ -261,11 +261,11 @@ final class SemanticDiff
         $left = get_object_vars($original);
         $right = get_object_vars($built);
 
-        // Часть записей пакет раскладывает на равнозначные: объединение типов —
-        // на `anyOf` из схем этих типов, перечисление рядом с применителем —
-        // на `allOf`. Повторять эту раскладку здесь нельзя: проверка сверяла бы
-        // код сам с собой. Поэтому у таких мест сверяется более слабое, зато
-        // независимое условие — ни одно значение не потерялось.
+        // Some forms the package lays out as equivalents: a union of types becomes an
+        // `anyOf` of the schemas of those types, an enumeration beside an applicator
+        // becomes an `allOf`. Repeating that layout here is out of the question: the
+        // check would compare the code with itself. So for such places a weaker but
+        // independent condition is checked — that not a single value was lost.
         if ($this->wasRewritten($left, $right)) {
             ++$this->rewritten;
 
@@ -306,11 +306,11 @@ final class SemanticDiff
     }
 
     /**
-     * Значение исходного документа в той форме, в которой его запишет пакет.
+     * A value of the original document in the form the package will write it in.
      */
     private function equivalent(stdClass $owner, string $name, mixed $value): mixed
     {
-        // имя HTTP-схемы регистронезависимо
+        // an HTTP scheme's name is case-insensitive
         if ($name === 'scheme' && ($owner->type ?? null) === 'http' && is_string($value)) {
             $lower = strtolower($value);
 
@@ -321,16 +321,16 @@ final class SemanticDiff
     }
 
     /**
-     * Можно ли не выводить ключ, не изменив смысла.
+     * Whether the key may be left unprinted without changing the meaning.
      */
     private function mayDrop(stdClass $owner, string $name, mixed $value, string $pointer): bool
     {
-        // пустые карты и списки ничего не объявляют
+        // empty maps and lists declare nothing
         if (($value instanceof stdClass && get_object_vars($value) === []) || $value === []) {
             return true;
         }
 
-        // Encoding Object действует только для форм и multipart
+        // an Encoding Object applies to forms and multipart only
         if ($name === 'encoding' && preg_match('{/content/([^/]+)$}', $pointer, $match) === 1) {
             $type = strtolower(str_replace(['~1', '~0'], ['/', '~'], $match[1]));
 
@@ -347,7 +347,7 @@ final class SemanticDiff
             return true;
         }
 
-        // style и explode, равные умолчанию для своего in
+        // style and explode that equal the default for their in
         if (isset($owner->in) && ($name === 'style' || $name === 'explode')) {
             $style = $owner->style ?? (in_array($owner->in, ['query', 'cookie'], true) ? 'form' : 'simple');
 
@@ -356,7 +356,7 @@ final class SemanticDiff
                 : $value === ($style === 'form');
         }
 
-        // рядом с перечислением примеры и проверки ничего не добавляют (README, «Перечисления»)
+        // beside an enumeration the examples and the checks add nothing (README, "Enumerations")
         if (isset($owner->enum) || property_exists($owner, 'const')) {
             return in_array($name, [
                 'example', 'examples', 'minLength', 'maxLength', 'pattern', 'minimum', 'maximum',
@@ -364,25 +364,25 @@ final class SemanticDiff
             ], true);
         }
 
-        // в 3.0 соседи $ref не действуют
+        // in 3.0 the siblings of a $ref do not apply
         if (!$this->v31 && isset($owner->{'$ref'})) {
             return true;
         }
 
-        // пример, не подходящий под тип схемы, ничего не иллюстрирует
+        // an example that does not fit the schema's type illustrates nothing
         if ($name === 'example' && is_string($owner->type ?? null) && !self::fits($owner->type, $value)) {
             return true;
         }
 
-        // name и in объявлены только для apiKey: таблица «Applies To» в спецификации
+        // name and in are declared for apiKey only: the "Applies To" table in the specification
         if (in_array($name, ['name', 'in'], true)
             && in_array($owner->type ?? null, ['http', 'oauth2', 'openIdConnect'], true)) {
             return true;
         }
 
-        // Проверка, применимая к значениям другого типа, для этой схемы ничего
-        // не значит: `uniqueItems` у строки всегда выполнено, потому что строка
-        // не массив. Объявленный тип делает такое слово мёртвым.
+        // A check that applies to values of another type means nothing for this schema:
+        // `uniqueItems` on a string always holds, because a string is not an array. A
+        // declared type makes such a keyword dead.
         $kinds = [
             'minLength' => 'string', 'maxLength' => 'string', 'pattern' => 'string',
             'minimum' => 'number', 'maximum' => 'number', 'multipleOf' => 'number',
@@ -401,11 +401,11 @@ final class SemanticDiff
     }
 
     /**
-     * Можно ли вывести ключ, которого не было, не изменив смысла.
+     * Whether a key that was not there may be printed without changing the meaning.
      */
     private function mayAdd(stdClass $owner, string $name, mixed $value): bool
     {
-        // тип, выведенный из значений перечисления
+        // a type inferred from the values of an enumeration
         if ($name === 'type' && (isset($owner->enum) || property_exists($owner, 'const'))) {
             return true;
         }

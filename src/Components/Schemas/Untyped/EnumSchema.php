@@ -5,10 +5,9 @@ declare(strict_types = 1);
 namespace EugeneErg\OpenApi\Components\Schemas\Untyped;
 
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractEnumSchema;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Access;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\JsonValue;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\Vocabularies;
+use EugeneErg\OpenApi\Components\Schemas\Abstract\Resource;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\Xml;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\Extensions;
@@ -18,11 +17,11 @@ use function count;
 use function sprintf;
 
 /**
- * Перечисление значений разных типов, например [1, "auto"].
+ * An enumeration of values of different types, for example [1, "auto"].
  *
- * Если все значения одного типа, для них есть типизированная схема — ей и нужно
- * пользоваться, поэтому здесь такой набор отклоняется. null в перечень не пишется:
- * его добавляет nullable.
+ * When every value is of one type there is a typed schema for them, and that is the one
+ * to use, so such a set is rejected here. null is not written into the list: nullable
+ * adds it.
  */
 final readonly class EnumSchema extends AbstractEnumSchema
 {
@@ -37,12 +36,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
         ?ExternalDocs $externalDocs = null,
         ?Xml $xml = null,
         ?Value $default = null,
-        ?string $comment = null,
-        ?AbstractSchemas $defs = null,
-        ?string $id = null,
-        ?string $anchor = null,
-        ?string $dynamicAnchor = null,
-        ?Vocabularies $vocabulary = null,
+        ?Resource $resource = null,
         ?Extensions $extensions = null,
     ) {
         $kinds = [];
@@ -70,12 +64,7 @@ final readonly class EnumSchema extends AbstractEnumSchema
             externalDocs: $externalDocs,
             xml: $xml,
             default: $default,
-            comment: $comment,
-            defs: $defs,
-            id: $id,
-            anchor: $anchor,
-            dynamicAnchor: $dynamicAnchor,
-            vocabulary: $vocabulary,
+            resource: $resource,
             extensions: $extensions,
         );
     }

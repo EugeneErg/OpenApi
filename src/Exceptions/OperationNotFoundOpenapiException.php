@@ -8,6 +8,8 @@ use LogicException;
 
 final class OperationNotFoundOpenapiException extends LogicException implements OpenapiExceptionInterface
 {
+    use HasPlace;
+
     public function __construct(string $message = 'Operation not found.')
     {
         parent::__construct($message);

@@ -13,14 +13,15 @@ use EugeneErg\OpenApi\Paths;
 use EugeneErg\OpenApi\Paths\DeferredOperation;
 
 /**
- * Тело обёрнуто в замыкание: require выполняет файл в области видимости вызывающего,
- * а отложенные ссылки связываются через use (&$var) и подхватили бы чужие переменные.
+ * The body is wrapped in a closure: require runs the file in the caller's scope, and the
+ * deferred references are bound through use (&$var), which would pick up somebody else's
+ * variables.
  *
  * @return array<string, Openapi>
  */
 return (static function (): array {
-    // Пагинация: «следующая страница» — это та же операция, поэтому ссылка на неё
-    // откладывается, как и у рекурсивных схем.
+    // Pagination: the "next page" is the same operation, so the reference to it is
+    // deferred, as with recursive schemas.
     $listUsers = new Paths\Operation(
         responses: new Responses(
             x200: new Responses\Response(
@@ -48,7 +49,7 @@ return (static function (): array {
         ),
     );
 
-    // Операция без operationId: на неё ссылаются указателем на место в paths.
+    // An operation without an operationId: it is referred to by a pointer into paths.
     $ping = new Paths\Operation(
         responses: new Responses(
             x200: new Responses\Response(

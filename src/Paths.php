@@ -11,11 +11,11 @@ use function count;
 use function sprintf;
 
 /**
- * Секция paths: ключ — шаблон пути.
+ * The paths section: the key is a path template.
  *
- * Здесь проверяется только сам шаблон. Соответствие шаблона объявленным
- * path-параметрам проверяет Openapi: имя параметра может задаваться не локальным
- * ключом, а регистрацией в components.parameters, о которой Paths не знает.
+ * Only the template itself is checked here. Whether it matches the declared path
+ * parameters is checked by Openapi: a parameter's name may come not from the local key
+ * but from a registration in components.parameters, which Paths knows nothing about.
  */
 final readonly class Paths extends PathItems
 {
@@ -29,7 +29,7 @@ final readonly class Paths extends PathItems
     }
 
     /**
-     * Имена подстановок в шаблоне пути.
+     * The names of the substitutions in a path template.
      *
      * @return list<string>
      */

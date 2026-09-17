@@ -34,17 +34,22 @@ use stdClass;
 use function sprintf;
 
 /**
- * Контекст сборки одного документа.
+ * The context in which one document is built.
  *
- * Каждый toObject() получает Process и через него спрашивает: «этот объект уже лежит
- * в каком-нибудь components?». Если да — на его месте окажется $ref, локальный или
- * с именем соседнего файла. Если нет — объект разворачивается по месту.
+ * Every toObject() is handed a Process and asks it: is this object already sitting in
+ * some components? If it is, a $ref stands in its place — local, or carrying the name of
+ * a neighbouring file. If it is not, the object is written out where it is used.
  */
 final readonly class Process
 {
     public function __construct(
         public Builder $builder,
         public Openapi $openapi,
+        /**
+         * Print the values that equal their default. The document does not change because
+         * of it: the verbose form is the same specification, written out in full.
+         */
+        public bool $verbose = false,
     ) {
     }
 
@@ -54,8 +59,8 @@ final readonly class Process
     }
 
     /**
-     * Возможности, появившиеся только в 3.1: словарь JSON Schema 2020-12
-     * (схема 3.0 — это урезанный Draft 4) и собственные поля Reference Object.
+     * The things that appeared in 3.1 only: the JSON Schema 2020-12 vocabulary (a 3.0
+     * schema is a trimmed Draft 4) and the Reference Object's own fields.
      */
     public function assertV31(string $feature): void
     {
@@ -69,8 +74,8 @@ final readonly class Process
     }
 
     /**
-     * Единая точка разрешения ссылки: по типу цели выбирается нужный поиск.
-     * Используется Reference Object; отдельного «ручного» $ref в пакете нет.
+     * The single place where a reference is resolved: the kind of target picks the lookup.
+     * Used by Reference Object; there is no separate, "manual" $ref in the package.
      */
     public function refTo(
         AbstractSchema|AbstractSchemaParameter|ContentParameter|Example|Link|Path|PathItems|RequestBody|Response $target,
@@ -83,8 +88,8 @@ final readonly class Process
             $target instanceof Example => $this->findExample($target),
             $target instanceof Path => $this->findPathItem($target),
             $target instanceof PathItems => $this->findCallback($target),
-            // ContentParameter не знает своего in: он берётся из места использования,
-            // поэтому как компонент такой параметр адресуется только через headers
+            // a ContentParameter does not know its own in: that comes from where it is
+            // used, so as a component such a parameter is addressed through headers only
             $target instanceof ContentParameter => $this->findHeader($target),
             $target instanceof HeaderSchemaParameter => $this->findHeader($target) ?? $this->findParameter($target),
             default => $this->findParameter($target),
@@ -113,7 +118,7 @@ final readonly class Process
 
     public function findSchema(AbstractSchema $value): ?stdClass
     {
-        // отложенная ссылка из рекурсии указывает на ту же зарегистрированную схему
+        // a deferred reference from a recursion points at the same registered schema
         if ($value instanceof DeferredSchema) {
             $value = $value->resolve();
         }
@@ -206,8 +211,8 @@ final readonly class Process
     }
 
     /**
-     * Security Requirement Object ссылается на securitySchemes того же документа,
-     * поэтому scope и схема ищутся без выхода в соседние файлы.
+     * A Security Requirement Object refers to the securitySchemes of its own document, so
+     * the scope and the scheme are looked up without reaching the neighbouring files.
      */
     public function findScope(Scope $value): stdClass
     {
@@ -230,7 +235,8 @@ final readonly class Process
     }
 
     /**
-     * Сначала текущий документ (локальная ссылка), затем остальные (ссылка с именем файла).
+     * The current document first (a local reference), then the rest (a reference carrying
+     * a file name).
      *
      * @param callable(Openapi): ?string $callback
      */
@@ -256,8 +262,9 @@ final readonly class Process
     }
 
     /**
-     * Ссылка на секцию components целиком: она либо своя (тогда разворачивается по месту),
-     * либо принадлежит документу, объявленному раньше текущего.
+     * A reference to a whole components section: either it is this document's own (and
+     * then it is written out in place), or it belongs to a document declared before this
+     * one.
      *
      * @param callable(Openapi): bool $callback
      */
