@@ -183,15 +183,36 @@ final readonly class Reader
         // A Callback Object is a map of expressions rather than a single object, so it is
         // declared here instead of among SECTIONS: the paths reader builds it
         foreach ($components->get('callbacks')->map() as $name => $node) {
+            $pointer = $fileName . '#/components/callbacks/' . self::escape((string) $name);
+
             $registry->declare(
-                $fileName . '#/components/callbacks/' . self::escape((string) $name),
+                $pointer,
                 $node,
                 static fn (Node $item): object => self::pathsReader($registry)->callback($item),
             );
+
+            $this->declareCallback($registry, $pointer, $node);
         }
 
         foreach ($document->get('paths')->map() as $template => $node) {
             $this->declarePath($registry, $fileName . '#/paths/' . self::escape((string) $template), $node);
+        }
+
+        // A Path Item Object lives in four places, and an operation in any of them is an
+        // operation of this document: a Link may name it, and `operationId` "MUST be
+        // resolved within the scope of the OpenAPI Description".
+        foreach ($document->get('webhooks')->map() as $name => $node) {
+            $this->declarePath($registry, $fileName . '#/webhooks/' . self::escape((string) $name), $node);
+        }
+    }
+
+    /**
+     * The Path Items of a Callback Object: their operations carry ids of their own.
+     */
+    private function declareCallback(Registry $registry, string $pointer, Node $node): void
+    {
+        foreach ($node->extensibleMap() as $expression => $item) {
+            $this->declarePath($registry, $pointer . '/' . self::escape((string) $expression), $item);
         }
     }
 
@@ -221,6 +242,15 @@ final readonly class Reader
 
             if ($id !== null) {
                 $registry->declareOperationId($id, $operationPointer);
+            }
+
+            // an operation's callbacks hold Path Items of their own, down to any depth
+            foreach ($operationNode->get('callbacks')->extensibleMap() as $name => $callback) {
+                $this->declareCallback(
+                    $registry,
+                    $operationPointer . '/callbacks/' . self::escape((string) $name),
+                    $callback,
+                );
             }
         }
     }

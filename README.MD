@@ -690,6 +690,11 @@ new Schemas\Untyped\Schema(resource: new Schemas\Abstract\Resource(dynamicRef: $
 // => {"$dynamicRef": "#node"}
 ```
 
+A dynamic anchor is found by name rather than by pointer, and that has two consequences. A target in
+a neighbouring file is written with that file — `other.yaml#node` — and a target that no document
+declares in `components.schemas` is refused at build time: written out in place, it has no name, and
+the reference would lead nowhere.
+
 ## Several types and the null type
 
 In 3.1 `type` may be an array. A `null` in it is `nullable`, and it is read as before:
@@ -756,9 +761,13 @@ $listUsers = new Paths\Operation(
 );
 ```
 
-An operation that has an `operationId` is printed by it, and one without by a pointer to its place in
-`paths` (`operationRef: "#/paths/~1users/get"`). When the target operation is in none of the
-documents handed to `Builder`, the build rejects that.
+An operation that has an `operationId` is printed by it, and one without by a pointer to its place
+(`operationRef: "#/paths/~1users/get"`). A Path Item Object lives in four places — `paths`,
+`webhooks`, `components.pathItems` and a Callback Object — and an operation in any of them is a
+target a Link may name: `operationId` "MUST be resolved within the scope of the OpenAPI
+Description", not within `paths`. When the target operation is in none of the documents handed to
+`Builder`, the build rejects that — including when the link names it by `operationId`, where the
+written document itself says nothing about where that operation is.
 
 ## References with a description of their own
 
@@ -815,7 +824,14 @@ composer check     # php-cs-fixer + phpstan (the maximum level) + phpunit
 
 CI runs the same on PHP 8.3 and 8.4 with `ext-yaml` — plus `composer real-world` and
 `composer validate-output` as a separate job: those reach for the network and for Node.js, and their
-failure should not look like a failure of the tests.
+failure should not look like a failure of the tests. PHP 8.5 is run as well, as a job that does not
+gate the build: `composer.json` allows `^8.3`, so the runtime has to be tried somewhere, but a
+deprecation raised inside php-cs-fixer or PHPStan on a runtime newer than they support is not a
+defect of this package.
+
+`composer coverage` prints which lines the suite never executed (it needs pcov or Xdebug; the test
+jobs deliberately run without a driver). The number itself is not a target — the point is to look at
+the untouched lines.
 
 The tests are arranged as pairs of files: `tests/Cases/<Test>/Objects/<name>.php` returns the
 objects, and `tests/Cases/<Test>/Jsons/<name>.json` the expected result. New cases are picked up
@@ -823,6 +839,14 @@ automatically; there is no need to register them in the test.
 
 `ReadmeTest` separately executes every PHP example in this file, so the documentation cannot drift
 away from the code unnoticed.
+
+`RoundTripPropertyTest` does the same round trips on documents nobody wrote: `RandomDocument`
+combines the objects of the package at random — one file and several, both versions, JSON and YAML,
+brief and verbose — and the properties are stated as laws rather than as expected texts. Building
+has to be idempotent: what is read from a built document and built again has to come out the same
+text. The generator carries its own xorshift, so a failure names a seed that reproduces it. Two
+defects were found this way straight away: a Link naming an operation that lives in `webhooks`, and
+a `$dynamicRef` whose anchor is in a neighbouring file.
 
 `RealWorldTest` runs the full read → write round trip on real specifications
 (`tests/Cases/RealWorldTest`; the sources are in `SOURCES.md`) and compares the meaning rather than

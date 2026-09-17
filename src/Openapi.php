@@ -45,6 +45,9 @@ final readonly class Openapi
     /** @var array<int, string> */
     private array $schemaIndex;
 
+    /** @var array<int, string> */
+    private array $operationIndex;
+
     public function __construct(
         public Info $info,
         ?Components $components = null,
@@ -85,6 +88,7 @@ final readonly class Openapi
         $this->servers = $servers ?? new Servers();
 
         $this->schemaIndex = self::indexSchemas($this->components->schemas);
+        $this->operationIndex = $this->indexOperations();
 
         $this->assertPathParameters();
     }
@@ -180,21 +184,17 @@ final readonly class Openapi
         return $this->nullOrString(array_search($value, $this->components->examples->items, true));
     }
 
+    /**
+     * The place of an operation in the document: `paths/~1users/get`, but also
+     * `webhooks/onEvent/post` or `components/pathItems/Ping/get`.
+     *
+     * A Path Item Object lives in four places by the specification, and an operation in
+     * any of them is a target a Link may name — `operationId` "MUST be resolved within
+     * the scope of the OpenAPI Description", not within `paths`.
+     */
     public function findOperation(Paths\Operation $operation): ?string
     {
-        foreach ($this->paths->items as $pathName => $path) {
-            if ($path instanceof Reference) {
-                continue;
-            }
-
-            $searchName = array_search($operation, $path->operations, true);
-
-            if ($searchName !== false) {
-                return self::quotePath((string) $pathName) . '/' . self::quotePath($searchName);
-            }
-        }
-
-        return null;
+        return $this->operationIndex[spl_object_id($operation)] ?? null;
     }
 
     public function findParameter(AbstractSchemaParameter|CustomParameter $value): ?string
@@ -310,6 +310,83 @@ final readonly class Openapi
             if ($schema->resource !== null && $schema->resource->defs !== null) {
                 self::collectSchemas($schema->resource->defs, $index[$id] . '/$defs/', $index);
             }
+        }
+    }
+
+    /**
+     * Every operation of the document, by identity => its place.
+     *
+     * A Path Item Object lives in four places — `paths`, `webhooks`,
+     * `components.pathItems` and a Callback Object — and an operation in any of them is an
+     * operation of this document. Built once, because a Link asks for this on every link.
+     *
+     * A Path Item that is a `$ref` is skipped: its operations are indexed where the item
+     * itself is declared, and the specification says that the operations of a Path Item
+     * used more than once cannot be resolved unambiguously anyway.
+     *
+     * @return array<int, string>
+     */
+    private function indexOperations(): array
+    {
+        $index = [];
+
+        foreach ($this->paths->items as $template => $path) {
+            self::collectOperations($path, 'paths/' . self::quotePath((string) $template), $index);
+        }
+
+        foreach ($this->webhooks->items as $name => $path) {
+            self::collectOperations($path, 'webhooks/' . self::quotePath((string) $name), $index);
+        }
+
+        foreach ($this->components->pathItems->items as $name => $path) {
+            self::collectOperations($path, 'components/pathItems/' . self::quotePath((string) $name), $index);
+        }
+
+        foreach ($this->components->callbacks->items as $name => $callback) {
+            self::collectCallback($callback, 'components/callbacks/' . self::quotePath((string) $name), $index);
+        }
+
+        return $index;
+    }
+
+    /**
+     * @param array<int, string> $index
+     */
+    private static function collectOperations(Path|Reference $path, string $prefix, array &$index): void
+    {
+        if ($path instanceof Reference) {
+            return;
+        }
+
+        foreach ($path->operations as $method => $operation) {
+            $id = spl_object_id($operation);
+
+            if (isset($index[$id])) {
+                // the same operation in two places: the first is the canonical one, and
+                // going on would walk a cycle through its own callbacks
+                continue;
+            }
+
+            $pointer = $prefix . '/' . $method;
+            $index[$id] = $pointer;
+
+            foreach ($operation->callbacks->items as $name => $callback) {
+                self::collectCallback($callback, $pointer . '/callbacks/' . self::quotePath((string) $name), $index);
+            }
+        }
+    }
+
+    /**
+     * @param array<int, string> $index
+     */
+    private static function collectCallback(PathItems|Reference $callback, string $prefix, array &$index): void
+    {
+        if ($callback instanceof Reference) {
+            return;
+        }
+
+        foreach ($callback->items as $expression => $path) {
+            self::collectOperations($path, $prefix . '/' . self::quotePath((string) $expression), $index);
         }
     }
 

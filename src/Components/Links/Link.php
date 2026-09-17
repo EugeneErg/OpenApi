@@ -37,8 +37,11 @@ final readonly class Link
         $result = [];
         $operation = $this->operation();
 
-        // the operation is named by its operationId, or else by a pointer into paths
+        // the operation is named by its operationId, or else by a pointer to its place
         if ($operation->id !== null) {
+            // nothing in the written document says where that operation is, so the build
+            // checks that the id resolves at all
+            $process->assertOperation($operation);
             $result['operationId'] = $operation->id;
         } else {
             $result['operationRef'] = $process->findOperation($operation);

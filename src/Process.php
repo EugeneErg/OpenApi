@@ -146,17 +146,32 @@ final readonly class Process
         return $this->toRef(static fn (Openapi $openapi) => $openapi->findParameter($value), 'parameters');
     }
 
+    /**
+     * The pointer a Link writes as `operationRef`. The section is part of what the
+     * document says, because a Path Item Object lives in four of them: `paths`,
+     * `webhooks`, `components.pathItems` and a Callback Object.
+     */
     public function findOperation(Paths\Operation $value): string
     {
-        $result = $this->toPointer(static fn (Openapi $openapi) => $openapi->findOperation($value), 'paths');
+        return $this->operationPointer($value) ?? throw new OperationNotFoundOpenapiException(
+            'Operation is not registered in any document passed to the Builder.',
+        );
+    }
 
-        if ($result === null) {
-            throw new OperationNotFoundOpenapiException(
-                'Operation is not registered in paths of any document passed to the Builder.',
-            );
+    /**
+     * A Link may name its target by `operationId` instead of a pointer, and then nothing
+     * in the written document says where that operation is. The specification requires
+     * the id to be resolvable, so it is checked here: otherwise the build would quietly
+     * write a link that leads nowhere.
+     */
+    public function assertOperation(Paths\Operation $value): void
+    {
+        if ($this->operationPointer($value) === null) {
+            throw new OperationNotFoundOpenapiException(sprintf(
+                'Operation "%s" is not registered in any document passed to the Builder.',
+                $value->id ?? '',
+            ));
         }
-
-        return $result;
     }
 
     public function findSchemas(AbstractSchemas $value): ?stdClass
@@ -225,6 +240,33 @@ final readonly class Process
     }
 
     /**
+     * The file whose document declares a schema as a component: '' for the document being
+     * built, and null when no document does.
+     *
+     * A dynamic anchor is found by name rather than by pointer, and a name only reaches
+     * across a file boundary when the reference carries the file.
+     */
+    public function fileOfSchema(AbstractSchema $schema): ?string
+    {
+        if ($this->openapi->findSchema($schema) !== null) {
+            return '';
+        }
+
+        foreach ($this->builder->openapi as $fileName => $item) {
+            if ($item !== $this->openapi && $item->findSchema($schema) !== null) {
+                return $fileName;
+            }
+        }
+
+        return null;
+    }
+
+    private function operationPointer(Paths\Operation $value): ?string
+    {
+        return $this->toPointer(static fn (Openapi $openapi) => $openapi->findOperation($value), '');
+    }
+
+    /**
      * @param callable(Openapi): ?string $callback
      */
     private function toRef(callable $callback, string $component): ?stdClass
@@ -242,10 +284,13 @@ final readonly class Process
      */
     private function toPointer(callable $callback, string $component): ?string
     {
+        // an empty section means the callback returns the whole path: an operation names
+        // its own section, because a Path Item Object lives in several of them
+        $prefix = $component === '' ? '#/' : '#/' . $component . '/';
         $result = $callback($this->openapi);
 
         if ($result !== null) {
-            return '#/' . $component . '/' . $result;
+            return $prefix . $result;
         }
 
         foreach ($this->builder->openapi as $fileName => $item) {
@@ -253,7 +298,7 @@ final readonly class Process
                 $result = $callback($item);
 
                 if ($result !== null) {
-                    return $fileName . '#/' . $component . '/' . $result;
+                    return $fileName . $prefix . $result;
                 }
             }
         }

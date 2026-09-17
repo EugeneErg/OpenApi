@@ -82,6 +82,77 @@ final class ReaderTest extends TestCase
     }
 
     /**
+     * A Link may name an operation that lives in `webhooks`: `operationId` "MUST be
+     * resolved within the scope of the OpenAPI Description", and a Path Item Object lives
+     * in four places, not only in `paths`.
+     *
+     * Found by RoundTripPropertyTest: the package wrote such a document and then refused
+     * to read it back.
+     */
+    public function testOperationIdOutsidePathsResolves(): void
+    {
+        $content = (string) json_encode([
+            'openapi' => '3.1.1',
+            'info' => ['title' => 'Webhooks', 'version' => '1.0.0'],
+            'webhooks' => [
+                'onCreated' => ['post' => [
+                    'operationId' => 'onCreated',
+                    'responses' => ['204' => ['description' => 'Accepted']],
+                ]],
+            ],
+            'paths' => [
+                '/users' => ['get' => [
+                    'operationId' => 'listUsers',
+                    'responses' => ['200' => [
+                        'description' => 'OK',
+                        'links' => ['created' => ['operationId' => 'onCreated']],
+                    ]],
+                ]],
+            ],
+        ]);
+
+        $openapi = Reader::read($content);
+        $again = (new Builder(...['openapi.json' => $openapi]))->encode();
+
+        self::assertStringContainsString('"operationId": "onCreated"', $again['openapi.json'] ?? '');
+    }
+
+    /**
+     * A dynamic anchor is found by name, so a target in a neighbouring file has to be
+     * named with that file. Found by RoundTripPropertyTest as well: the build wrote a
+     * plain `#node`, which named nothing in the file that carried it.
+     */
+    public function testDynamicRefReachesAnotherFile(): void
+    {
+        $contents = [
+            'a.json' => (string) json_encode([
+                'openapi' => '3.1.1',
+                'info' => ['title' => 'Anchored', 'version' => '1.0.0'],
+                'paths' => new stdClass(),
+                'components' => ['schemas' => [
+                    'Node' => [
+                        'type' => 'object',
+                        '$id' => 'https://example.com/schemas/node',
+                        '$dynamicAnchor' => 'node',
+                    ],
+                ]],
+            ]),
+            'b.json' => (string) json_encode([
+                'openapi' => '3.1.1',
+                'info' => ['title' => 'Pointing', 'version' => '1.0.0'],
+                'paths' => new stdClass(),
+                'components' => ['schemas' => [
+                    'Tree' => ['$dynamicRef' => 'a.json#node'],
+                ]],
+            ]),
+        ];
+
+        $built = (new Builder(...Reader::readAll($contents)))->encode();
+
+        self::assertStringContainsString('"$dynamicRef": "a.json#node"', $built['b.json'] ?? '');
+    }
+
+    /**
      * Three files in a ring: a → b → c → a. The references are resolved by one registry
      * for every file, so a ring between them is as ordinary a cycle as a recursive schema.
      */

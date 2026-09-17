@@ -52,6 +52,7 @@
       "@stan",
       "@test"
     ],
+    "coverage": "phpunit --coverage-text",
     "real-world": "@php tools/real-world.php",
     "validate-output": "@php tools/validate-output.php"
   },
@@ -61,6 +62,7 @@
     "cs": "Report coding standard violations without changing files.",
     "cs:fix": "Apply coding standard fixes.",
     "check": "Run coding standards, static analysis and tests.",
+    "coverage": "Run the test suite and print which lines it never executed (needs pcov or Xdebug).",
     "real-world": "Round-trip large public OpenAPI specifications and report what is lost.",
     "validate-output": "Validate every document the test cases build with the Redocly linter (needs Node.js)."
   },

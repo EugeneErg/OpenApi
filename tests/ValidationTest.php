@@ -334,7 +334,7 @@ final class ValidationTest extends TestCase
             'security scheme "missing" is not declared',
         ];
 
-        yield 'link to an operation outside paths' => [
+        yield 'link to an operation outside the document' => [
             static function (): array {
                 $orphan = new Paths\Operation(
                     responses: new Responses(x200: new Responses\Response(description: 'OK')),
@@ -354,7 +354,53 @@ final class ValidationTest extends TestCase
 
                 return (new Builder(...['api.json' => $document]))->prepareToSave();
             },
-            'not registered in paths',
+            'not registered in any document',
+        ];
+
+        // A Link may name its target by operationId instead of a pointer, and then the
+        // written document says nothing about where that operation is. The specification
+        // requires the id to be resolvable, so a dangling one is a broken document rather
+        // than a link somebody will notice later.
+        yield 'link naming an operationId that is not in the document' => [
+            static function (): array {
+                $orphan = new Paths\Operation(
+                    responses: new Responses(x200: new Responses\Response(description: 'OK')),
+                    id: 'orphan',
+                );
+                $document = self::document(new Paths(...['/users' => new Paths\Path(
+                    get: new Paths\Operation(
+                        responses: new Responses(x200: new Responses\Response(
+                            description: 'OK',
+                            links: new Components\Links(next: new Components\Links\Link(operation: $orphan)),
+                        )),
+                    ),
+                )]));
+
+                return (new Builder(...['api.json' => $document]))->prepareToSave();
+            },
+            'Operation "orphan" is not registered',
+        ];
+
+        // A dynamic anchor is found by name, and a schema written out in place has no
+        // name: such a reference would lead nowhere, so the build says so instead.
+        yield '$dynamicRef to a schema outside components' => [
+            static function (): array {
+                $anchored = new Schemas\Object\Schema(
+                    resource: new Schemas\Abstract\Resource(dynamicAnchor: 'node'),
+                );
+                $document = new Openapi(
+                    info: new Info(title: 'Dynamic', version: '1.0.0'),
+                    components: new Components(schemas: new Schemas\Untyped\Schemas(
+                        Tree: new Schemas\Untyped\Schema(
+                            resource: new Schemas\Abstract\Resource(dynamicRef: $anchored),
+                        ),
+                    )),
+                    version: Version::V311,
+                );
+
+                return (new Builder(...['api.json' => $document]))->prepareToSave();
+            },
+            'must be registered in components.schemas',
         ];
 
         yield '$schema without $id' => [

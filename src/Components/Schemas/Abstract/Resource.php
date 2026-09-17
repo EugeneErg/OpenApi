@@ -125,7 +125,20 @@ final readonly class Resource
                 );
             }
 
-            $result['$dynamicRef'] = '#' . $anchor;
+            // A plain "#anchor" is looked for in the document that carries it, so a target
+            // in a neighbouring file has to be named with that file. A target that no
+            // document declares as a component cannot be named at all: written out in
+            // place, it has no address, and the reference would lead nowhere.
+            $file = $process->fileOfSchema($this->dynamicRef);
+
+            if ($file === null) {
+                throw new InvalidSchemaOpenapiException(
+                    'The target of "$dynamicRef" must be registered in components.schemas: '
+                    . 'a dynamic anchor is found by name, and a schema written out in place has no name.',
+                );
+            }
+
+            $result['$dynamicRef'] = $file . '#' . $anchor;
         }
 
         return $result;

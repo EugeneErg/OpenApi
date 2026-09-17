@@ -137,9 +137,40 @@ in the same wrong way.
   with an explanation of every entry.
 - The `kitchen-sink-30` and `kitchen-sink-31` cases — one document per version, holding every object
   of the specification.
+- **`RoundTripPropertyTest`** — the same round trips on documents nobody wrote. `RandomDocument`
+  combines the objects of the package at random (one file and several, both versions, JSON and YAML,
+  brief and verbose) and the properties are stated as laws: building is idempotent, so what is read
+  from a built document and built again has to come out the same text. The generator carries its own
+  xorshift rather than `mt_rand`, because a failure that cannot be repeated by its seed is not a
+  failure anybody can fix. The two defects above were found by it within the first two hundred
+  documents.
+- `.gitattributes`: the tests, the corpus of real specifications and the development tooling are
+  `export-ignore`d, so `composer require --prefer-dist` no longer unpacks them into `vendor/`; the
+  line endings in the repository are normalised to `\n`, because the fixtures' expected JSON must not
+  become CRLF on a Windows checkout.
+- CI runs PHP 8.5 as a job that does not gate the build: `composer.json` allows `^8.3`, so the
+  runtime has to be tried somewhere, while a deprecation raised inside php-cs-fixer or PHPStan on a
+  runtime newer than they support is not a defect of this package.
+- `composer coverage` and a CI job for it: the point is not a number to hit but the lines no test has
+  ever executed. The test jobs stay without a coverage driver — the suite is run far more often than
+  it is read.
 
 ### Fixed
 
+- **A Link could not name an operation outside `paths`.** An operation in `webhooks`,
+  `components.pathItems` or a Callback Object is an operation of the document all the same —
+  `operationId` "MUST be resolved within the scope of the OpenAPI Description" — but the reader
+  declared the ids of `paths` alone, so it refused a document the package itself had just written.
+  Both sides now know all four places a Path Item Object lives in, and `operationRef` points into
+  any of them. A Link that names an operation by `operationId` is checked too: the written document
+  says nothing about where that operation is, so a dangling id is now a build error rather than a
+  link somebody discovers later.
+- **A `$dynamicRef` to a neighbouring file wrote an anchor that was not there.** A dynamic anchor is
+  found by name, and a plain `#node` names one in the file that carries it, so a target in another
+  document was unreachable — the build wrote it and the reader would not read it. The reference now
+  carries the file (`other.yaml#node`), and the reader resolves it there. A target that no document
+  declares in `components.schemas` has no name at all, and the build says so instead of writing a
+  reference that leads nowhere.
 - **A reference to `components.requestBodies` was spread out as a copy** instead of a `$ref`: an
   operation wrote the body in full (236 places in Elasticsearch).
 - **A `$ref` to `components.callbacks` was read as a callback expression**, and the output was

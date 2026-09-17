@@ -33,6 +33,7 @@ use EugeneErg\OpenApi\Components\Schemas\String\Strings;
 use EugeneErg\OpenApi\Components\Schemas\String\Value as StringValue;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schema as UntypedSchema;
 use EugeneErg\OpenApi\Components\Schemas\Untyped\Schemas as UntypedSchemas;
+use EugeneErg\OpenApi\Exceptions\InvalidDocumentOpenapiException;
 use EugeneErg\OpenApi\Extensions;
 use EugeneErg\OpenApi\ExternalDocs;
 use stdClass;
@@ -714,9 +715,22 @@ final readonly class SchemaReader
             return null;
         }
 
-        $anchor = ltrim($ref, '#');
+        // "#anchor" names an anchor of this document, "other.yaml#anchor" one of a
+        // neighbouring file: a dynamic anchor is found by name, and the name is looked
+        // for in the file the reference points at
+        $position = strpos($ref, '#');
+        $file = $position === false ? '' : substr($ref, 0, $position);
+        $anchor = $position === false ? $ref : substr($ref, $position + 1);
 
-        foreach ($this->registry->pointers($this->registry->currentFile() . '#') as $pointer) {
+        if ($file !== '' && !isset($this->registry->documents()[$file])) {
+            throw new InvalidDocumentOpenapiException(sprintf(
+                '%s: "$dynamicRef" points at file "%s", which was not passed to the reader.',
+                $node->get('$dynamicRef')->path,
+                $file,
+            ));
+        }
+
+        foreach ($this->registry->pointers(($file === '' ? $this->registry->currentFile() : $file) . '#') as $pointer) {
             $candidate = $this->registry->node($pointer);
 
             if ($candidate?->get('$dynamicAnchor')->stringOrNull() === $anchor) {

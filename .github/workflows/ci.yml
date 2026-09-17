@@ -41,6 +41,59 @@ jobs:
       - name: Tests
         run: vendor/bin/phpunit
 
+  # composer.json allows ^8.3, so 8.5 is declared as supported and has to be run
+  # somewhere. It does not gate the build: the suite fails on any deprecation
+  # (phpunit.xml.dist), and one raised inside php-cs-fixer or PHPStan on a runtime
+  # newer than they support is not a defect of this package. Make it required as
+  # soon as it goes green.
+  next:
+    name: PHP 8.5 (not required)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: json, mbstring, yaml
+          coverage: none
+          ini-values: error_reporting=E_ALL, zend.assertions=1
+
+      - uses: ramsey/composer-install@v3
+        with:
+          composer-options: --ignore-platform-req=php+
+
+      - name: Tests
+        run: vendor/bin/phpunit
+
+  # Coverage is not a target to hit but a way to see the lines no test has ever run.
+  # It needs a driver, which the test jobs deliberately do without: pcov slows a run
+  # down, and the suite is run far more often than it is read.
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: json, mbstring, yaml
+          coverage: pcov
+
+      - uses: ramsey/composer-install@v3
+
+      - name: Tests with coverage
+        run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+
   real-world:
     name: Real-world specifications
     runs-on: ubuntu-latest
