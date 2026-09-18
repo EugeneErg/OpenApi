@@ -63,6 +63,14 @@ final readonly class EnumReader
         '$comment', '$defs', '$id', '$anchor', '$dynamicAnchor', '$vocabulary', '$schema',
     ];
 
+    /**
+     * The annotations about the contents of a string: by JSON Schema they assert nothing
+     * at all, so they neither exclude a value nor need a subschema of their own. A string
+     * enum keeps them, and an enum of any other kind has nowhere to keep them — there
+     * they mean nothing, like any keyword of another type.
+     */
+    private const array CONTENT = ['contentEncoding', 'contentMediaType', 'contentSchema'];
+
     public function __construct(
         private SchemaReader $schemas,
         private ValueReader $values,
@@ -143,6 +151,15 @@ final readonly class EnumReader
 
         foreach (JsonValue::members($node->value) as $keyword => $unused) {
             $keyword = (string) $keyword;
+
+            if (in_array($keyword, self::CONTENT, true)) {
+                if ($type !== 'string') {
+                    // read and dropped: strict reading complains about what was not read
+                    $node->dropped($keyword);
+                }
+
+                continue;
+            }
 
             if (!in_array($keyword, self::KEPT, true) && !$this->assertionHolds($node, $keyword, $type, $values)) {
                 $split[] = $keyword;

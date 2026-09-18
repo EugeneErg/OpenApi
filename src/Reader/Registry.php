@@ -259,13 +259,6 @@ final class Registry
         return null;
     }
 
-    public function fileOf(string $pointer): string
-    {
-        $position = strpos($pointer, '#');
-
-        return $position === false ? $pointer : substr($pointer, 0, $position);
-    }
-
     /**
      * The node a pointer addresses; needed to declare components while walking the document.
      */

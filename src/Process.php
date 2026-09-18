@@ -4,28 +4,21 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi;
 
-use EugeneErg\OpenApi\Components\Callbacks;
-use EugeneErg\OpenApi\Components\Examples;
 use EugeneErg\OpenApi\Components\Examples\Example;
 use EugeneErg\OpenApi\Components\Headers;
-use EugeneErg\OpenApi\Components\Links;
 use EugeneErg\OpenApi\Components\Links\Link;
-use EugeneErg\OpenApi\Components\Parameters;
 use EugeneErg\OpenApi\Components\Parameters\Abstract\AbstractSchemaParameter;
 use EugeneErg\OpenApi\Components\Parameters\ContentParameter;
 use EugeneErg\OpenApi\Components\Parameters\CustomParameter;
 use EugeneErg\OpenApi\Components\Parameters\Header\SchemaParameter as HeaderSchemaParameter;
-use EugeneErg\OpenApi\Components\RequestBodies;
 use EugeneErg\OpenApi\Components\RequestBodies\RequestBody;
-use EugeneErg\OpenApi\Components\Responses;
 use EugeneErg\OpenApi\Components\Responses\Response;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchema;
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractSchemas;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\DeferredSchema;
 use EugeneErg\OpenApi\Components\SecuritySchemes;
 use EugeneErg\OpenApi\Components\SecuritySchemes\AbstractSecurityScheme;
 use EugeneErg\OpenApi\Components\SecuritySchemes\Oauth2Security\Flows\Scope;
-use EugeneErg\OpenApi\Exceptions\ComponentsNotFoundOpenapiException;
+use EugeneErg\OpenApi\Exceptions\InvalidArgumentOpenapiException;
 use EugeneErg\OpenApi\Exceptions\InvalidSchemaOpenapiException;
 use EugeneErg\OpenApi\Exceptions\OperationNotFoundOpenapiException;
 use EugeneErg\OpenApi\Paths\Path;
@@ -174,57 +167,6 @@ final readonly class Process
         }
     }
 
-    public function findSchemas(AbstractSchemas $value): ?stdClass
-    {
-        return $this->toComponentsRef(static fn (Openapi $openapi) => $openapi->components->schemas === $value, 'schemas');
-    }
-
-    public function findCallbacks(Callbacks $value): ?stdClass
-    {
-        return $this->toComponentsRef(static fn (Openapi $openapi) => $openapi->components->callbacks === $value, 'callbacks');
-    }
-
-    public function findParameters(Parameters $value): ?stdClass
-    {
-        return $this->toComponentsRef(static fn (Openapi $openapi) => $openapi->components->parameters === $value, 'parameters');
-    }
-
-    public function findLinks(Links $value): ?stdClass
-    {
-        return $this->toComponentsRef(static fn (Openapi $openapi) => $openapi->components->links === $value, 'links');
-    }
-
-    public function findSecuritySchemes(SecuritySchemes $value): ?stdClass
-    {
-        return $this->toComponentsRef(
-            static fn (Openapi $openapi) => $openapi->components->securitySchemes === $value,
-            'securitySchemes',
-        );
-    }
-
-    public function findHeaders(Headers $value): ?stdClass
-    {
-        return $this->toComponentsRef(static fn (Openapi $openapi) => $openapi->components->headers === $value, 'headers');
-    }
-
-    public function findRequestBodies(RequestBodies $value): ?stdClass
-    {
-        return $this->toComponentsRef(
-            static fn (Openapi $openapi) => $openapi->components->requestBodies === $value,
-            'requestBodies',
-        );
-    }
-
-    public function findExamples(Examples $value): ?stdClass
-    {
-        return $this->toComponentsRef(static fn (Openapi $openapi) => $openapi->components->examples === $value, 'examples');
-    }
-
-    public function findResponses(Responses $value): ?stdClass
-    {
-        return $this->toComponentsRef(static fn (Openapi $openapi) => $openapi->components->responses === $value, 'responses');
-    }
-
     /**
      * A Security Requirement Object refers to the securitySchemes of its own document, so
      * the scope and the scheme are looked up without reaching the neighbouring files.
@@ -254,6 +196,8 @@ final readonly class Process
 
         foreach ($this->builder->openapi as $fileName => $item) {
             if ($item !== $this->openapi && $item->findSchema($schema) !== null) {
+                $this->assertSameVersion($fileName, $item);
+
                 return $fileName;
             }
         }
@@ -298,6 +242,8 @@ final readonly class Process
                 $result = $callback($item);
 
                 if ($result !== null) {
+                    $this->assertSameVersion($fileName, $item);
+
                     return $fileName . $prefix . $result;
                 }
             }
@@ -307,27 +253,28 @@ final readonly class Process
     }
 
     /**
-     * A reference to a whole components section: either it is this document's own (and
-     * then it is written out in place), or it belongs to a document declared before this
-     * one.
+     * A reference reaching into another document requires that document to be written to
+     * the same version of the specification.
      *
-     * @param callable(Openapi): bool $callback
+     * "An OpenAPI Description is composed of an entry document and any/all of its
+     * referenced documents", and it "uses and conforms to the OpenAPI Specification" —
+     * one version of it. A document of 3.0 pointing into a document of 3.1 gets whatever
+     * 3.1 wrote there: `{"type": "null"}` is a legal target and an illegal schema on the
+     * side that reads it, and nothing in the written text says so.
      */
-    private function toComponentsRef(callable $callback, string $component): ?stdClass
+    private function assertSameVersion(string $fileName, Openapi $target): void
     {
-        foreach ($this->builder->openapi as $fileName => $item) {
-            if ($item === $this->openapi) {
-                return null;
-            }
-
-            if ($callback($item)) {
-                return (object) ['$ref' => $fileName . '#/components/' . $component];
-            }
+        if ($target->version === $this->openapi->version) {
+            return;
         }
 
-        throw new ComponentsNotFoundOpenapiException(sprintf(
-            'components.%s is not registered in any document passed to the Builder.',
-            $component,
+        throw new InvalidArgumentOpenapiException(sprintf(
+            'A reference into "%s" crosses a version boundary: that document is OpenAPI %s while this '
+            . 'one is OpenAPI %s. One OpenAPI Description is written to one version of the '
+            . 'specification, so the documents that refer to each other have to agree on it.',
+            $fileName,
+            $target->version->value,
+            $this->openapi->version->value,
         ));
     }
 }

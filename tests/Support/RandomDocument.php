@@ -121,13 +121,38 @@ final class RandomDocument
 
     private Parameters\Query\SchemaParameter $sharedQuery;
 
+    /**
+     * A parameter of every location, registered in components.parameters: read back, a
+     * `$ref` in a header, cookie or path position has to land in the right container, and
+     * its name has to come from the registration rather than from the place of use.
+     */
+    private Parameters\Header\SchemaParameter $sharedHeaderParameter;
+
+    private Parameters\Cookie\SchemaParameter $sharedCookieParameter;
+
+    private Parameters\Path\SchemaParameter $sharedPathParameter;
+
+    private string $sharedHeaderParameterName = 'X-Shared-Parameter';
+
+    private string $sharedCookieParameterName = 'shared';
+
+    private string $sharedPathName = 'id';
+
+    /**
+     * The schemas container of the first document. A neighbour may hand the very same
+     * container to its own Components, and then the reference is to the whole section —
+     * `doc0.json#/components/schemas` — rather than to an item of it.
+     */
+    private ?Schemas\Untyped\Schemas $sharedSchemas = null;
+
     private RequestBodies\RequestBody $sharedRequestBody;
 
     private Example $sharedExample;
 
-    private Parameters\Header\SchemaParameter $sharedHeader;
+    /** A Header Object of components.headers, as opposed to the parameter above. */
+    private Parameters\Header\SchemaParameter $sharedHeaderComponent;
 
-    private string $sharedHeaderName;
+    private string $sharedHeaderComponentName = 'X-Shared-Header';
 
     public function __construct(int $seed, private readonly Version $version)
     {
@@ -140,14 +165,17 @@ final class RandomDocument
         $this->sharedQuery = new Parameters\Query\SchemaParameter(schema: new Schemas\String\Schema());
         $this->sharedParameter = new Parameters\Parameter(name: 'shared', parameter: $this->sharedQuery);
         $this->sharedExample = new Example(value: new Schemas\Untyped\Value('shared'));
-        $this->sharedHeader = new Parameters\Header\SchemaParameter(schema: new Schemas\String\Schema());
-        $this->sharedHeaderName = 'X-Shared';
+        $this->sharedHeaderComponent = new Parameters\Header\SchemaParameter(schema: new Schemas\String\Schema());
+        $this->sharedHeaderComponentName = 'X-Shared';
         $this->sharedRequestBody = new RequestBodies\RequestBody(
             content: RequestBodies\Contents::fromArray([
                 'text/plain' => new RequestBodies\Content(schema: new Schemas\String\Schema()),
             ]),
         );
         $this->sharedResponse = new Responses\Response(description: 'Shared.');
+        $this->sharedHeaderParameter = new Parameters\Header\SchemaParameter(schema: new Schemas\String\Schema());
+        $this->sharedCookieParameter = new Parameters\Cookie\SchemaParameter(schema: new Schemas\String\Schema());
+        $this->sharedPathParameter = new Parameters\Path\SchemaParameter(schema: new Schemas\String\Schema());
     }
 
     public function build(): Openapi
@@ -157,6 +185,28 @@ final class RandomDocument
         }
 
         throw new LogicException('buildAll(1) returns exactly one document.');
+    }
+
+    /**
+     * Documents of different versions in one build.
+     *
+     * A reference across a version boundary is refused, so every document here is built by
+     * a generator of its own: separate pools, separate shared components, nothing to point
+     * at across the boundary. What this exercises is the rest of it — one Builder writing
+     * 3.0 and 3.1 side by side.
+     *
+     * @return array<string, Openapi>
+     */
+    public static function mixedVersions(int $seed, int $count): array
+    {
+        $result = [];
+
+        for ($i = 0; $i < $count; ++$i) {
+            $version = $i % 2 === 0 ? Version::V303 : Version::V311;
+            $result[sprintf('mixed%d.json', $i)] = (new self($seed * 31 + $i, $version))->build();
+        }
+
+        return $result;
     }
 
     /**
@@ -183,6 +233,7 @@ final class RandomDocument
     {
         $this->pool = [];
         $this->owners = [];
+        $this->sharedSchemas = null;
 
         for ($i = $this->int(2, 6); $i > 0; --$i) {
             $this->pool[] = $this->schema(2);
@@ -232,10 +283,16 @@ final class RandomDocument
         $this->current = 0;
         $this->sharedQuery = new Parameters\Query\SchemaParameter(schema: $this->schema(1));
         $this->sharedParameter = new Parameters\Parameter(name: $this->name(), parameter: $this->sharedQuery);
+        $this->sharedPathName = $this->name();
+        $this->sharedHeaderParameterName = $this->header();
+        $this->sharedCookieParameterName = $this->name();
+        $this->sharedHeaderParameter = new Parameters\Header\SchemaParameter(schema: $this->schema(1));
+        $this->sharedCookieParameter = new Parameters\Cookie\SchemaParameter(schema: $this->schema(1));
+        $this->sharedPathParameter = new Parameters\Path\SchemaParameter(schema: $this->schema(1));
         // the order matters: the later ones reuse the earlier ones
         $this->sharedExample = $this->example();
-        $this->sharedHeader = $this->headerParameter();
-        $this->sharedHeaderName = $this->header();
+        $this->sharedHeaderComponent = $this->headerParameter();
+        $this->sharedHeaderComponentName = $this->header();
         $this->sharedRequestBody = $this->requestBody();
         $this->sharedResponse = $this->response();
     }
@@ -282,18 +339,24 @@ final class RandomDocument
 
         $paths = $this->paths();
         $pathItems = $this->isV31() && $this->chance(30) ? PathItems::fromArray([$this->name() => $this->path([])]) : null;
+        $container = $schemas === [] ? null : Schemas\Untyped\Schemas::fromArray($schemas);
+
+        if ($owner) {
+            $this->sharedSchemas = $container;
+        } elseif ($container === null && $this->sharedSchemas !== null && $this->chance(30)) {
+            // the same container object: the whole section is one reference
+            $container = $this->sharedSchemas;
+        }
 
         return new Openapi(
             info: $this->info(),
             components: new Components(
                 examples: $owner ? new Examples(...[$this->name() => $this->sharedExample]) : null,
                 pathItems: $pathItems,
-                schemas: $schemas === [] ? null : Schemas\Untyped\Schemas::fromArray($schemas),
-                parameters: $owner
-                    ? Parameters::fromArray([$this->sharedParameter->name => $this->sharedParameter])
-                    : null,
+                schemas: $container,
+                parameters: $owner ? $this->registeredParameters() : null,
                 headers: $owner
-                    ? Components\Headers::fromArray([$this->sharedHeaderName => $this->sharedHeader])
+                    ? Components\Headers::fromArray([$this->sharedHeaderComponentName => $this->sharedHeaderComponent])
                     : null,
                 requestBodies: $owner ? RequestBodies::fromArray([$this->name() => $this->sharedRequestBody]) : null,
                 responses: $owner ? Responses::fromArray([$this->name() => $this->sharedResponse]) : null,
@@ -348,8 +411,15 @@ final class RandomDocument
             $template = '/' . $this->name();
             $variables = [];
 
+            // one template in four uses the name a registered path parameter carries, so
+            // that parameter can be passed without a name and written as a `$ref`. Only in
+            // the document that declares it: the template is checked against the names of
+            // its own components, which is all a document knows at construction time.
+            $registered = $this->current === 0 && $this->chance(25);
+
             for ($v = $this->int(0, 2); $v > 0; --$v) {
-                $variable = $this->name();
+                $variable = $registered && $v === 1 ? $this->sharedPathName : $this->name();
+                $registered = $registered && $v !== 1;
                 $variables[] = $variable;
                 $template .= '/{' . $variable . '}';
             }
@@ -466,7 +536,7 @@ final class RandomDocument
             description: $this->sentence(),
             headers: $this->chance(25)
                 ? Components\Headers::fromArray($this->chance(50)
-                    ? [$this->sharedHeaderName => $this->sharedHeader]
+                    ? [$this->sharedHeaderComponentName => $this->sharedHeaderComponent]
                     : [$this->header() => $this->headerParameter()])
                 : null,
             content: $this->chance(70) ? $this->contents() : null,
@@ -531,12 +601,24 @@ final class RandomDocument
 
         $paths = [];
 
+        $registered = [];
+
         foreach ($variables as $variable) {
-            $paths[$variable] = new Parameters\Path\SchemaParameter(
-                schema: $this->schema(1),
-                style: $this->chance(20) ? Parameters\Path\Style::Label : Parameters\Path\Style::Simple,
-                description: $this->chance(30) ? $this->sentence() : null,
-            );
+            if ($variable === $this->sharedPathName) {
+                // the name comes from the registration, so the item goes in positionally —
+                // and PHP wants the positional arguments first when the array is unpacked
+                $registered[] = $this->sharedPathParameter;
+
+                continue;
+            }
+
+            $paths[$variable] = $this->chance(15)
+                ? $this->contentParameter()
+                : new Parameters\Path\SchemaParameter(
+                    schema: $this->schema(1),
+                    style: $this->chance(20) ? Parameters\Path\Style::Label : Parameters\Path\Style::Simple,
+                    description: $this->chance(30) ? $this->sentence() : null,
+                );
         }
 
         $queries = [];
@@ -550,10 +632,7 @@ final class RandomDocument
 
         for ($i = $this->int(0, 2); $i > 0; --$i) {
             $queries[$this->name()] = $this->chance(20)
-                ? new Parameters\ContentParameter(
-                    mimeType: 'application/json',
-                    content: new RequestBodies\Content(schema: $this->schema(1)),
-                )
+                ? $this->contentParameter()
                 : new Parameters\Query\SchemaParameter(
                     schema: $this->schema(1),
                     explode: $this->chance(30) ? $this->chance(50) : null,
@@ -569,15 +648,63 @@ final class RandomDocument
             // unpacking rather than fromArray(): an integer key has to stay a positional
             // argument, and fromArray() would read it as the name "0"
             queries: $queries === [] ? null : new Parameters\Query\Queries(...$queries),
-            headers: $this->chance(25)
-                ? Parameters\Header\Headers::fromArray([$this->header() => $this->headerParameter()])
-                : null,
-            cookies: $this->chance(20)
-                ? Parameters\Cookie\Cookies::fromArray([$this->name() => new Parameters\Cookie\SchemaParameter(
-                    schema: $this->schema(1),
-                )])
-                : null,
-            paths: $paths === [] ? null : Parameters\Path\Paths::fromArray($paths),
+            // one roll rather than several chances: two identical conditions in a match
+            // are one condition to a static analyser, and the second arm is dead
+            headers: match ($this->int(0, 9)) {
+                0, 1 => new Parameters\Header\Headers($this->sharedHeaderParameter),
+                2 => Parameters\Header\Headers::fromArray([$this->header() => $this->contentParameter()]),
+                3, 4 => Parameters\Header\Headers::fromArray([$this->header() => $this->headerParameter()]),
+                default => null,
+            },
+            cookies: match ($this->int(0, 9)) {
+                0 => new Parameters\Cookie\Cookies($this->sharedCookieParameter),
+                1 => Parameters\Cookie\Cookies::fromArray([$this->name() => $this->contentParameter()]),
+                2, 3 => Parameters\Cookie\Cookies::fromArray([
+                    $this->name() => new Parameters\Cookie\SchemaParameter(schema: $this->schema(1)),
+                ]),
+                default => null,
+            },
+            // unpacking rather than fromArray(): a registered parameter goes in without a
+            // name, and fromArray() would read its integer key as the name "0"
+            paths: $paths === [] && $registered === []
+                ? null
+                : new Parameters\Path\Paths(...[...$registered, ...$paths]),
+        );
+    }
+
+    /**
+     * The parameters components declares: one of every location, so a `$ref` to each is
+     * written and read back.
+     */
+    private function registeredParameters(): Parameters
+    {
+        return Parameters::fromArray([
+            $this->sharedParameter->name => $this->sharedParameter,
+            $this->sharedHeaderParameterName => new Parameters\Parameter(
+                name: $this->sharedHeaderParameterName,
+                parameter: $this->sharedHeaderParameter,
+            ),
+            $this->sharedCookieParameterName => new Parameters\Parameter(
+                name: $this->sharedCookieParameterName,
+                parameter: $this->sharedCookieParameter,
+            ),
+            $this->sharedPathName => new Parameters\Parameter(
+                name: $this->sharedPathName,
+                parameter: $this->sharedPathParameter,
+            ),
+        ]);
+    }
+
+    /**
+     * A parameter whose value is a media type rather than a schema. Its location comes
+     * from where it is used, so the same class serves every one of them.
+     */
+    private function contentParameter(): Parameters\ContentParameter
+    {
+        return new Parameters\ContentParameter(
+            mimeType: $this->chance(50) ? 'application/json' : 'text/plain',
+            content: new RequestBodies\Content(schema: $this->schema(1)),
+            required: $this->chance(30),
         );
     }
 
@@ -592,10 +719,22 @@ final class RandomDocument
 
     private function callback(): PathItems
     {
+        // an operation inside a callback is an operation of the document as well: it may
+        // carry an operationId, and a Link may name it
+        $id = $this->chance(40) ? 'callback' . $this->counter++ : null;
+        $operation = new Operation(
+            responses: new Responses(x204: new Responses\Response(description: 'Accepted')),
+            id: $id,
+        );
+
+        if ($id === null) {
+            $this->anonymous[] = $operation;
+        } else {
+            $this->operations[$id] = $operation;
+        }
+
         return PathItems::fromArray(
-            ['{$request.body#/' . $this->word() . '}' => new Paths\Path(
-                post: new Operation(responses: new Responses(x204: new Responses\Response(description: 'Accepted'))),
-            )],
+            ['{$request.body#/' . $this->word() . '}' => new Paths\Path(post: $operation)],
             $this->extensions(),
         );
     }
@@ -619,13 +758,47 @@ final class RandomDocument
 
         return new Link(
             operation: $target,
-            parameters: $this->chance(50)
-                ? Link\Parameters::fromArray([$this->word() => Link\Parameter::responseBody('/' . $this->word())])
-                : null,
+            parameters: $this->chance(50) ? $this->linkParameters() : null,
             description: $this->chance(40) ? $this->sentence() : null,
-            server: $this->chance(20) ? new Servers\Server(url: 'https://example.com') : null,
+            server: $this->chance(20)
+                ? new Servers\Server(
+                    url: 'https://example.com/{' . ($variable = $this->word()) . '}',
+                    variables: Servers\Variables::fromArray([$variable => new Servers\Variable(
+                        default: 'v1',
+                        enum: $this->chance(50) ? new Schemas\String\Strings('v1', 'v2') : null,
+                        description: $this->chance(50) ? $this->sentence() : null,
+                    )]),
+                )
+                : null,
             extensions: $this->extensions(),
         );
+    }
+
+    /**
+     * Every form a Link parameter can take: the named constructors cover the usual
+     * expressions, and `expression()` takes whatever else the specification allows.
+     */
+    private function linkParameters(): Link\Parameters
+    {
+        $items = [];
+
+        for ($i = $this->int(1, 3); $i > 0; --$i) {
+            $items[$this->name()] = match ($this->int(0, 8)) {
+                0 => Link\Parameter::requestPath($this->word()),
+                1 => Link\Parameter::requestQuery($this->word()),
+                2 => Link\Parameter::requestHeader($this->header()),
+                3 => Link\Parameter::requestBody($this->chance(50) ? '/' . $this->word() : null),
+                4 => Link\Parameter::responseHeader($this->header()),
+                5 => Link\Parameter::responseBody($this->chance(50) ? '/' . $this->word() : null),
+                6 => Link\Parameter::constant((string) $this->int(1, 100)),
+                7 => Link\Parameter::json($this->chance(50)
+                    ? [$this->word() => $this->int(0, 10)]
+                    : $this->int(0, 100)),
+                default => Link\Parameter::expression('$request.path.' . $this->word()),
+            };
+        }
+
+        return Link\Parameters::fromArray($items);
     }
 
     private function example(): Example
@@ -672,14 +845,42 @@ final class RandomDocument
                 case 0:
                     $scope = new Oauth2Security\Flows\Scope($this->sentence());
                     $this->scopes[] = $scope;
+                    $scopes = Oauth2Security\Flows\Scopes::fromArray(['read:' . $this->word() => $scope]);
                     $this->schemes[$this->name()] = new Oauth2Security\Scheme(
-                        flows: Oauth2Security\Flows::createAuthorizationCode(
-                            new Oauth2Security\Flows\AuthorizationCodeFlow(
-                                authorizationUrl: 'https://example.com/oauth/authorize',
-                                tokenUrl: 'https://example.com/oauth/token',
-                                scopes: Oauth2Security\Flows\Scopes::fromArray(['read:' . $this->word() => $scope]),
+                        flows: match ($this->int(0, 3)) {
+                            0 => Oauth2Security\Flows::createAuthorizationCode(
+                                new Oauth2Security\Flows\AuthorizationCodeFlow(
+                                    authorizationUrl: 'https://example.com/oauth/authorize',
+                                    tokenUrl: 'https://example.com/oauth/token',
+                                    scopes: $scopes,
+                                ),
                             ),
-                        ),
+                            1 => Oauth2Security\Flows::createClientCredentials(
+                                new Oauth2Security\Flows\ClientCredentialsFlow(
+                                    tokenUrl: 'https://example.com/oauth/token',
+                                    scopes: $scopes,
+                                ),
+                                null,
+                            ),
+                            2 => Oauth2Security\Flows::createPassword(
+                                new Oauth2Security\Flows\PasswordFlow(
+                                    tokenUrl: 'https://example.com/oauth/token',
+                                    scopes: $scopes,
+                                    refreshUrl: 'https://example.com/oauth/refresh',
+                                ),
+                                null,
+                                null,
+                            ),
+                            default => Oauth2Security\Flows::createImplicit(
+                                new Oauth2Security\Flows\ImplicitFlow(
+                                    authorizationUrl: 'https://example.com/oauth/authorize',
+                                    scopes: $scopes,
+                                ),
+                                null,
+                                null,
+                                null,
+                            ),
+                        },
                         description: $this->chance(40) ? $this->sentence() : null,
                     );
 
@@ -783,12 +984,17 @@ final class RandomDocument
             return $this->pick($this->pool);
         }
 
-        $kinds = ['string', 'integer', 'number', 'boolean', 'untyped', 'enum-string', 'enum-integer', 'enum-mixed'];
+        $kinds = [
+            'string', 'integer', 'number', 'boolean', 'untyped',
+            'enum-string', 'enum-integer', 'enum-number', 'enum-boolean', 'enum-mixed',
+        ];
 
         if ($depth > 0) {
             $kinds[] = 'object';
             $kinds[] = 'array';
             $kinds[] = 'composition';
+            $kinds[] = 'enum-object';
+            $kinds[] = 'enum-array';
         }
 
         if ($this->isV31()) {
@@ -803,11 +1009,14 @@ final class RandomDocument
                 description: $this->chance(30) ? $this->sentence() : null,
                 nullable: $this->chance(20),
                 default: $this->chance(30) ? new Schemas\Boolean\Value($this->chance(50)) : null,
+                example: $this->chance(20) ? new Schemas\Boolean\Value($this->chance(50)) : null,
             ),
             'null' => new Schemas\Null\Schema(description: $this->chance(50) ? $this->sentence() : null),
             'untyped' => new Schemas\Untyped\Schema(
                 description: $this->chance(40) ? $this->sentence() : null,
                 format: $this->chance(20) ? $this->word() . '-map' : null,
+                // a null value is a value: the example of an empty response
+                example: $this->chance(20) ? new Schemas\Untyped\Value($this->chance(50) ? null : $this->word()) : null,
                 extensions: $this->extensions(),
             ),
             'enum-string' => new Schemas\String\EnumSchema(
@@ -815,10 +1024,37 @@ final class RandomDocument
                 description: $this->chance(30) ? $this->sentence() : null,
                 nullable: $this->chance(20),
                 format: $this->chance(20) ? $this->word() . '-kind' : null,
+                contentEncoding: $this->isV31() && $this->chance(20) ? 'base64' : null,
+                contentMediaType: $this->isV31() && $this->chance(20) ? 'application/json' : null,
             ),
             'enum-integer' => new Schemas\Integer\EnumSchema(
                 new Schemas\Integer\Integers(...$this->numbers($this->int(1, 3))),
                 nullable: $this->chance(20),
+            ),
+            'enum-number' => new Schemas\Number\EnumSchema(
+                new Schemas\Number\Numbers(...array_map(
+                    static fn (int $value): float => $value + 0.5,
+                    $this->numbers($this->int(1, 3)),
+                )),
+                xml: $this->chance(20) ? $this->xml() : null,
+            ),
+            'enum-boolean' => new Schemas\Boolean\EnumSchema(
+                $this->chance(50),
+                description: $this->chance(40) ? $this->sentence() : null,
+            ),
+            'enum-object' => new Schemas\Object\EnumSchema(
+                new Schemas\Object\Objects(Schemas\Object\OpenapiObject::fromArray([
+                    $this->word() => $this->word(),
+                    $this->name() => $this->int(0, 10),
+                ])),
+                nullable: $this->chance(20),
+            ),
+            'enum-array' => new Schemas\Array\EnumSchema(
+                new Schemas\Array\Arrays(new Schemas\Array\OpenapiArray(
+                    $this->word(),
+                    $this->int(0, 10),
+                    Schemas\Object\OpenapiObject::fromArray([$this->word() => null]),
+                )),
             ),
             'enum-mixed' => new Schemas\Untyped\EnumSchema(
                 new Schemas\Untyped\Values($this->word(), $this->int(0, 100)),
@@ -846,8 +1082,22 @@ final class RandomDocument
             pattern: $this->chance(25) ? '^[a-z]+$' : null,
             format: $this->chance(30) ? Schemas\String\Format::Uuid : null,
             contentEncoding: $this->isV31() && $this->chance(15) ? 'base64' : null,
+            contentMediaType: $this->isV31() && $this->chance(15) ? 'application/json' : null,
             // a schema may carry a check without declaring a type
             declareType: !$this->chance(15),
+            extensions: $this->extensions(),
+            xml: $this->chance(15) ? $this->xml() : null,
+        );
+    }
+
+    private function xml(): Schemas\Abstract\Xml
+    {
+        return new Schemas\Abstract\Xml(
+            name: $this->chance(70) ? $this->word() : null,
+            namespace: $this->chance(30) ? 'https://example.com/' . $this->word() : null,
+            prefix: $this->chance(30) ? substr($this->word(), 0, 2) : null,
+            attribute: $this->chance(30),
+            wrapped: $this->chance(30),
             extensions: $this->extensions(),
         );
     }
@@ -874,6 +1124,7 @@ final class RandomDocument
                 multipleOf: $multipleOf,
                 format: $this->chance(25) ? Schemas\Integer\Format::Int64 : null,
                 declareType: $declareType,
+                example: $this->chance(20) ? new Schemas\Integer\Value($minimum ?? 1) : null,
             )
             : new Schemas\Number\Schema(
                 description: $description,
@@ -886,6 +1137,7 @@ final class RandomDocument
                 multipleOf: $multipleOf,
                 format: $this->chance(25) ? Schemas\Number\Format::Double : null,
                 declareType: $declareType,
+                example: $this->chance(20) ? new Schemas\Number\Value(($minimum ?? 1) + 0.25) : null,
             );
     }
 
@@ -903,6 +1155,13 @@ final class RandomDocument
         // `required` names that properties does not describe need somewhere for their
         // shape to come from, so they are only written while additionalProperties stands
         $additionalProperties = $this->chance(25) ? false : true;
+        $condition = $this->isV31() && $depth > 0 && $this->chance(20)
+            ? [
+                new Schemas\Object\Schema(declareType: false, minProperties: 1),
+                $this->schema($depth - 1),
+                $this->chance(50) ? $this->schema($depth - 1) : null,
+            ]
+            : null;
 
         return new Schemas\Object\Schema(
             properties: Schemas\Object\Properties::fromArray($properties),
@@ -923,11 +1182,24 @@ final class RandomDocument
             minProperties: $this->chance(20) ? max(0, $this->int(0, 2)) : 0,
             maxProperties: $this->chance(20) ? max(0, $this->int(3, 20)) : null,
             additionalProperties: $additionalProperties,
+            // an empty map and a null are values of their own, and both have to survive
+            example: $this->chance(20)
+                ? new Schemas\Object\Value(match ($this->int(0, 2)) {
+                    0 => null,
+                    1 => new Schemas\Object\OpenapiObject(),
+                    default => Schemas\Object\OpenapiObject::fromArray([$this->word() => $this->int(0, 9)]),
+                })
+                : null,
             declareType: !$this->chance(15),
             required: $additionalProperties === true && $this->chance(20)
                 ? new Schemas\String\Strings('x-' . $this->word())
                 : null,
             extensions: $this->extensions(),
+            xml: $this->chance(10) ? $this->xml() : null,
+            // a condition is written as a whole: `then` without `if` is rejected
+            if: $condition !== null ? $condition[0] : null,
+            then: $condition !== null ? $condition[1] : null,
+            else: $condition !== null ? $condition[2] : null,
         );
     }
 
@@ -945,6 +1217,13 @@ final class RandomDocument
             minItems: $minItems,
             maxItems: $this->chance(30) ? max(0, $minItems + $this->int(0, 10)) : null,
             uniqueItems: $this->chance(25),
+            example: $this->chance(20)
+                ? new Schemas\Array\Value(match ($this->int(0, 2)) {
+                    0 => null,
+                    1 => new Schemas\Array\OpenapiArray(),
+                    default => new Schemas\Array\OpenapiArray($this->word(), $this->int(0, 9)),
+                })
+                : null,
             prefixItems: $this->isV31() && $this->chance(20)
                 ? new Schemas\Untyped\Schemas($this->schema($depth - 1))
                 : null,

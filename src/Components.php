@@ -99,13 +99,24 @@ final readonly class Components
         }
     }
 
+    /**
+     * Every section is written out where it stands.
+     *
+     * Two documents may be handed the same container object, and that used to be printed
+     * as one reference to the whole section — `other.json#/components/schemas`. The
+     * specification has no place for a reference there: `schemas` is a
+     * `Map[string, Schema Object]`, so a `$ref` in it is the name of a component rather
+     * than a reference, and the package's own reader said exactly that when it read the
+     * document back. Sharing the items is what makes a `$ref`; sharing the container just
+     * means both documents declare the same components.
+     */
     public function toObject(Process $process): stdClass
     {
         $result = [];
 
         if ($this->schemas->items !== []) {
             $result['schemas'] = Place::in(
-                fn (): stdClass => $process->findSchemas($this->schemas) ?? $this->schemas->sourceToObject($process),
+                fn (): stdClass => $this->schemas->sourceToObject($process),
                 'components',
                 'schemas',
             );
@@ -113,7 +124,7 @@ final readonly class Components
 
         if ($this->responses->items !== []) {
             $result['responses'] = Place::in(
-                fn (): stdClass => $process->findResponses($this->responses) ?? $this->responses->sourceToObject($process),
+                fn (): stdClass => $this->responses->sourceToObject($process),
                 'components',
                 'responses',
             );
@@ -121,7 +132,7 @@ final readonly class Components
 
         if ($this->parameters->items !== []) {
             $result['parameters'] = Place::in(
-                fn (): stdClass => $process->findParameters($this->parameters) ?? $this->parameters->sourceToObject($process),
+                fn (): stdClass => $this->parameters->sourceToObject($process),
                 'components',
                 'parameters',
             );
@@ -129,7 +140,7 @@ final readonly class Components
 
         if ($this->examples->items !== []) {
             $result['examples'] = Place::in(
-                fn (): stdClass => $process->findExamples($this->examples) ?? $this->examples->sourceToObject($process),
+                fn (): stdClass => $this->examples->sourceToObject($process),
                 'components',
                 'examples',
             );
@@ -137,7 +148,7 @@ final readonly class Components
 
         if ($this->requestBodies->items !== []) {
             $result['requestBodies'] = Place::in(
-                fn (): stdClass => $process->findRequestBodies($this->requestBodies) ?? $this->requestBodies->sourceToObject($process),
+                fn (): stdClass => $this->requestBodies->sourceToObject($process),
                 'components',
                 'requestBodies',
             );
@@ -145,7 +156,7 @@ final readonly class Components
 
         if ($this->headers->items !== []) {
             $result['headers'] = Place::in(
-                fn (): stdClass => $process->findHeaders($this->headers) ?? $this->headers->sourceToObject($process),
+                fn (): stdClass => $this->headers->sourceToObject($process),
                 'components',
                 'headers',
             );
@@ -153,7 +164,7 @@ final readonly class Components
 
         if ($this->securitySchemes->items !== []) {
             $result['securitySchemes'] = Place::in(
-                fn (): stdClass => $process->findSecuritySchemes($this->securitySchemes) ?? $this->securitySchemes->sourceToObject(),
+                fn (): stdClass => $this->securitySchemes->sourceToObject(),
                 'components',
                 'securitySchemes',
             );
@@ -161,7 +172,7 @@ final readonly class Components
 
         if ($this->links->items !== []) {
             $result['links'] = Place::in(
-                fn (): stdClass => $process->findLinks($this->links) ?? $this->links->sourceToObject($process),
+                fn (): stdClass => $this->links->sourceToObject($process),
                 'components',
                 'links',
             );
@@ -169,7 +180,7 @@ final readonly class Components
 
         if ($this->callbacks->items !== []) {
             $result['callbacks'] = Place::in(
-                fn (): stdClass => $process->findCallbacks($this->callbacks) ?? $this->callbacks->sourceToObject($process),
+                fn (): stdClass => $this->callbacks->sourceToObject($process),
                 'components',
                 'callbacks',
             );

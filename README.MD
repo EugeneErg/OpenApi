@@ -337,7 +337,9 @@ written. `Schemas` serves both: `components.schemas`, `mapping` and `$defs` requ
 
 The one place where an item of a map may be passed without a name is an operation's parameters: a
 parameter registered in `components.parameters` takes its name from the registration and is printed
-as a `$ref`. An unregistered nameless parameter the build rejects.
+as a `$ref`. An unregistered nameless parameter the build rejects. A nameless *path* parameter has
+to be registered in the same document: the template is checked against the names its own
+`components` declare, which is all a document knows of itself.
 
 ## Required fields outside properties
 
@@ -371,6 +373,14 @@ $paths = new Openapi(info: $info, paths: $paths);
 ```
 
 In `paths.yaml` the references take the form `components.yaml#/components/schemas/User`.
+
+Documents that refer to each other have to agree on the version. "An OpenAPI Description is
+composed of an entry document and any/all of its referenced documents", and it conforms to one
+version of the specification, so a 3.0 document pointing into a 3.1 document would get whatever 3.1
+wrote there — `{"type": "null"}` is a legal target and an illegal schema on the side that reads it.
+The build refuses that and names both files. One `Builder` may still hold documents of different
+versions, as long as they do not reach into each other: building the same API in both dialects is
+exactly that, because each document declares its own components.
 
 ## Security
 
@@ -844,9 +854,23 @@ away from the code unnoticed.
 combines the objects of the package at random — one file and several, both versions, JSON and YAML,
 brief and verbose — and the properties are stated as laws rather than as expected texts. Building
 has to be idempotent: what is read from a built document and built again has to come out the same
-text. The generator carries its own xorshift, so a failure names a seed that reproduces it. Two
-defects were found this way straight away: a Link naming an operation that lives in `webhooks`, and
-a `$dynamicRef` whose anchor is in a neighbouring file.
+text. The generator carries its own xorshift, so a failure names a seed that reproduces it.
+
+Four defects came out of it: a Link naming an operation that lives in `webhooks`, a `$dynamicRef`
+whose anchor is in a neighbouring file, an enumeration of strings that lost its content annotations,
+and a reference to a whole `components` section that nothing could read back.
+
+One property is about documents nobody could write on purpose: reading any text at all either
+succeeds or is refused with an exception of the package. A `TypeError`, a warning or a walk that
+never ends would mean the reader met a shape it does not describe. The documents are the generated
+ones, mutated — values replaced by values of another kind, keys dropped, subtrees wrapped, keys
+renamed to the ones the reader treats specially. That is how the hang on a recursive YAML anchor
+was found.
+
+`composer coverage` says what the suite never executed — 98% of the lines at the time of writing.
+The point is the list rather than the number: it is how the unreachable `$type` parameter of the
+value reader, an unused method of the registry and the untested refusals of the deferred schema were
+found.
 
 `RealWorldTest` runs the full read → write round trip on real specifications
 (`tests/Cases/RealWorldTest`; the sources are in `SOURCES.md`) and compares the meaning rather than

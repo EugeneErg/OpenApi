@@ -4,7 +4,6 @@ declare(strict_types = 1);
 
 namespace EugeneErg\OpenApi\Reader;
 
-use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValue;
 use EugeneErg\OpenApi\Components\Schemas\Abstract\AbstractValues;
 use EugeneErg\OpenApi\Components\Schemas\Array\OpenapiArray;
 use EugeneErg\OpenApi\Components\Schemas\Array\Value as ArrayValue;
@@ -33,28 +32,6 @@ use function is_string;
  */
 final readonly class ValueReader
 {
-    /**
-     * A value in a typed schema has to be of that type, so the wrapper class is chosen
-     * by the schema's type.
-     */
-    public function readValue(Node $node, ?string $type = null): ?AbstractValue
-    {
-        if (!$node->isPresent()) {
-            return null;
-        }
-
-        // null is a value too: an example of an empty response, or the default of a nullable field
-        return match ($type) {
-            'string' => $this->stringValue($node),
-            'integer' => $this->integerValue($node),
-            'number' => $this->numberValue($node),
-            'boolean' => $this->booleanValue($node),
-            'array' => $this->arrayValue($node),
-            'object' => $this->objectValue($node),
-            default => $this->untypedValue($node),
-        };
-    }
-
     public function readValues(Node $node): AbstractValues
     {
         if (is_array($node->value)) {

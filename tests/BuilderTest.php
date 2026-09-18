@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Tests;
 
 use EugeneErg\OpenApi\Builder;
+use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 use PHPUnit\Framework\TestCase;
 use UnexpectedValueException;
@@ -15,6 +16,32 @@ use function sprintf;
 
 final class BuilderTest extends TestCase
 {
+    /**
+     * `save()` is the only part of the package that touches the disk: it creates the
+     * directories on the way and writes what `encode()` would have returned.
+     */
+    public function testSaveWritesTheDocumentsToDisk(): void
+    {
+        $directory = sys_get_temp_dir() . '/eugene-erg-openapi-save-' . bin2hex(random_bytes(6));
+        $document = new Openapi(info: new Info(title: 'Saved', version: '1.0.0'));
+
+        try {
+            $written = (new Builder(...['api.json' => $document]))->save($directory . '/docs');
+
+            self::assertSame([$directory . '/docs/api.json'], array_keys($written));
+            self::assertFileExists($directory . '/docs/api.json');
+            self::assertSame(
+                $written[$directory . '/docs/api.json'] ?? '',
+                file_get_contents($directory . '/docs/api.json'),
+            );
+        } finally {
+            // the directory was made here, so it is taken away here
+            @unlink($directory . '/docs/api.json');
+            @rmdir($directory . '/docs');
+            @rmdir($directory);
+        }
+    }
+
     /**
      * @dataProvider providePrepareToSaveSuccessCases
      *

@@ -71,10 +71,14 @@ final readonly class SchemaReader
     /**
      * Values — `default`, `example`, `examples` — are read by ValueReader; callers outside
      * (an Example Object, the parameters) ask through the schema.
+     *
+     * Such a value stands beside no type of its own: an Example Object carries any JSON,
+     * and a media type's example is read the same way. A value inside a schema is read by
+     * the branch of the schema's own type, which knows the wrapper class.
      */
-    public function readValue(Node $node, ?string $type = null): ?AbstractValue
+    public function readValue(Node $node): ?AbstractValue
     {
-        return $this->values->readValue($node, $type);
+        return $this->values->untypedValue($node);
     }
 
     public function readValues(Node $node): AbstractValues

@@ -60,7 +60,7 @@
                                     "operationId": "listPayments",
                                     "description": "The next page.",
                                     "parameters": {
-                                        "page": "$response.body#//next",
+                                        "page": "$response.body#/next",
                                         "trace": "$request.header.X-Trace",
                                         "fixed": "1"
                                     },

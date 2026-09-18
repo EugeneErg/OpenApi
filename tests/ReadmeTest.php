@@ -50,6 +50,13 @@ final class ReadmeTest extends TestCase
                 $status,
             );
 
+            // the example runs in a process of its own, and an extension the parent got
+            // from the command line is not in the child's ini: what the child can do is
+            // what decides here
+            if (str_contains(implode("\n", $output), 'requires the ext-yaml extension')) {
+                self::markTestSkipped('ext-yaml is not available to the process running the example.');
+            }
+
             self::assertSame(0, $status, "An example from README failed:\n" . implode("\n", $output));
             self::assertSame([], array_values(array_filter(
                 $output,

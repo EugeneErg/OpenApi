@@ -5,7 +5,10 @@ declare(strict_types = 1);
 namespace Tests;
 
 use EugeneErg\OpenApi\Builder;
+use EugeneErg\OpenApi\Components;
+use EugeneErg\OpenApi\Components\Schemas;
 use EugeneErg\OpenApi\Exceptions\InvalidDocumentOpenapiException;
+use EugeneErg\OpenApi\Info;
 use EugeneErg\OpenApi\Openapi;
 use EugeneErg\OpenApi\Reader;
 use EugeneErg\OpenApi\Serialization\JsonEncoder;
@@ -82,6 +85,36 @@ final class ReaderTest extends TestCase
     }
 
     /**
+     * Two documents may be handed the same components container, and then both of them
+     * declare those components: the specification has no place for a reference to a whole
+     * section, so nothing is written as `other.json#/components/schemas`.
+     */
+    public function testASharedComponentsContainerIsWrittenOutInBothDocuments(): void
+    {
+        $schemas = new Schemas\Untyped\Schemas(User: new Schemas\Object\Schema(
+            properties: new Schemas\Object\Properties(id: new Schemas\Object\Property(
+                new Schemas\Integer\Schema(),
+            )),
+        ));
+        $document = static fn (string $title): Openapi => new Openapi(
+            info: new Info(title: $title, version: '1.0.0'),
+            components: new Components(schemas: $schemas),
+        );
+
+        $built = (new Builder(...['first.json' => $document('First'), 'second.json' => $document('Second')]))
+            ->encode()
+        ;
+
+        foreach (['first.json', 'second.json'] as $fileName) {
+            self::assertStringNotContainsString('"$ref"', $built[$fileName] ?? '');
+            self::assertStringContainsString('"User"', $built[$fileName] ?? '');
+        }
+
+        // and what was written reads back as it stands
+        self::assertSame($built, (new Builder(...Reader::readAll($built)))->encode());
+    }
+
+    /**
      * A Link may name an operation that lives in `webhooks`: `operationId` "MUST be
      * resolved within the scope of the OpenAPI Description", and a Path Item Object lives
      * in four places, not only in `paths`.
@@ -150,6 +183,89 @@ final class ReaderTest extends TestCase
         $built = (new Builder(...Reader::readAll($contents)))->encode();
 
         self::assertStringContainsString('"$dynamicRef": "a.json#node"', $built['b.json'] ?? '');
+    }
+
+    /**
+     * In 3.1 a `$ref` is one of the keywords, so its siblings apply: the schema is read
+     * as the equivalent `allOf` of the reference and the rest — including when one of the
+     * siblings is an `allOf` of its own, which is merged rather than nested.
+     */
+    public function testSiblingsOfAReferenceMergeIntoOneAllOf(): void
+    {
+        $built = (new Builder(...Reader::readAll(['api.json' => (string) json_encode([
+            'openapi' => '3.1.1',
+            'info' => ['title' => 'Siblings', 'version' => '1.0.0'],
+            'paths' => new stdClass(),
+            'components' => ['schemas' => [
+                'Base' => ['type' => 'object'],
+                'Extra' => ['type' => 'object', 'minProperties' => 1],
+                'Both' => [
+                    '$ref' => '#/components/schemas/Base',
+                    'allOf' => [['$ref' => '#/components/schemas/Extra']],
+                    'description' => 'Both at once.',
+                ],
+            ]],
+        ])])))->encode();
+
+        $decoded = json_decode($built['api.json'] ?? '{}', true);
+
+        self::assertIsArray($decoded);
+
+        $components = $decoded['components'] ?? null;
+
+        self::assertIsArray($components);
+
+        $schemas = $components['schemas'] ?? null;
+
+        self::assertIsArray($schemas);
+
+        $schema = $schemas['Both'] ?? null;
+
+        self::assertIsArray($schema);
+        self::assertSame('Both at once.', $schema['description'] ?? null);
+
+        $composition = $schema['allOf'] ?? null;
+
+        self::assertIsArray($composition);
+        self::assertSame(
+            ['#/components/schemas/Base', '#/components/schemas/Extra'],
+            array_column($composition, '$ref'),
+        );
+    }
+
+    /**
+     * An anchor is found by name, and a name nothing declares is a broken document: the
+     * refusal says which anchor was looked for.
+     */
+    public function testRejectsDynamicRefWithNoSuchAnchor(): void
+    {
+        $this->expectException(InvalidDocumentOpenapiException::class);
+        $this->expectExceptionMessage('a schema declaring $dynamicAnchor "missing"');
+
+        Reader::read((string) json_encode([
+            'openapi' => '3.1.1',
+            'info' => ['title' => 'Dynamic', 'version' => '1.0.0'],
+            'paths' => new stdClass(),
+            'components' => ['schemas' => ['Tree' => ['$dynamicRef' => '#missing']]],
+        ]));
+    }
+
+    /**
+     * A Path Item with no operation need not declare the template's parameters — a hidden
+     * route is written like that — but the ones it does declare still have to occur in it.
+     */
+    public function testAnEmptyPathItemNeedNotDeclareItsVariables(): void
+    {
+        $content = (string) json_encode([
+            'openapi' => '3.0.3',
+            'info' => ['title' => 'Hidden', 'version' => '1.0.0'],
+            'paths' => ['/acl/{id}' => new stdClass()],
+        ]);
+
+        self::assertStringContainsString(
+            '"/acl/{id}"',
+            (new Builder(...['api.json' => Reader::read($content)]))->encode()['api.json'] ?? '',
+        );
     }
 
     /**
@@ -344,6 +460,207 @@ final class ReaderTest extends TestCase
         ]));
     }
 
+    /**
+     * What a document can get wrong about a Link, and what the refusal has to say about
+     * it: the message is what reaches whoever brought the document.
+     *
+     * @dataProvider provideRejectsBrokenLinkCases
+     *
+     * @param array<string, mixed> $link
+     */
+    public function testRejectsBrokenLink(array $link, string $expected): void
+    {
+        $this->expectException(InvalidDocumentOpenapiException::class);
+        $this->expectExceptionMessage($expected);
+
+        Reader::read((string) json_encode([
+            'openapi' => '3.0.3',
+            'info' => ['title' => 'Links', 'version' => '1.0.0'],
+            'paths' => ['/users' => ['get' => [
+                'operationId' => 'listUsers',
+                'responses' => ['200' => ['description' => 'OK', 'links' => ['next' => $link]]],
+            ]]],
+        ]));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function provideRejectsBrokenLinkCases(): iterable
+    {
+        yield 'neither operationId nor operationRef' => [
+            ['description' => 'Nothing to point at.'],
+            'expected either operationId or operationRef',
+        ];
+
+        yield 'operationId that nothing declares' => [
+            ['operationId' => 'missing'],
+            'expected a declared operationId, got "missing"',
+        ];
+
+        yield 'operationRef without a fragment' => [
+            ['operationRef' => 'other.json'],
+            'must contain a fragment',
+        ];
+
+        yield 'operationRef at a file that was not passed' => [
+            ['operationRef' => 'other.json#/paths/~1users/get'],
+            'points at a file that was not passed to the reader',
+        ];
+    }
+
+    /**
+     * A `$dynamicRef` may carry a file name, and then that file has to be one of those
+     * handed to the reader — the same rule as for any other reference.
+     */
+    public function testRejectsDynamicRefAtAnUnknownFile(): void
+    {
+        $this->expectException(InvalidDocumentOpenapiException::class);
+        $this->expectExceptionMessage('which was not passed to the reader');
+
+        Reader::read((string) json_encode([
+            'openapi' => '3.1.1',
+            'info' => ['title' => 'Dynamic', 'version' => '1.0.0'],
+            'paths' => new stdClass(),
+            'components' => ['schemas' => ['Tree' => ['$dynamicRef' => 'elsewhere.json#node']]],
+        ]));
+    }
+
+    /**
+     * A cycle is an everyday thing among schemas and a broken document anywhere else: a
+     * response that contains itself cannot be built, because the object would have to be
+     * passed to its own constructor.
+     */
+    public function testRejectsACycleOutsideSchemas(): void
+    {
+        $this->expectException(InvalidDocumentOpenapiException::class);
+        $this->expectExceptionMessage('part of a cycle that only schemas may form');
+
+        Reader::read((string) json_encode([
+            'openapi' => '3.0.3',
+            'info' => ['title' => 'Cycle', 'version' => '1.0.0'],
+            'paths' => new stdClass(),
+            'components' => ['responses' => [
+                'First' => ['description' => 'First', 'headers' => [
+                    'X-Next' => ['$ref' => '#/components/responses/Second'],
+                ]],
+                'Second' => ['description' => 'Second', 'headers' => [
+                    'X-Back' => ['$ref' => '#/components/responses/First'],
+                ]],
+            ]],
+        ]));
+    }
+
+    /**
+     * A document is somebody else's text, and it can be wrong in any way at all. What the
+     * reader says then is the whole of what the caller gets, so every accessor's refusal
+     * is checked, and each one names the place.
+     *
+     * @dataProvider provideRejectsMalformedDocumentCases
+     *
+     * @param array<string, mixed> $document
+     */
+    public function testRejectsMalformedDocument(array $document, string $expected): void
+    {
+        $this->expectException(InvalidDocumentOpenapiException::class);
+        $this->expectExceptionMessage($expected);
+
+        Reader::read((string) json_encode($document));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function provideRejectsMalformedDocumentCases(): iterable
+    {
+        yield 'a title that is not a string' => [
+            ['openapi' => '3.0.3', 'info' => ['title' => 7, 'version' => '1.0.0'], 'paths' => new stdClass()],
+            'expected a string, got int',
+        ];
+
+        yield 'info that is not a mapping' => [
+            ['openapi' => '3.0.3', 'info' => 'Malformed', 'paths' => new stdClass()],
+            'expected a string, got null',
+        ];
+
+        // an empty object and an empty list cannot be told apart, so the mapping here
+        // carries a key: that is what makes it a mapping rather than an empty list
+        yield 'tags that are not a list' => [
+            self::malformedDocument(['tags' => ['name' => 'petstore']]),
+            'expected a list, got stdClass',
+        ];
+
+        yield 'a deprecated flag that is not a boolean' => [
+            self::malformedDocument(['paths' => ['/x' => ['get' => [
+                'deprecated' => 'yes',
+                'responses' => ['200' => ['description' => 'OK']],
+            ]]]]),
+            'expected a boolean, got string',
+        ];
+
+        yield 'a minLength that is not an integer' => [
+            self::malformedSchema(['type' => 'string', 'minLength' => '3']),
+            'expected an integer, got string',
+        ];
+
+        yield 'a minimum that is not a number' => [
+            self::malformedSchema(['type' => 'integer', 'minimum' => 'zero']),
+            'expected a number, got string',
+        ];
+
+        yield 'properties that are not a mapping' => [
+            self::malformedSchema(['type' => 'object', 'properties' => 'none']),
+            'expected a mapping, got string',
+        ];
+
+        yield 'an extension without a name' => [
+            self::malformedDocument(['x-' => true]),
+            'must not be empty',
+        ];
+
+        // a `$ref` may point anywhere, and what it points at has to be of the kind the
+        // place expects: a response is not a schema
+        yield 'a schema reference pointing at a response' => [
+            self::malformedDocument(['components' => [
+                'responses' => ['R' => ['description' => 'OK']],
+                'schemas' => ['S' => ['$ref' => '#/components/responses/R']],
+            ]]),
+            'but a schema was expected',
+        ];
+
+        yield 'a parameter reference pointing at a schema' => [
+            self::malformedDocument([
+                'paths' => ['/x' => ['get' => [
+                    'parameters' => [['$ref' => '#/components/schemas/S']],
+                    'responses' => ['200' => ['description' => 'OK']],
+                ]]],
+                'components' => ['schemas' => ['S' => ['type' => 'string']]],
+            ]),
+            'expected a parameter',
+        ];
+
+        // a parameter with `content` carries its media type as the key inside it, and the
+        // specification allows exactly one entry there
+        yield 'a content parameter without a media type' => [
+            self::malformedDocument(['paths' => ['/x' => ['get' => [
+                'parameters' => [['name' => 'filter', 'in' => 'query', 'content' => new stdClass()]],
+                'responses' => ['200' => ['description' => 'OK']],
+            ]]]]),
+            'expected one media type',
+        ];
+
+        // as a component such a parameter has no place: its media type is part of where
+        // it is used, so components.headers is the only section that can hold one
+        yield 'a content parameter registered as a component' => [
+            self::malformedDocument(['components' => ['parameters' => ['Filter' => [
+                'name' => 'filter',
+                'in' => 'query',
+                'content' => ['application/json' => ['schema' => ['type' => 'string']]],
+            ]]]]),
+            'content parameters are stored per usage',
+        ];
+    }
+
     public function testRejectsUnsupportedVersion(): void
     {
         $this->expectException(InvalidDocumentOpenapiException::class);
@@ -404,10 +721,93 @@ final class ReaderTest extends TestCase
             ['type' => 'string', 'enum' => ['card', 'bank']],
         ];
 
+        // Every keyword that asserts something about one value at a time, in the case
+        // where the assertion holds for all of them: what changes nothing is dropped.
+        yield 'string assertions that hold are dropped' => [
+            '3.0.3',
+            [
+                'type' => 'string',
+                'minLength' => 2,
+                'maxLength' => 8,
+                'pattern' => '^[a-z]+$',
+                'enum' => ['card', 'bank'],
+            ],
+            ['type' => 'string', 'enum' => ['card', 'bank']],
+        ];
+
+        yield 'numeric assertions that hold are dropped' => [
+            '3.0.3',
+            [
+                'type' => 'integer',
+                'minimum' => 10,
+                'maximum' => 30,
+                'exclusiveMinimum' => true,
+                'multipleOf' => 10,
+                'enum' => [20, 30],
+            ],
+            ['type' => 'integer', 'enum' => [20, 30]],
+        ];
+
+        yield '3.1 exclusive bounds that hold are dropped' => [
+            '3.1.0',
+            ['type' => 'number', 'exclusiveMinimum' => 1, 'exclusiveMaximum' => 10, 'enum' => [2.5, 7.5]],
+            ['type' => 'number', 'enum' => [2.5, 7.5]],
+        ];
+
+        // `items` is an applicator rather than an assertion about one value, so an
+        // enumeration beside it is kept as the equivalent allOf — see the case below.
+        yield 'array assertions that hold are dropped' => [
+            '3.0.3',
+            [
+                'type' => 'array',
+                'minItems' => 1,
+                'maxItems' => 3,
+                'uniqueItems' => true,
+                'enum' => [['a'], ['a', 'b']],
+            ],
+            ['type' => 'array', 'enum' => [['a'], ['a', 'b']]],
+        ];
+
+        yield 'object assertions that hold are dropped' => [
+            '3.0.3',
+            [
+                'type' => 'object',
+                'minProperties' => 1,
+                'maxProperties' => 3,
+                'required' => ['kind'],
+                'enum' => [['kind' => 'cash'], ['kind' => 'card', 'id' => 1]],
+            ],
+            ['type' => 'object', 'enum' => [['kind' => 'cash'], ['kind' => 'card', 'id' => 1]]],
+        ];
+
         yield 'example and inapplicable keywords are dropped' => [
             '3.0.3',
             ['type' => 'string', 'minItems' => 1, 'example' => 'nope', 'enum' => ['push']],
             ['type' => 'string', 'enum' => ['push']],
+        ];
+
+        // The annotations about a string's contents assert nothing, so an enumeration
+        // keeps them; on an enumeration of another kind they mean nothing and go.
+        yield 'content annotations are kept on a string enum' => [
+            '3.1.0',
+            [
+                'type' => 'string',
+                'contentEncoding' => 'base64',
+                'contentMediaType' => 'application/json',
+                'enum' => ['e30='],
+            ],
+            [
+                'type' => 'string',
+                'const' => 'e30=',
+                'contentEncoding' => 'base64',
+                'contentMediaType' => 'application/json',
+            ],
+        ];
+
+        yield 'content annotations are dropped on an integer enum' => [
+            '3.1.0',
+            ['type' => 'integer', 'contentEncoding' => 'base64', 'enum' => [1, 2]],
+            ['type' => 'integer', 'enum' => [1, 2]],
         ];
 
         yield 'annotations are kept' => [
@@ -535,6 +935,59 @@ final class ReaderTest extends TestCase
             '3.1.0',
             ['type' => 'integer', 'exclusiveMinimum' => 0, 'enum' => [0, 1]],
             'excluded by "exclusiveMinimum"',
+        ];
+
+        yield 'value excluded by minLength' => [
+            '3.0.3',
+            ['type' => 'string', 'minLength' => 3, 'enum' => ['ok', 'fine']],
+            'excluded by "minLength"',
+        ];
+
+        yield 'value excluded by pattern' => [
+            '3.0.3',
+            ['type' => 'string', 'pattern' => '^[a-z]+$', 'enum' => ['ok', 'Nope']],
+            'excluded by "pattern"',
+        ];
+
+        yield 'value excluded by maximum' => [
+            '3.0.3',
+            ['type' => 'integer', 'maximum' => 10, 'enum' => [5, 50]],
+            'excluded by "maximum"',
+        ];
+
+        yield 'value excluded by multipleOf' => [
+            '3.0.3',
+            ['type' => 'integer', 'multipleOf' => 10, 'enum' => [10, 15]],
+            'excluded by "multipleOf"',
+        ];
+
+        yield 'value excluded by minItems' => [
+            '3.0.3',
+            ['type' => 'array', 'items' => ['type' => 'string'], 'minItems' => 2, 'enum' => [['a', 'b'], ['a']]],
+            'excluded by "minItems"',
+        ];
+
+        yield 'value excluded by uniqueItems' => [
+            '3.0.3',
+            [
+                'type' => 'array',
+                'items' => ['type' => 'string'],
+                'uniqueItems' => true,
+                'enum' => [['a', 'b'], ['a', 'a']],
+            ],
+            'excluded by "uniqueItems"',
+        ];
+
+        yield 'value excluded by required' => [
+            '3.0.3',
+            ['type' => 'object', 'required' => ['kind'], 'enum' => [['kind' => 'cash'], ['id' => 1]]],
+            'excluded by "required"',
+        ];
+
+        yield 'value excluded by maxProperties' => [
+            '3.0.3',
+            ['type' => 'object', 'maxProperties' => 1, 'enum' => [['a' => 1], ['a' => 1, 'b' => 2]]],
+            'excluded by "maxProperties"',
         ];
 
         yield 'null without nullable' => [
@@ -829,6 +1282,31 @@ final class ReaderTest extends TestCase
             'paths' => new stdClass(),
             'components' => $components,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     *
+     * @return array<string, mixed>
+     */
+    private static function malformedDocument(array $extra): array
+    {
+        return [
+            'openapi' => '3.0.3',
+            'info' => ['title' => 'Malformed', 'version' => '1.0.0'],
+            'paths' => new stdClass(),
+            ...$extra,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $schema
+     *
+     * @return array<string, mixed>
+     */
+    private static function malformedSchema(array $schema): array
+    {
+        return self::malformedDocument(['components' => ['schemas' => ['S' => $schema]]]);
     }
 
     /**

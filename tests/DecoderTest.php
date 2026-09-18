@@ -16,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 use UnexpectedValueException;
 
+use function extension_loaded;
 use function is_array;
 use function is_string;
 use function sprintf;
@@ -136,6 +137,23 @@ final class DecoderTest extends TestCase
             '{"schemas":{"Links":{"type":"object","example":{},"additionalProperties":{"type":"string"}}}}',
             json_encode($built['openapi.yaml']->components ?? null),
         );
+    }
+
+    /**
+     * A YAML anchor may point at the node that carries it, and then there is no document
+     * to read: the structure has no end, and neither JSON nor the objects of this package
+     * can express a cycle in data. Reading it used to hang.
+     */
+    public function testRecursiveAnchorIsRefused(): void
+    {
+        if (!extension_loaded('yaml')) {
+            self::markTestSkipped('ext-yaml is required to read YAML.');
+        }
+
+        $this->expectException(InvalidDocumentOpenapiException::class);
+        $this->expectExceptionMessage('without an end');
+
+        Reader::read("openapi: 3.1.1\ninfo: &info\n  nested: *info\npaths: {}\n", new YamlDecoder());
     }
 
     /**

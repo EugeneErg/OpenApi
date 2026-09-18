@@ -25,6 +25,7 @@ use EugeneErg\OpenApi\Reference;
 use EugeneErg\OpenApi\Securities;
 use EugeneErg\OpenApi\Version;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use stdClass;
 
 /**
@@ -401,6 +402,192 @@ final class ValidationTest extends TestCase
                 return (new Builder(...['api.json' => $document]))->prepareToSave();
             },
             'must be registered in components.schemas',
+        ];
+
+        // A deferred reference is how a recursion is written, and these two are the ways
+        // it can be written wrong: pointing at itself, or at a schema with no address.
+        yield 'deferred schema resolving to itself' => [
+            static function (): Schemas\Abstract\AbstractSchema {
+                $deferred = null;
+                $deferred = new Schemas\Abstract\DeferredSchema(
+                    static function () use (&$deferred): Schemas\Abstract\AbstractSchema {
+                        return $deferred ?? throw new RuntimeException('The closure runs after the assignment.');
+                    },
+                );
+
+                return $deferred->resolve();
+            },
+            'resolves to itself',
+        ];
+
+        yield 'deferred schema outside components' => [
+            static function (): array {
+                $orphan = new Schemas\String\Schema();
+                $document = new Openapi(
+                    info: self::info(),
+                    components: new Components(schemas: new Schemas\Untyped\Schemas(
+                        Holder: new Schemas\Object\Schema(
+                            properties: new Schemas\Object\Properties(
+                                next: new Schemas\Object\Property(new Schemas\Abstract\DeferredSchema(
+                                    static fn (): Schemas\Abstract\AbstractSchema => $orphan,
+                                )),
+                            ),
+                        ),
+                    )),
+                );
+
+                return (new Builder(...['api.json' => $document]))->prepareToSave();
+            },
+            'must point at a schema registered in components.schemas',
+        ];
+
+        yield '$dynamicRef to a schema without $dynamicAnchor' => [
+            static function (): array {
+                $target = new Schemas\String\Schema();
+                $document = new Openapi(
+                    info: self::info(),
+                    components: new Components(schemas: new Schemas\Untyped\Schemas(
+                        Target: $target,
+                        Pointing: new Schemas\Untyped\Schema(
+                            resource: new Schemas\Abstract\Resource(dynamicRef: $target),
+                        ),
+                    )),
+                    version: Version::V311,
+                );
+
+                return (new Builder(...['api.json' => $document]))->prepareToSave();
+            },
+            'must point at a schema that declares "$dynamicAnchor"',
+        ];
+
+        // an anchor is a plain name, not a pointer: "#/definitions/x" is not one
+        yield 'anchor that is not a plain name' => [
+            static fn () => new Schemas\Abstract\Resource(anchor: '#/definitions/x'),
+            'must be a plain name',
+        ];
+
+        yield 'mutualTLS in 3.0' => [
+            static fn () => new Openapi(
+                info: self::info(),
+                components: new Components(securitySchemes: new SecuritySchemes(
+                    mtls: new SecuritySchemes\MutualTlsSecurityScheme(),
+                )),
+            ),
+            'securitySchemes of type mutualTLS',
+        ];
+
+        // the scopes of an oauth2 scheme are the Scope objects of its own flows: one from
+        // nowhere has no name to be written under
+        yield 'scope declared in no flow' => [
+            static function (): array {
+                $scheme = new SecuritySchemes\Oauth2Security\Scheme(
+                    flows: SecuritySchemes\Oauth2Security\Flows::createImplicit(
+                        new SecuritySchemes\Oauth2Security\Flows\ImplicitFlow(
+                            authorizationUrl: 'https://example.com/authorize',
+                            scopes: new SecuritySchemes\Oauth2Security\Flows\Scopes(),
+                        ),
+                        null,
+                        null,
+                        null,
+                    ),
+                );
+                $document = new Openapi(
+                    info: self::info(),
+                    components: new Components(securitySchemes: new SecuritySchemes(oauth: $scheme)),
+                    security: new Securities(new Securities\SecuritySchemes(
+                        new SecuritySchemes\Oauth2Security\Flows\Scope('From nowhere'),
+                    )),
+                );
+
+                return (new Builder(...['api.json' => $document]))->prepareToSave();
+            },
+            'is not declared in any oauth2 flow',
+        ];
+
+        yield 'security scheme that no components section declares' => [
+            static function (): array {
+                $document = new Openapi(
+                    info: self::info(),
+                    security: new Securities(new Securities\SecuritySchemes(
+                        new SecuritySchemes\BasicHttpSecurityScheme(),
+                    )),
+                );
+
+                return (new Builder(...['api.json' => $document]))->prepareToSave();
+            },
+            'is not registered in components.securitySchemes',
+        ];
+
+        yield 'contentSchema without contentMediaType on an enum' => [
+            static fn () => new Schemas\String\EnumSchema(
+                new Schemas\String\Strings('e30='),
+                contentSchema: new Schemas\Object\Schema(),
+            ),
+            '"contentSchema" is meaningless without "contentMediaType"',
+        ];
+
+        // the values of an enumeration are a list: a name there would be dropped when the
+        // document is written, so passing one is an error rather than a silent loss
+        yield 'named value among the values of an enum' => [
+            static fn () => Schemas\String\Strings::fromArray(['first' => 'a', 'second' => 'b']),
+            'cannot have named items',
+        ];
+
+        // the names in a mapping are component names, so the schemas behind them have to
+        // be registered: otherwise the name points at nothing
+        yield 'discriminator mapping outside components' => [
+            static function (): array {
+                $dog = new Schemas\Object\Schema();
+                $document = new Openapi(
+                    info: self::info(),
+                    components: new Components(schemas: new Schemas\Untyped\Schemas(
+                        Pet: new Schemas\Untyped\Schema(
+                            oneOf: new Schemas\Untyped\Schemas($dog),
+                            discriminator: new Schemas\Abstract\Discriminator(
+                                propertyName: 'kind',
+                                mapping: new Schemas\Untyped\Schemas(dog: $dog),
+                            ),
+                        ),
+                    )),
+                );
+
+                return (new Builder(...['api.json' => $document]))->prepareToSave();
+            },
+            'must point to a schema registered in components.schemas',
+        ];
+
+        yield 'parameter with both example and examples' => [
+            static fn () => new Parameters\Query\SchemaParameter(
+                schema: new Schemas\String\Schema(),
+                example: new Schemas\String\Value('one'),
+                examples: new Examples(other: new Example(value: new Schemas\String\Value('two'))),
+            ),
+            'cannot have both example and examples',
+        ];
+
+        // "An OpenAPI Description is composed of an entry document and any/all of its
+        // referenced documents", and it conforms to one version of the specification: a
+        // document of 3.0 pointing into a document of 3.1 gets whatever 3.1 wrote there.
+        yield 'a reference across a version boundary' => [
+            static function (): array {
+                $nothing = new Schemas\Null\Schema();
+                $modern = new Openapi(
+                    info: self::info(),
+                    components: new Components(schemas: new Schemas\Untyped\Schemas(Nothing: $nothing)),
+                    version: Version::V311,
+                );
+                $legacy = new Openapi(
+                    info: self::info(),
+                    components: new Components(schemas: new Schemas\Untyped\Schemas(
+                        Holder: new Schemas\Object\Schema(properties: new Schemas\Object\Properties(
+                            nothing: new Schemas\Object\Property($nothing),
+                        )),
+                    )),
+                );
+
+                return (new Builder(...['modern.json' => $modern, 'legacy.json' => $legacy]))->prepareToSave();
+            },
+            'crosses a version boundary',
         ];
 
         yield '$schema without $id' => [

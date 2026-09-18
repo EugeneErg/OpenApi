@@ -137,6 +137,22 @@ in the same wrong way.
   with an explanation of every entry.
 - The `kitchen-sink-30` and `kitchen-sink-31` cases — one document per version, holding every object
   of the specification.
+- `RandomDocument::mixedVersions()` and a property for it: one `Builder` holding 3.0 and 3.1 side by
+  side, each document written to its own version and read back as it stands.
+- Reading any text at all now either succeeds or is refused with an exception of the package, and
+  that is checked on mutated documents: a `TypeError`, a warning or a walk without an end would mean
+  the reader met a shape it does not describe.
+- `Reader\Registry::fileOf()` is gone: nothing called it.
+- `Reader\SchemaReader::readValue()` lost its `$type` parameter, and `ValueReader::readValue()` is
+  gone with it: nothing ever passed a type, so the typed branches were unreachable. A value beside
+  no schema of its own is read as any JSON value, which is what those callers always got.
+- The tests now cover the refusals as well as the successes: a deferred schema that resolves to
+  itself or points outside `components`, an anchor that is not a plain name, mutualTLS in 3.0, a
+  scope declared in no flow, a security scheme no components section declares, a broken Link, a
+  cycle among components other than schemas, a `$dynamicRef` at a file nobody passed, a malformed
+  document of every shape a node can refuse, `save()` writing to disk, `Structure` as a decoder of
+  one's own uses it, and every form a Link parameter can take. `composer coverage` went from 92% of
+  the lines to 98%.
 - **`RoundTripPropertyTest`** — the same round trips on documents nobody wrote. `RandomDocument`
   combines the objects of the package at random (one file and several, both versions, JSON and YAML,
   brief and verbose) and the properties are stated as laws: building is idempotent, so what is read
@@ -157,6 +173,36 @@ in the same wrong way.
 
 ### Fixed
 
+- **A reference could cross a version boundary unnoticed.** A document of 3.0 sharing an object with
+  a document of 3.1 got a `$ref` into it, and what it pointed at was written to 3.1: `type: null`
+  is a legal target there and an illegal schema on the side that reads it, with nothing in the text
+  to say so. One OpenAPI Description conforms to one version of the specification, so the build now
+  refuses such a reference and names both files and both versions. Documents of different versions
+  in one `Builder` are still fine while they do not reach into each other.
+- **A recursive YAML anchor hung the reader.** ext-yaml resolves `a: &anchor` / `b: *anchor` into a
+  structure that contains itself — `$parsed['a']['b'] === $parsed['a']` — and walking it never
+  finished: reading somebody else's document could take the process with it. The depth is now
+  bounded at the 512 levels `json_decode()` stops at, and such a document is refused with a message
+  that says why. Nothing can be written back from a cycle in data anyway: neither JSON nor the
+  objects of this package can express one.
+- **A body expression built a JSON Pointer with an empty first segment.**
+  `Link\Parameter::responseBody('/next')` gave `$response.body#//next` — a pointer to the member
+  `""` of the member `next` — because the slash was always added to the argument. A pointer starts
+  with a slash (RFC 6901), so both spellings now mean the same member and give `#/next`;
+  `expression()` is there for anything else, including the old form. Found by writing the test that
+  pins every form of a Link parameter down.
+- **An enumeration of strings lost `contentEncoding`, `contentMediaType` and `contentSchema`.** By
+  JSON Schema those keywords assert nothing, and `String\EnumSchema` has slots for all three, but
+  the reader counted them among the keywords that need a subschema and rewrote the schema as an
+  `allOf`. They are now kept on a string enumeration and dropped on an enumeration of any other
+  kind, where they mean nothing at all.
+- **A reference to a whole `components` section could not be read back.** Two documents handed the
+  same container object printed the second one as
+  `"schemas": {"$ref": "other.json#/components/schemas"}`, and the specification has no place for a
+  reference there: `schemas` is a `Map[string, Schema Object]`, so a `$ref` in it is the name of a
+  component — which is exactly what the package's own reader said. Sharing the items is what makes
+  a `$ref`; sharing the container now means both documents declare the same components, and each
+  writes its section out.
 - **A Link could not name an operation outside `paths`.** An operation in `webhooks`,
   `components.pathItems` or a Callback Object is an operation of the document all the same —
   `operationId` "MUST be resolved within the scope of the OpenAPI Description" — but the reader
